@@ -121,5 +121,3 @@ def test_input_data_model_from_cropped_dataset(test_dir: Path, test_data_dir: Pa
 
     assert pre_acq_dts_str_actual == pre_acq_dts_str_expected
     assert post_acq_dts_str_actual == post_acq_dts_str_expected
-
-    breakpoint()
