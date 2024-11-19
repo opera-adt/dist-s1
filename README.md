@@ -17,6 +17,15 @@ conda activate dist-s1-env
 python -m ipykernel install --user --name dist-s1-env
 ```
 
+## Usage
+
+```
+dist-s1 --runconfig_yml_path <path/to/runconfig.yml>
+```
+
+See `tests/test_main.py` for an example of how to use the CLI with sample data.
+
+
 ## Docker
 
 ### Local Usage
