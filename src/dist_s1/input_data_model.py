@@ -17,7 +17,7 @@ def none_encoder(dumper, _):
 
 
 yaml.add_representer(PosixPath, posix_path_encoder)
-# yaml.add_representer(type(None), none_encoder)
+yaml.add_representer(type(None), none_encoder)
 
 
 def get_burst_id(opera_rtc_s1_path: Path) -> str:
@@ -155,7 +155,7 @@ class RunConfigModel(BaseModel):
                 )
             if len(organized_data[burst_id]['post_rtc_copol']) != len(organized_data[burst_id]['post_rtc_crosspol']):
                 raise ValueError(
-                    f'Post-acquisition data for burst {burst_id} do'
+                    f'Post-acquisition data for burst {burst_id} do '
                     'not have the same length between copol and crosspol.'
                 )
 
@@ -218,4 +218,4 @@ class RunConfigModel(BaseModel):
         # Write to YAML file
         yaml_file = Path(yaml_file)
         with yaml_file.open('w') as f:
-            yaml.dump(yml_dict, f, default_flow_style=False)
+            yaml.dump(yml_dict, f, default_flow_style=False, indent=4, sort_keys=False)

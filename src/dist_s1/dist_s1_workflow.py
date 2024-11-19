@@ -41,3 +41,5 @@ def run_dist_s1_workflow(run_config: RunConfigModel):
     output_path = run_config.output_product_dir / f'disturbance_{mgrs_tile_id}.tif'
     with rasterio.open(output_path, 'w', **profile) as dst:
         dst.write(dist_map.astype(np.uint8), 1)
+
+    return output_path
