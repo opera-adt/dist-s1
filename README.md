@@ -1,23 +1,10 @@
 # dist-s1
 
-[![Actions Status][actions-badge]][actions-link]
-[![PyPI version][pypi-version]][pypi-link]
-[![Conda-Forge][conda-badge]][conda-link]
-[![GitHub Discussion][github-discussions-badge]][github-discussions-link]
-
-
-<!-- prettier-ignore-start -->
-[actions-badge]:            https://github.com/opera-adt/dist-s1/workflows/CI/badge.svg
-[actions-link]:             https://github.com/opera-adt/dist-s1/actions
-[conda-badge]:              https://img.shields.io/conda/vn/conda-forge/dist-s1
-[conda-link]:               https://github.com/conda-forge/dist-s1-feedstock
-[github-discussions-badge]: https://img.shields.io/static/v1?label=Discussions&message=Ask&color=blue&logo=github
-[github-discussions-link]:  https://github.com/opera-adt/dist-s1/discussions
-[pypi-link]:                https://pypi.org/project/dist-s1/
-[pypi-platforms]:           https://img.shields.io/pypi/pyversions/dist-s1
-[pypi-version]:             https://img.shields.io/pypi/v/dist-s1
-
-<!-- prettier-ignore-end -->
+[![PyPI license](https://img.shields.io/pypi/l/dist-s1.svg)](https://pypi.python.org/pypi/dist-s1/)
+[![PyPI pyversions](https://img.shields.io/pypi/pyversions/dist-s1.svg)](https://pypi.python.org/pypi/dist-s1/)
+[![PyPI version](https://img.shields.io/pypi/v/dist-s1.svg)](https://pypi.python.org/pypi/dist-s1/)
+[![Conda version](https://img.shields.io/conda/vn/conda-forge/dist_s1)](https://anaconda.org/conda-forge/dist_s1)
+[![Conda platforms](https://img.shields.io/conda/pn/conda-forge/dist_s1)](https://anaconda.org/conda-forge/dist_s1)
 
 This is the workflow that generates OPERA's DIST-S1 product.
 
@@ -29,3 +16,18 @@ pip install -e .
 conda activate dist-s1-env
 python -m ipykernel install --user --name dist-s1-env
 ```
+
+## Docker
+
+### Local Usage
+
+Make sure you have Docker installed (e.g. for MacOS: https://docs.docker.com/desktop/setup/install/mac-install/)
+
+```
+docker build -f Dockerfile -t dist_s1_img .
+```
+To run the container interactively:
+```
+docker run -ti dist_s1_img
+```
+Should be able to run the CLI commands and the test suite.
