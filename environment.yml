@@ -1,0 +1,28 @@
+name: dist-s1-env
+channels:
+ - conda-forge
+dependencies:
+ - python>=3.12
+ - asf_search
+ - backoff
+ - click
+ - flake8
+ - flake8-blind-except
+ - flake8-builtins
+ - flake8-import-order
+ - geopandas
+ - jupyterlab
+ - matplotlib
+ - numpy
+ - pandas
+ - pyarrow
+ - pydantic
+ - pytest
+ - pytest-cov
+ - pytorch
+ - rasterio
+ - ruff
+ - scipy
+ - shapely
+ - pip:
+    - git+https://github.com/opera-adt/dist-s1-enumerator.git
