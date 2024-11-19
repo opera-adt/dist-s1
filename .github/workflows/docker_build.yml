@@ -23,7 +23,7 @@ jobs:
       version_tag: ${{ needs.call-version-info-workflow.outputs.version_tag }}
       user: ${{ github.actor }}
       release_branch: main     
-      develop_branch: develop  
+      develop_branch: dev  
       file: Dockerfile 
     secrets:
       USER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
