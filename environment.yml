@@ -21,6 +21,8 @@ dependencies:
  - pytest-cov
  - pytorch
  - rasterio
+ - setuptools
+ - setuptools_scm
  - ruff
  - scipy
  - shapely
