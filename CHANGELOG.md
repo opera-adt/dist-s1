@@ -10,4 +10,4 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- Initial internal release of the DIST-S1 project.
+- Initial internal release of the DIST-S1 project. Test github release workflow
