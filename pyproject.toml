@@ -1,0 +1,87 @@
+[build-system]
+requires = ["setuptools>=64.0", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dist-s1"
+authors = [
+  { name = "Richard West, Charlie Marshak, Talib Oliver-Cabrera, and Jungkyo Jung", email = "charlie.z.marshak@jpl.nasa.gov"},
+]
+description = "The workflow to generate the DIST-S1 product"
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = '>=3.12'
+
+classifiers = [
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python",
+  "Topic :: Scientific/Engineering",
+]
+license = { text = 'Apache-2.0' }
+dynamic = ['version']
+
+dependencies = ['numpy', 'asf_search', 'geopandas', 'rasterio']
+
+[project.urls]
+Homepage = "https://github.com/opera-adt/dist-s1"
+"Bug Tracker" = "https://github.com/opera-adt/dist-s1/issues"
+"Discussions" = "https://github.com/opera-adt/dist-s1/discussions"
+"Changelog" = "https://github.com/opera-adt/dist-s1/releases"
+
+[project.scripts]
+"dist_s1" = "dist_s1.__main__:main"
+
+[tool.setuptools]
+include-package-data = true
+zip-safe = false
+
+[tool.setuptools.packages.find]
+where = ["src"]
+exclude = ["notebooks*", "tests*"]
+
+[tool.setuptools.dynamic]
+readme = { file = ['README.md'], content-type = 'text/markdown' }
+
+
+[tool.setuptools_scm]
+
+[tool.ruff]
+line-length = 120
+src = ["src", "tests"]
+exclude = [
+    ".eggs",
+    ".git",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "build",
+    "dist",
+    "site-packages",
+    "notebooks/"
+]
+indent-width = 4
+
+[tool.ruff.format]
+quote-style = "single"
+
+[tool.ruff.lint]
+extend-select = [
+    "I",   # isort: https://docs.astral.sh/ruff/rules/#isort-i
+    "UP",  # pyupgrade: https://docs.astral.sh/ruff/rules/#pyupgrade-up
+    # "D",   # pydocstyle: https://docs.astral.sh/ruff/rules/#pydocstyle-d
+    # "ANN", # annotations: https://docs.astral.sh/ruff/rules/#flake8-annotations-ann
+    "PTH", # use-pathlib-pth: https://docs.astral.sh/ruff/rules/#flake8-use-pathlib-pth
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.lint.isort]
+case-sensitive = true
+lines-after-imports = 2
