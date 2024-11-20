@@ -12,4 +12,4 @@ jobs:
       user: opera-pst-dev 
       email: opera-pst-dev@jpl.nasa.gov
     secrets:
-      USER_TOKEN: ${{ secrets.OPERA_PST_GITHUB_TOKEN }}
+      USER_TOKEN: ${{ secrets.OPERA_PST_DIST_TOKEN }}
