@@ -6,7 +6,7 @@
 [![Conda version](https://img.shields.io/conda/vn/conda-forge/dist_s1)](https://anaconda.org/conda-forge/dist_s1)
 [![Conda platforms](https://img.shields.io/conda/pn/conda-forge/dist_s1)](https://anaconda.org/conda-forge/dist_s1)
 
-This is the workflow that generates OPERA's DIST-S1 product. This delineates *generic* disturbance from a time-series of OPERA Radiometric and Terrain Corrected Sentinel-1 (RTC-S1) products.
+This is the workflow that generates OPERA's DIST-S1 product. This workflow is designed to delineate *generic* disturbance from a time-series of OPERA Radiometric and Terrain Corrected Sentinel-1 (RTC-S1) products.
 
 ## Install
 

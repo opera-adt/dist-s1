@@ -3,7 +3,8 @@ from pathlib import Path
 import numpy as np
 import rasterio
 
-from .input_data_model import RunConfigModel
+from .data_models.output_models import LAYER_DTYPES
+from .data_models.runconfig_model import RunConfigData
 
 
 def _one_one_arr(path: str | Path) -> np.ndarray:
@@ -24,7 +25,8 @@ def compute_metric_for_one_burst(
     return dist
 
 
-def run_dist_s1_workflow(run_config: RunConfigModel):
+def run_dist_s1_workflow(run_config: RunConfigData) -> Path:
+    # Get the first burst in the time series
     sample_burst_id = sorted(list(run_config.time_series_by_burst.keys()))[0]
 
     dist = compute_metric_for_one_burst(
@@ -32,14 +34,16 @@ def run_dist_s1_workflow(run_config: RunConfigModel):
         run_config.time_series_by_burst[sample_burst_id]['post_rtc_crosspol'][0],
     )
 
-    dist_map = dist < -1
+    dummy_data = (dist < -1).astype(np.uint8)
 
     with rasterio.open(run_config.time_series_by_burst[sample_burst_id]['post_rtc_copol'][0]) as ds:
         profile = ds.profile
 
-    mgrs_tile_id = run_config.mgrs_tile_id
-    output_path = run_config.output_product_dir / f'disturbance_{mgrs_tile_id}.tif'
-    with rasterio.open(output_path, 'w', **profile) as dst:
-        dst.write(dist_map.astype(np.uint8), 1)
+    output_prod_data = run_config.product_dir_data
+    for layer, path in output_prod_data.layer_path_dict.items():
+        profile['dtype'] = LAYER_DTYPES[layer]
+        profile['nodata'] = None
+        with rasterio.open(path, 'w', **profile) as dst:
+            dst.write(dummy_data.astype(LAYER_DTYPES[layer]), 1)
 
-    return output_path
+    return output_prod_data
