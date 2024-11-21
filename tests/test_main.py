@@ -1,4 +1,4 @@
-from dist_s1.__main__ import main as dist_s1
+from dist_s1.__main__ import cli as dist_s1
 from dist_s1.input_data_model import RunConfigModel
 
 
@@ -10,7 +10,7 @@ def test_dist_s1_main(cli_runner, change_local_dir, test_dir, test_data_dir):
     runconfig_data = RunConfigModel.from_yaml(runconfig_yml_path)
     result = cli_runner.invoke(
         dist_s1,
-        ['--runconfig_yml_path', runconfig_yml_path],
+        ['run_sas', '--runconfig_yml_path', runconfig_yml_path],
     )
     assert result.exit_code == 0
     assert runconfig_data.output_product_dir.exists()
