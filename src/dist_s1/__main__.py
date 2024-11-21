@@ -24,19 +24,28 @@ def cli():
 @click.option('--runconfig_yml_path', required=True, help='Path to YAML runconfig file', type=click.Path(exists=True))
 def run_sas(runconfig_yml_path: str | Path):
     runconfig_data = RunConfigModel.from_yaml(runconfig_yml_path)
-    run_dist_s1_workflow(runconfig_data)
+    out_dir = run_dist_s1_workflow(runconfig_data)
+    click.echo(f'Writing to DIST-S1 product to directory: {out_dir}')
+    return str(out_dir)
 
 
 # MGRS Workflow with Internet Access
 @cli.command(name='run')
 @click.option('--mgrs_tile_id', type=str, required=True, help='MGRS tile ID.')
 @click.option('--post_date', type=str, required=True, help='Post acquisition date.')
-@click.option('--track_number', type=int, required=True, help='Sentinel-1 Track number.')
-@click.option('--post_buffer_days', type=int, required=True, help='Buffer days around post-date.')
-def run(mgrs_tile_id: str, post_date: str, track_number: int, post_buffer_days: int):
+@click.option(
+    '--track_number',
+    type=int,
+    required=False,
+    default=1,
+    help='Sentinel-1 Track Number; Supply one from the group of bursts collected from a pass; '
+    'Near the dateline you may have two sequential track numbers.',
+)
+@click.option('--post_date_buffer_days', type=int, required=True, help='Buffer days around post-date.')
+def run(mgrs_tile_id: str, post_date: str, track_number: int, post_date_buffer_days: int):
     """Localize data and run dist_s1_workflow."""
     # Localize data
-    _ = localize_data(mgrs_tile_id, post_date, track_number, post_buffer_days)
+    _ = localize_data(mgrs_tile_id, post_date, track_number, post_date_buffer_days)
     # TODO: Run the workflow with localized data
     return 'output_path'
 
