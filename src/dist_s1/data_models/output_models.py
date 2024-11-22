@@ -91,7 +91,6 @@ class ProductDirectoryData(BaseModel):
     @property
     def path(self) -> Path:
         path = self.dst_dir / self.product_name
-        path = path.relative_to(Path.cwd())
         return path
 
     @field_validator('product_name')
