@@ -11,7 +11,10 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - Pypi delivery workflow
-- Entrypoint for CLI to localize data via internet
+- Entrypoint for CLI to localize data via internet (the SAS workflow is assumed not to have internet access)
+- Data models for output data and product naming conventions
+- Ensures output products follow the product and the tif layers follow the expected naming conventions
+  - Provides testing/validation of the structure (via tmp directories)
 
 ### Changed
 
