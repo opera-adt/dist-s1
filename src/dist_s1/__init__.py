@@ -1,7 +1,7 @@
 import warnings
 from importlib.metadata import PackageNotFoundError, version
 
-from .input_data_model import RunConfigModel
+from .data_models.runconfig_model import RunConfigData
 
 
 try:
@@ -16,4 +16,4 @@ except PackageNotFoundError:
     )
 
 
-__all__ = ['RunConfigModel']
+__all__ = ['RunConfigData']

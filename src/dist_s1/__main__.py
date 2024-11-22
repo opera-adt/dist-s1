@@ -3,8 +3,8 @@ from pathlib import Path
 
 import click
 
+from .data_models.runconfig_model import RunConfigData
 from .dist_s1_workflow import run_dist_s1_workflow
-from .input_data_model import RunConfigModel
 
 
 def localize_data(mgrs_tile_id: str, post_date: str | datetime, track: int, post_buffer_days: int):
@@ -23,10 +23,10 @@ def cli():
 @cli.command(name='run_sas')
 @click.option('--runconfig_yml_path', required=True, help='Path to YAML runconfig file', type=click.Path(exists=True))
 def run_sas(runconfig_yml_path: str | Path):
-    runconfig_data = RunConfigModel.from_yaml(runconfig_yml_path)
-    out_dir = run_dist_s1_workflow(runconfig_data)
-    click.echo(f'Writing to DIST-S1 product to directory: {out_dir}')
-    return str(out_dir)
+    runconfig_data = RunConfigData.from_yaml(runconfig_yml_path)
+    out_dir_data = run_dist_s1_workflow(runconfig_data)
+    click.echo(f'Writing to DIST-S1 product to directory: {out_dir_data.path}')
+    return str(out_dir_data)
 
 
 # MGRS Workflow with Internet Access

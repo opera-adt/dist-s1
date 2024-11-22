@@ -3,7 +3,7 @@ from pathlib import Path
 
 import geopandas as gpd
 
-from dist_s1.input_data_model import RunConfigModel
+from dist_s1.data_models.runconfig_model import RunConfigData
 
 
 def test_input_data_model_from_cropped_dataset(test_dir: Path, test_data_dir: Path, change_local_dir: Callable):
@@ -19,7 +19,7 @@ def test_input_data_model_from_cropped_dataset(test_dir: Path, test_data_dir: Pa
 
     mgrs_tile_id = '10SGD'
 
-    config = RunConfigModel(
+    config = RunConfigData(
         pre_rtc_copol=pre_rtc_copol_paths,
         pre_rtc_crosspol=pre_rtc_crosspol_paths,
         post_rtc_copol=post_rtc_copol_paths,
