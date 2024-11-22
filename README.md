@@ -12,7 +12,7 @@ Currently, this workflow is just *scaffolding*. It is not ready for use!
 
 ## Installation
 
-### `pip`
+### Using `pip`
 
 We recommend using the mamba/conda package manager to install the DIST-S1 workflow, manage the environment, and install the dependencies.
 
@@ -34,18 +34,19 @@ As above, we recommend using the mamba/conda package manager to install the DIST
 mamba update -f environment.yml
 pip install -e .
 conda activate dist-s1-env
-python -m ipykernel install --user --name dist-s1-env```
+python -m ipykernel install --user --name dist-s1-env
+```
 
 ## Usage
 
 There are two entrypoints for the DIST-S1 workflow:
 
 1. `dist-s1 run_sas` - This is the primary entrypoint for Science Data System (SDS) operations in which this library is viewed as the Science Application Software (SAS) for DIST-S1 within JPL's Hybrid Science Data System (HySDS).
-2. `dist-s1 run` - This is the simplified entrypoint for scientific and research users (non-SDS), allowing for the localization of data from publicly available data sources with more human readable inputs.
+2. `dist-s1 run` (not implemented yet) - This is the simplified entrypoint for scientific and research users (non-SDS), allowing for the localization of data from publicly available data sources with more human readable inputs.
 
 It is worth noting that the SDS workflow (`dist-s1 run_sas`) is *not* user friendly requiring the explicit specification of the numerous input RTC-S1 datasets (nominally there are 100s of these files required for the generation of a single DIST-S1 product over an MGRS tile). The `dist-s1 run` entrypoint has far fewer inputs and is designed to be human-operable. Specifically, the `dist-s1 run` takes care of the localization and accounting of the all the necessary input RTC-S1 datasets.
 
-### `dist-s1 run_sas`
+### The `dist-s1 run_sas` Entrypoint
 
 ```
 dist-s1 --runconfig_yml_path <path/to/runconfig.yml>
@@ -53,7 +54,7 @@ dist-s1 --runconfig_yml_path <path/to/runconfig.yml>
 
 See `tests/test_main.py` for an example of how to use the CLI with sample data.
 
-### `dist-s1 run`
+### The `dist-s1 run` Entrypoint
 
 This is not yet implemented.
 
@@ -93,7 +94,9 @@ However, to allow for additional external/SDS testing via the published Docerk i
 We assume that a docker image (as above) has been built with the tag `dist_s1_img`.
 Navigate to a new directory and run the following commands:
 ```
+# Copy the test data from the docker image to the current working directory
 docker cp $(docker create dist_s1_img):/home/ops/dist-s1/tests ./tests
+# Run the DIST-S1 workflow using the test data
 docker run -v "$PWD/tests:/home/ops/dist-s1/tests" dist_s1_img bash -l -c "cd dist-s1/tests && dist-s1 run_sas --runconfig_yml_path test_data/10SGD_cropped/runconfig.yml"
 ``` 
-You should see a `tests/` directory matching the one in this repository in your current working directory. Furthermore, there now should be a `tests/OPERA_L3_DIST-ALERT-S1_*/` directory containing the expected output of this test. This is still under development, but provides a useful way to inspect the output.
+You should see a `tests/` directory matching the one in this repository in your current working directory. Furthermore, there now should be a `tests/OPERA_L3_DIST-ALERT-S1_*/` directory containing the expected output of this test. This is still under development, but provides a useful way to inspect the eventual DIST-S1 output.
