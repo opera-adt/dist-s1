@@ -1,0 +1,24 @@
+# Mypy
+.mypy_cache
+.pytest_cache
+
+# MacOS
+.DS_Store
+.DS_Store?
+
+# vscode
+.vscode
+
+# Git
+.git
+.github
+
+# Environment
+.env
+
+# Ignore build artifacts
+build/
+*.egg-info/
+
+# Ignore Jupyter checkpoints
+.ipynb_checkpoints/
