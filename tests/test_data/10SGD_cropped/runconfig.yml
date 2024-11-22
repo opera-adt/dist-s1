@@ -335,5 +335,5 @@ run_config:
     - test_data/10SGD_cropped/137/2024-11-03/OPERA_L2_RTC-S1_T137-292325-IW1_20241103T015921Z_20241103T074936Z_S1A_30_v1.0_VH.tif
     mgrs_tile_id: 10SGD
     confirmation_db_dir:
-    output_product_dir:
+    dst_dir:
     water_mask:

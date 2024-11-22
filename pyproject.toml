@@ -31,7 +31,7 @@ Homepage = "https://github.com/opera-adt/dist-s1"
 "Changelog" = "https://github.com/opera-adt/dist-s1/releases"
 
 [project.scripts]
-"dist_s1" = "dist_s1.__main__:main"
+"dist-s1" = "dist_s1.__main__:cli"
 
 [tool.setuptools]
 include-package-data = true
@@ -44,6 +44,8 @@ exclude = ["notebooks*", "tests*"]
 [tool.setuptools.dynamic]
 readme = { file = ['README.md'], content-type = 'text/markdown' }
 
+[tool.setuptools.package-data]
+dist_s1 = ["py.typed"]
 
 [tool.setuptools_scm]
 

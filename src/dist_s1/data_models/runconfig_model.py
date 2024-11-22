@@ -7,6 +7,8 @@ import yaml
 from dist_s1_enumerator.mgrs_burst_data import get_lut_by_mgrs_tile_ids
 from pydantic import BaseModel, ValidationError, ValidationInfo, field_validator
 
+from .output_models import ProductDirectoryData, ProductNameData
+
 
 def posix_path_encoder(dumper, data):
     return dumper.represent_scalar('tag:yaml.org,2002:str', str(data))
@@ -33,25 +35,32 @@ def get_acquisition_datetime(opera_rtc_s1_path: Path) -> datetime:
         raise ValueError(f"Datetime token in filename '{opera_rtc_s1_path.name}' is not correctly formatted.")
 
 
-class RunConfigModel(BaseModel):
+class RunConfigData(BaseModel):
     pre_rtc_copol: list[Path | str]
     pre_rtc_crosspol: list[Path | str]
     post_rtc_copol: list[Path | str]
     post_rtc_crosspol: list[Path | str]
     mgrs_tile_id: str
-    confirmation_db_dir: Path | str | None = None
-    output_product_dir: Path | str | None = None
+    dist_s1_alert_db_dir: Path | str | None = None
+    dst_dir: Path | str | None = None
     water_mask: Path | str | None = None
 
+    # Private attributes that are associated to properties
     _time_series_by_burst: dict[str, dict[str, list[Path] | list[datetime]]] | None = None
     _df_mgrs_burst_lut: gpd.GeoDataFrame | None = None
+    _product_name: ProductNameData | None = None
+    _product_dir_data: ProductDirectoryData | None = None
+    _min_acq_date: datetime | None = None
+    _processing_datetime: datetime | None = None
 
     @classmethod
-    def from_yaml(cls, yaml_file: str) -> 'RunConfigModel':
+    def from_yaml(cls, yaml_file: str, fields_to_overwrite: dict | None = None) -> 'RunConfigData':
         """Load configuration from a YAML file and initialize RunConfigModel."""
         with Path.open(yaml_file) as file:
             data = yaml.safe_load(file)
             runconfig_data = data['run_config']
+        if fields_to_overwrite is not None:
+            runconfig_data.update(fields_to_overwrite)
         return cls(**runconfig_data)
 
     @field_validator('pre_rtc_copol', 'pre_rtc_crosspol', 'post_rtc_copol', 'post_rtc_crosspol', mode='before')
@@ -63,7 +72,7 @@ class RunConfigModel(BaseModel):
     @field_validator('pre_rtc_crosspol', 'post_rtc_crosspol')
     @classmethod
     def check_matching_lengths_copol_and_crosspol(
-        cls: type['RunConfigModel'], rtc_crosspol: list[Path], info: ValidationInfo
+        cls: type['RunConfigData'], rtc_crosspol: list[Path], info: ValidationInfo
     ) -> list[Path]:
         """Ensure pre_rtc_copol and pre_rtc_crosspol have the same length."""
         key = 'pre_rtc_copol' if info.field_name == 'pre_rtc_crosspol' else 'post_rtc_copol'
@@ -93,17 +102,52 @@ class RunConfigModel(BaseModel):
             raise ValidationError('The MGRS tile specified is not processed by DIST-S1')
         return mgrs_tile_id
 
-    @field_validator('confirmation_db_dir', 'output_product_dir')
+    @field_validator('dst_dir', mode='before')
     @classmethod
-    def validate_input_dirs(cls, path: Path | str | None, info: ValidationInfo) -> Path:
+    def validate_dst_dir(cls, dst_dir: Path | str | None, info: ValidationInfo) -> Path:
+        if dst_dir is None:
+            dst_dir = Path.cwd()
+        dst_dir = Path(dst_dir) if isinstance(dst_dir, str) else dst_dir
+        if dst_dir.exists() and not dst_dir.is_dir():
+            raise ValidationError(f"Path '{dst_dir}' exists but is not a directory")
+        dst_dir.mkdir(parents=True, exist_ok=True)
+        return dst_dir
+
+    @field_validator('dist_s1_alert_db_dir')
+    @classmethod
+    def validate_confirmation_db_dir(cls, path: Path | str | None, info: ValidationInfo) -> Path:
         """Validate that attributes are a directory and create it if it doesn't exist."""
         if path is None:
-            path = info.field_name
+            path = 'dist-s1-alert-db'
         path = Path(path) if isinstance(path, str) else path
         if path.exists() and not path.is_dir():
             raise ValidationError(f"Path '{path}' exists but is not a directory")
         path.mkdir(parents=True, exist_ok=True)
         return path
+
+    @property
+    def processing_datetime(self) -> datetime:
+        if self._processing_datetime is None:
+            self._processing_datetime = datetime.now()
+        return self._processing_datetime
+
+    @property
+    def min_acq_date(self) -> datetime:
+        if self._min_acq_date is None:
+            self._min_acq_date = min(
+                get_acquisition_datetime(opera_rtc_s1_path) for opera_rtc_s1_path in self.post_rtc_copol
+            )
+        return self._min_acq_date
+
+    @property
+    def product_name(self) -> ProductNameData:
+        if self._product_name is None:
+            self._product_name = ProductNameData(
+                mgrs_tile_id=self.mgrs_tile_id,
+                acq_date_time=self.min_acq_date,
+                processing_date_time=self.processing_datetime,
+            )
+        return self._product_name.name()
 
     # @field_validator('water_mask', mode='after')
     # @classmethod
@@ -124,6 +168,15 @@ class RunConfigModel(BaseModel):
     #     if not containment:
     #         raise ValidationError(f"Water mask file '{wm_path}' does not contain the MGRS tile {self.mgrs_tile_id}")
     #     return wm_path
+    @property
+    def product_dir_data(self) -> ProductDirectoryData:
+        if self._product_dir_data is None:
+            product_name = self.product_name
+            self._product_dir_data = ProductDirectoryData(
+                dst_dir=self.dst_dir,
+                product_name=product_name,
+            )
+        return self._product_dir_data
 
     @property
     def time_series_by_burst(self) -> dict[str, dict[str, list[Path] | list[datetime]]]:
