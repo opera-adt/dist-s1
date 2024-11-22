@@ -31,7 +31,7 @@ Homepage = "https://github.com/opera-adt/dist-s1"
 "Changelog" = "https://github.com/opera-adt/dist-s1/releases"
 
 [project.scripts]
-"dist_s1" = "dist_s1.__main__:main"
+"dist_s1" = "dist_s1.__main__:cli"
 
 [tool.setuptools]
 include-package-data = true
