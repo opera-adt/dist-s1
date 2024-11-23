@@ -49,7 +49,7 @@ It is worth noting that the SDS workflow (`dist-s1 run_sas`) is *not* user frien
 ### The `dist-s1 run_sas` Entrypoint
 
 ```
-dist-s1 --runconfig_yml_path <path/to/runconfig.yml>
+dist-s1 run_sas --runconfig_yml_path <path/to/runconfig.yml>
 ```
 
 See `tests/test_main.py` for an example of how to use the CLI with sample data.
