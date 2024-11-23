@@ -14,6 +14,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Updated dockerimage to ensure on login the conda environment is activated
 - Instructions in the README for testing outputs using the associated docker image
 - A `.Dockerignore` file to remove extraneous files from the docker image
+- Allow `/home/ops` directory in Docker image to be open to all users
 
 ## [0.0.2]
 

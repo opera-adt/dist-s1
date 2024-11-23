@@ -29,6 +29,9 @@ WORKDIR /home/ops
 COPY --chown=dist_user:dist_user environment.yml /home/ops/dist-s1/environment.yml
 COPY --chown=dist_user:dist_user . /home/ops/dist-s1
 
+# Ensure all files are read/write by the user
+RUN chmod -R 777 /home/ops
+
 # Create the environment with mamba
 RUN mamba env create -f /home/ops/dist-s1/environment.yml && \
     conda clean -afy

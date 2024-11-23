@@ -76,27 +76,34 @@ Notes:
 Make sure you have Docker installed for [Mac](https://docs.docker.com/desktop/setup/install/mac-install/) or [Windows](https://docs.docker.com/desktop/setup/install/windows-install/). We call the docker image `dist_s1_img` for the remainder of this README.
 
 ```
-docker build -f Dockerfile -t dist_s1_img .
+docker build -f Dockerfile -t dist-s1 .
 ```
 
 ### Running the Container Interactively
 
 To run the container interactively:
 ```
-docker run -ti dist_s1_img
+docker run -ti dist-s1
 ```
 Within the container, you can run the CLI commands and the test suite.
 
-### Inspecting Outputs from the Image
 
-All the of the test data is currently stored in our test suite within this repostiroy and is run automatically with each PR/merge/release.
-However, to allow for additional external/SDS testing via the published Docerk image, we share some of the relevant instructions.
-We assume that a docker image (as above) has been built with the tag `dist_s1_img`.
-Navigate to a new directory and run the following commands:
+# Delivery Instructions
+
+There are certain releases associated with OPERA project deliveries. Here we provide instructions for how to run and verify the DIST-S1 workflow.
+
+We have included sample input data, associated a Docker image via the Github registry, and run tests via github actions all within this repository.
+
 ```
-# Copy the test data from the docker image to the current working directory
-docker cp $(docker create dist_s1_img):/home/ops/dist-s1/tests ./tests
-# Run the DIST-S1 workflow using the test data
-docker run -v "$PWD/tests:/home/ops/dist-s1/tests" dist_s1_img bash -l -c "cd dist-s1/tests && dist-s1 run_sas --runconfig_yml_path test_data/10SGD_cropped/runconfig.yml"
+docker pull ghcr.io/opera-adt/dist-s1
+```
+If a specific version is required (or assumed for a delivery), then you use `docker pull ghcr.io/opera-adt/dist-s1:<version>` e.g.
+```
+docker pull ghcr.io/opera-adt/dist-s1:0.0.4
+```
+The command will pull the latest released version of the Docker image. To run the test suite, run:
+```
+docker run ghcr.io/opera-adt/dist-s1 bash -l -c 'cd dist-s1 && pytest tests'
 ``` 
-You should see a `tests/` directory matching the one in this repository in your current working directory. Furthermore, there now should be a `tests/OPERA_L3_DIST-ALERT-S1_*/` directory containing the expected output of this test. This is still under development, but provides a useful way to inspect the eventual DIST-S1 output.
+
+
