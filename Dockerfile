@@ -29,6 +29,9 @@ WORKDIR /home/ops
 COPY --chown=dist_user:dist_user environment.yml /home/ops/dist-s1/environment.yml
 COPY --chown=dist_user:dist_user . /home/ops/dist-s1
 
+# Ensure all files are read/write by the user
+RUN chmod -R 777 /home/ops
+
 # Create the environment with mamba
 RUN mamba env create -f /home/ops/dist-s1/environment.yml && \
     conda clean -afy
@@ -36,6 +39,8 @@ RUN mamba env create -f /home/ops/dist-s1/environment.yml && \
 # Ensure that environment is activated on startup
 RUN echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.profile && \
     echo "conda activate dist-s1-env" >> ~/.profile
+
+RUN echo "conda activate dist-s1-env" >> ~/.bashrc
 
 # Install repository with pip
 RUN python -m pip install --no-cache-dir /home/ops/dist-s1
