@@ -41,7 +41,6 @@ class RunConfigData(BaseModel):
     post_rtc_copol: list[Path | str]
     post_rtc_crosspol: list[Path | str]
     mgrs_tile_id: str
-    dist_s1_alert_db_dir: Path | str | None = None
     dst_dir: Path | str | None = None
     water_mask: Path | str | None = None
 
@@ -112,18 +111,6 @@ class RunConfigData(BaseModel):
             raise ValidationError(f"Path '{dst_dir}' exists but is not a directory")
         dst_dir.mkdir(parents=True, exist_ok=True)
         return dst_dir
-
-    @field_validator('dist_s1_alert_db_dir')
-    @classmethod
-    def validate_confirmation_db_dir(cls, path: Path | str | None, info: ValidationInfo) -> Path:
-        """Validate that attributes are a directory and create it if it doesn't exist."""
-        if path is None:
-            path = 'dist-s1-alert-db'
-        path = Path(path) if isinstance(path, str) else path
-        if path.exists() and not path.is_dir():
-            raise ValidationError(f"Path '{path}' exists but is not a directory")
-        path.mkdir(parents=True, exist_ok=True)
-        return path
 
     @property
     def processing_datetime(self) -> datetime:
@@ -272,3 +259,7 @@ class RunConfigData(BaseModel):
         yaml_file = Path(yaml_file)
         with yaml_file.open('w') as f:
             yaml.dump(yml_dict, f, default_flow_style=False, indent=4, sort_keys=False)
+
+
+def create_runconfig_from_input_df(input_df: gpd.GeoDataFrame) -> RunConfigData:
+    return RunConfigData()

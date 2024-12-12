@@ -66,7 +66,7 @@ exclude = [
     "build",
     "dist",
     "site-packages",
-    "notebooks/"
+    "notebooks/*"
 ]
 indent-width = 4
 
@@ -74,12 +74,14 @@ indent-width = 4
 quote-style = "single"
 
 [tool.ruff.lint]
-extend-select = [
-    "I",   # isort: https://docs.astral.sh/ruff/rules/#isort-i
-    "UP",  # pyupgrade: https://docs.astral.sh/ruff/rules/#pyupgrade-up
-    # "D",   # pydocstyle: https://docs.astral.sh/ruff/rules/#pydocstyle-d
-    # "ANN", # annotations: https://docs.astral.sh/ruff/rules/#flake8-annotations-ann
-    "PTH", # use-pathlib-pth: https://docs.astral.sh/ruff/rules/#flake8-use-pathlib-pth
+select = [
+    'F',
+    'E',
+    'I',
+    'W',
+    'PTH',
+    'UP',
+    'NPY201',
 ]
 
 [tool.ruff.lint.pydocstyle]
@@ -88,3 +90,4 @@ convention = "numpy"
 [tool.ruff.lint.isort]
 case-sensitive = true
 lines-after-imports = 2
+known-first-party = ['dist_s1']
