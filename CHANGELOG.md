@@ -10,6 +10,8 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added 
 - Minimum working example of generation fo the product via `dist-s1 run`
+- Integration of `dist-s1-enumerator` to identify/localize the inputs from MGRS tile ID, post-date, and track number
+
 
 ## Changed
 - Pyproject.toml file to handle ruff

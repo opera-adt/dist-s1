@@ -27,7 +27,7 @@ class ProductNameData(BaseModel):
     acq_date_time: datetime
     processing_date_time: datetime
 
-    def __str__(self):
+    def __str__(self) -> str:
         tokens = [
             'OPERA',
             'L3',
@@ -41,46 +41,42 @@ class ProductNameData(BaseModel):
         ]
         return '_'.join(tokens)
 
-    def name(self):
+    def name(self) -> str:
         return f'{self}'
 
     @classmethod
     def validate_product_name(cls, product_name: str) -> bool:
         """
-        Validates if a string matches the OPERA L3 DIST-ALERT-S1 product name format.
+        Validate if a string matches the OPERA L3 DIST-ALERT-S1 product name format.
 
         Expected format:
         OPERA_L3_DIST-ALERT-S1_T{mgrs_tile_id}_{acq_datetime}_{proc_datetime}_S1_30_v{version}
         """
-        try:
-            tokens = product_name.split('_')
+        tokens = product_name.split('_')
 
-            # Check if we have the correct number of tokens first
-            if len(tokens) != 9:
-                return False
-
-            conditions = [
-                tokens[0] != 'OPERA',
-                tokens[1] != 'L3',
-                tokens[2] != 'DIST-ALERT-S1',
-                not tokens[3].startswith('T'),  # MGRS tile ID
-                tokens[6] != 'S1',
-                tokens[7] != '30',
-                not tokens[8].startswith('v'),  # Version
-            ]
-
-            # If any condition is True, validation fails
-            if any(conditions):
-                return False
-
-            # Validate datetime formats
-            datetime.strptime(tokens[4], '%Y%m%dT%H%M%SZ')  # Acquisition datetime
-            datetime.strptime(tokens[5], '%Y%m%dT%H%M%SZ')  # Processing datetime
-
-            return True
-
-        except (ValueError, IndexError):
+        # Check if we have the correct number of tokens first
+        if len(tokens) != 9:
             return False
+
+        conditions = [
+            tokens[0] != 'OPERA',
+            tokens[1] != 'L3',
+            tokens[2] != 'DIST-ALERT-S1',
+            not tokens[3].startswith('T'),  # MGRS tile ID
+            tokens[6] != 'S1',
+            tokens[7] != '30',
+            not tokens[8].startswith('v'),  # Version
+        ]
+
+        # If any condition is True, validation fails
+        if any(conditions):
+            return False
+
+        # Validate datetime formats
+        datetime.strptime(tokens[4], '%Y%m%dT%H%M%SZ')  # Acquisition datetime
+        datetime.strptime(tokens[5], '%Y%m%dT%H%M%SZ')  # Processing datetime
+
+        return True
 
 
 class ProductDirectoryData(BaseModel):
