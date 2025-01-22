@@ -11,7 +11,8 @@ from pandera import check_input
 from pydantic import BaseModel, ValidationError, ValidationInfo, field_validator
 from yaml import Dumper
 
-from .output_models import ProductDirectoryData, ProductNameData
+from dist_s1.contstants import N_LOOKBACKS
+from dist_s1.data_models.output_models import ProductDirectoryData, ProductNameData
 
 
 def posix_path_encoder(dumper: Dumper, data: PosixPath) -> yaml.Node:
@@ -24,6 +25,31 @@ def none_encoder(dumper: Dumper, _: None) -> yaml.Node:
 
 yaml.add_representer(PosixPath, posix_path_encoder)
 yaml.add_representer(type(None), none_encoder)
+
+
+def generate_burst_dist_paths(
+    row: pd.Series,
+    *,
+    top_level_data_dir: Path,
+    dst_dir_name: str,
+    lookback: int = 0,
+    path_token: str | None = None,
+    polarization_token: str | None = None,
+    date_lut: dict[str, list[pd.Timestamp]] | None = None,
+) -> Path:
+    if path_token is None:
+        path_token = dst_dir_name
+    data_dir = top_level_data_dir / dst_dir_name
+    lookback_dir = data_dir / f'Delta_{lookback}'
+    lookback_dir.mkdir(parents=True, exist_ok=True)
+    burst_id = row.jpl_burst_id
+    acq_date = date_lut[burst_id][N_LOOKBACKS - lookback - 1]
+    acq_date_str = acq_date.date().strftime('%Y-%m-%d')
+    fn = f'{path_token}_{burst_id}_{acq_date_str}_delta{lookback}.tif'
+    if polarization_token is not None:
+        fn = fn.replace('.tif', f'_{polarization_token}.tif')
+    out_path = lookback_dir / fn
+    return out_path
 
 
 def get_opera_id(opera_rtc_s1_tif_path: Path | str) -> str:
@@ -87,6 +113,7 @@ class RunConfigData(BaseModel):
     # Private attributes that are associated to properties
     _burst_ids: list[str] | None = None
     _df_inputs: pd.DataFrame | None = None
+    _df_burst_distmetric: pd.DataFrame | None = None
     _df_mgrs_burst_lut: gpd.GeoDataFrame | None = None
     _product_name: ProductNameData | None = None
     _product_dir_data: ProductDirectoryData | None = None
@@ -221,6 +248,82 @@ class RunConfigData(BaseModel):
         return runconfig_data
 
     @property
+    def df_tile_dist(self) -> pd.DataFrame:
+        if self._df_tile_dist is None:
+            pd.DataFrame(
+                {
+                    'delta_lookback': [0, 1, 2],
+                }
+            )
+        return self._df_tile_dist
+
+    @property
+    def df_burst_distmetrics(self) -> pd.DataFrame:
+        if self._df_burst_distmetric is None:
+            normal_param_dir = self.dst_dir / 'normal_params'
+            normal_param_dir.mkdir(parents=True, exist_ok=True)
+
+            df_inputs = self.df_inputs.copy()
+            df_post = df_inputs[df_inputs.input_category == 'post'].reset_index(drop=True)
+            burst_ids = df_post.jpl_burst_id.unique()
+            df_dist_by_burst = pd.DataFrame({'jpl_burst_id': burst_ids})
+
+            # Get the N_LOOKBACKS most recent dates before the current acquisition
+            df_pre = df_inputs[df_inputs.input_category == 'pre'].reset_index(drop=True)
+            df_date_pre = df_pre.groupby('jpl_burst_id')['acq_dt'].apply(
+                lambda x: sorted(x.nlargest(N_LOOKBACKS).tolist())
+            )
+            burst2predates = df_date_pre.to_dict()
+            df_date = df_inputs.groupby('jpl_burst_id')['acq_dt'].apply(
+                lambda x: sorted(x.nlargest(N_LOOKBACKS).tolist())
+            )
+            burst2postdates = df_date.to_dict()
+
+            # Distribution Paths
+            for lookback in range(N_LOOKBACKS):
+                for normal_param_token in ['mean', 'std']:
+                    for polarization_token in ['copol', 'crosspol']:
+                        df_dist_by_burst[
+                            f'loc_path_normal_{normal_param_token}_delta{lookback}_{polarization_token}'
+                        ] = df_dist_by_burst.apply(
+                            generate_burst_dist_paths,
+                            top_level_data_dir=self.dst_dir,
+                            dst_dir_name='normal_params',
+                            path_token=normal_param_token,
+                            polarization_token=polarization_token,
+                            lookback=lookback,
+                            date_lut=burst2predates,
+                            axis=1,
+                        )
+
+            # Metrics Paths
+            df_dist_by_burst['loc_path_metric_delta0'] = df_dist_by_burst.apply(
+                generate_burst_dist_paths,
+                top_level_data_dir=self.dst_dir,
+                dst_dir_name='metrics',
+                path_token='distmetric',
+                lookback=0,
+                date_lut=burst2postdates,
+                axis=1,
+            )
+
+            # Disturbance Paths
+            for lookback in range(N_LOOKBACKS):
+                df_dist_by_burst[f'loc_path_disturb_delta{lookback}'] = df_dist_by_burst.apply(
+                    generate_burst_dist_paths,
+                    top_level_data_dir=self.dst_dir,
+                    dst_dir_name='disturbance',
+                    path_token='disturb',
+                    lookback=lookback,
+                    date_lut=burst2postdates,
+                    axis=1,
+                )
+
+            self._df_burst_distmetric = df_dist_by_burst
+
+        return self._df_burst_distmetric
+
+    @property
     def df_inputs(self) -> pd.DataFrame:
         if self._df_inputs is None:
             data_pre = [
@@ -250,8 +353,8 @@ class RunConfigData(BaseModel):
                 out_path = self.dst_dir / 'tv_despeckle' / acq_pass_date / filename
                 return str(out_path)
 
-            df['despeckle_path_copol'] = df.apply(get_despeckle_path, polarization='copol', axis=1)
-            df['despeckle_path_crosspol'] = df.apply(get_despeckle_path, polarization='crosspol', axis=1)
+            df['loc_path_copol_dspkl'] = df.apply(get_despeckle_path, polarization='copol', axis=1)
+            df['loc_path_crosspol_dspkl'] = df.apply(get_despeckle_path, polarization='crosspol', axis=1)
 
             df = df.sort_values(by=['jpl_burst_id', 'acq_dt']).reset_index(drop=True)
             self._df_inputs = df

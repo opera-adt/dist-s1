@@ -7,7 +7,6 @@ dependencies:
  - backoff
  - click
  - flake8
- - einops # TODO: Remove once distmetrics on conda
  - flake8-blind-except
  - flake8-builtins
  - flake8-import-order
@@ -19,8 +18,8 @@ dependencies:
  - pyarrow
  - pydantic
  - pytest
+ - multiprocess # TODO: Remove once distmetrics on conda - need to add this to conda recipe
  - pytest-cov
- - pandera  # TODO: remove once dist-s1-enumerator is on conda
  - pytorch
  - rasterio
  - tqdm
@@ -30,6 +29,5 @@ dependencies:
  - pip
  - scipy
  - shapely
- - pip:
-    - dist-s1-enumerator
-    - distmetrics
+ - dist_s1_enumerator
+ - distmetrics

@@ -1,8 +1,10 @@
 from datetime import datetime
 from pathlib import Path
 
+from dist_s1.contstants import MODEL_CONTEXT_LENGTH, N_LOOKBACKS
 from dist_s1.data_models.runconfig_model import RunConfigData
 from dist_s1.localize_rtc_s1 import localize_rtc_s1
+from dist_s1.processing import compute_normal_params_per_burst_and_serialize, despeckle_and_serialize_rtc_s1
 
 
 def run_dist_s1_localization_workflow(
@@ -17,12 +19,96 @@ def run_dist_s1_localization_workflow(
     return run_config
 
 
-def run_dist_s1_processing_workflow(run_config: RunConfigData) -> Path:
-    # Despeckle
-    # despeckle_rtc_s1(run_config.rtc_s1_paths, run_config.rtc_s1_paths)
+def run_despeckle_workflow(run_config: RunConfigData) -> None:
+    """Despeckle by burst/polarization and then serializes.
 
-    # Compute disturbance metrics
-    # compute_disturbance(run_config.rtc_s1_paths, run_config.rtc_s1_paths)
+    Parameters
+    ----------
+    run_config : RunConfigData
+
+    Notes
+    -----
+    - All input and output paths are in the run_config.
+    """
+    # Table has input copol/crosspol paths and output despeckled paths
+    df_inputs = run_config.df_inputs
+
+    # Inputs
+    copol_paths = df_inputs.loc_path_copol.tolist()
+    crosspol_paths = df_inputs.loc_path_crosspol.tolist()
+
+    # Outputs
+    dspkl_copol_paths = df_inputs.loc_path_copol_dspkl.tolist()
+    dspkl_crosspol_paths = df_inputs.loc_path_crosspol_dspkl.tolist()
+
+    assert len(copol_paths) == len(dspkl_copol_paths) == len(crosspol_paths) == len(dspkl_crosspol_paths)
+
+    # The copol/crosspol paths must be in the same order
+    rtc_paths = copol_paths + crosspol_paths
+    dst_paths = dspkl_copol_paths + dspkl_crosspol_paths
+
+    despeckle_and_serialize_rtc_s1(rtc_paths, dst_paths)
+
+
+def run_normal_params_workflow(run_config: RunConfigData) -> None:
+    """Compute normal params per burst and serialize.
+
+    Parameters
+    ----------
+    run_config : RunConfigData
+    """
+    df_inputs = run_config.df_inputs
+    df_burst_distmetrics = run_config.df_burst_distmetrics
+
+    for burst_id in df_inputs.jpl_burst_id.unique():
+        for lookback in range(N_LOOKBACKS):
+            indices_input = (df_inputs.jpl_burst_id == burst_id) & (df_inputs.input_category == 'pre')
+            df_burst_input_data = df_inputs[indices_input].reset_index(drop=True)
+            df_metric = df_burst_distmetrics[df_burst_distmetrics.jpl_burst_id == burst_id].reset_index(drop=True)
+
+            copol_paths = df_burst_input_data.loc_path_copol_dspkl.tolist()
+            crosspol_paths = df_burst_input_data.loc_path_crosspol_dspkl.tolist()
+
+            # curate the paths to the correct length
+            n_imgs = len(copol_paths)
+            start = max(n_imgs - MODEL_CONTEXT_LENGTH - lookback - 1 + N_LOOKBACKS, 0)
+            stop = min(n_imgs - lookback - 1 + N_LOOKBACKS, n_imgs - 1)
+            copol_paths = copol_paths[start:stop]
+            crosspol_paths = crosspol_paths[start:stop]
+
+            output_mu_copol_l = df_metric[f'loc_path_normal_mean_delta{lookback}_copol'].tolist()
+            output_mu_copol_l = df_metric[f'loc_path_normal_mean_delta{lookback}_copol'].tolist()
+            output_mu_crosspol_l = df_metric[f'loc_path_normal_mean_delta{lookback}_crosspol'].tolist()
+            output_sigma_copol_l = df_metric[f'loc_path_normal_std_delta{lookback}_copol'].tolist()
+            output_sigma_crosspol_l = df_metric[f'loc_path_normal_std_delta{lookback}_crosspol'].tolist()
+
+            assert (
+                len(output_mu_copol_l)
+                == len(output_mu_crosspol_l)
+                == len(output_sigma_copol_l)
+                == len(output_sigma_crosspol_l)
+                == 1
+            )
+
+            output_mu_copol_path = output_mu_copol_l[0]
+            output_mu_crosspol_path = output_mu_crosspol_l[0]
+            output_sigma_copol_path = output_sigma_copol_l[0]
+            output_sigma_crosspol_path = output_sigma_crosspol_l[0]
+
+            compute_normal_params_per_burst_and_serialize(
+                copol_paths,
+                crosspol_paths,
+                output_mu_copol_path,
+                output_mu_crosspol_path,
+                output_sigma_copol_path,
+                output_sigma_crosspol_path,
+            )
+
+
+def run_dist_s1_processing_workflow(run_config: RunConfigData) -> Path:
+    run_despeckle_workflow(run_config)
+
+    run_normal_params_workflow(run_config)
 
     return Path('OPERA_L3_DIST_DIRECTORY')
 
