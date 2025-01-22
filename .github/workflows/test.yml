@@ -41,3 +41,4 @@ jobs:
         run: |
           python -m pip install --no-deps .
           pytest .
+
