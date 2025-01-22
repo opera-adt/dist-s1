@@ -83,3 +83,6 @@ __pycache__/
 
 # pre-commit
 .pre-commit-config.yaml
+
+# Test Output
+tests/tmp/
