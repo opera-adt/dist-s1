@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 from dist_s1_enumerator import enumerate_one_dist_s1_product, localize_rtc_s1_ts
 
-from dist_s1.contstants import MODEL_CONTEXT_LENGTH
+from dist_s1.constants import MODEL_CONTEXT_LENGTH
 from dist_s1.data_models.runconfig_model import RunConfigData
 
 

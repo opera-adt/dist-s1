@@ -8,11 +8,7 @@
 
 This is the workflow that generates OPERA's DIST-S1 product. This workflow is designed to delineate *generic* disturbance from a time-series of OPERA Radiometric and Terrain Corrected Sentinel-1 (OPERA RTC-S1) products. The output DIST-S1 product is resampled to a 30 meter Military Grid Reference System (MGRS) tile.
 
-Currently, this workflow is just *scaffolding*. It is not ready for use!
-
 ## Installation
-
-### Using `pip`
 
 We recommend using the mamba/conda package manager to install the DIST-S1 workflow, manage the environment, and install the dependencies.
 

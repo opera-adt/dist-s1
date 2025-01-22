@@ -6,7 +6,11 @@ import geopandas as gpd
 
 from dist_s1.data_models.runconfig_model import RunConfigData
 from dist_s1.rio_tools import check_profiles_match, open_one_profile
-from dist_s1.workflows import run_despeckle_workflow, run_normal_params_workflow
+from dist_s1.workflows import (
+    run_burst_disturbance_workflow,
+    run_despeckle_workflow,
+    run_normal_param_estimation_workflow,
+)
 
 
 def test_despeckle_workflow(test_dir: Path, test_data_dir: Path, change_local_dir: Callable) -> None:
@@ -34,25 +38,47 @@ def test_despeckle_workflow(test_dir: Path, test_data_dir: Path, change_local_di
         profiles = [open_one_profile(path) for path in dst_path_by_burst_id]
         assert all(check_profiles_match(profiles[0], profile) for profile in profiles[1:])
 
-    # shutil.rmtree(dst_dir)
+    # shutil.rmtree(tmp_dir)
 
 
 def test_normal_params_workflow(test_dir: Path, test_data_dir: Path, change_local_dir: Callable) -> None:
     change_local_dir(test_dir)
+
+    tmp_dir = test_dir / 'tmp'
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
     src_tv_dir = test_data_dir / '10SGD_cropped_dst' / 'tv_despeckle'
-    dst_dir = test_dir / 'tmp'
-    dst_dir.mkdir(parents=True, exist_ok=True)
-    dst_tv_dir = dst_dir / 'tv_despeckle'
+
+    dst_tv_dir = tmp_dir / 'tv_despeckle'
 
     if Path(dst_tv_dir).exists():
         shutil.rmtree(dst_tv_dir)
     shutil.copytree(src_tv_dir, dst_tv_dir)
 
     df_product = gpd.read_parquet(test_data_dir / '10SGD_cropped' / '10SGD__137__2024-01-08_dist_s1_inputs.parquet')
+    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir)
 
-    config = RunConfigData.from_product_df(df_product, dst_dir=dst_dir)
-    assert dst_dir.exists() and dst_dir.is_dir()
+    run_normal_param_estimation_workflow(config)
 
-    run_normal_params_workflow(config)
+    # shutil.rmtree(tmp_dir)
 
-    # shutil.rmtree(dst_dir)
+
+def test_burst_disturbance_workflow(test_dir: Path, test_data_dir: Path, change_local_dir: Callable) -> None:
+    change_local_dir(test_dir)
+    tmp_dir = test_dir / 'tmp'
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    dirs_to_move = ['tv_despeckle', 'normal_params']
+    for dir_name in dirs_to_move:
+        src_dir = test_data_dir / '10SGD_cropped_dst' / dir_name
+        dst_dir = tmp_dir / dir_name
+        if Path(dst_dir).exists():
+            shutil.rmtree(dst_dir)
+        shutil.copytree(src_dir, dst_dir)
+
+    df_product = gpd.read_parquet(test_data_dir / '10SGD_cropped' / '10SGD__137__2024-01-08_dist_s1_inputs.parquet')
+    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir)
+
+    run_burst_disturbance_workflow(config)
+
+    # shutil.rmtree(tmp_dir)

@@ -11,7 +11,7 @@ from pandera import check_input
 from pydantic import BaseModel, ValidationError, ValidationInfo, field_validator
 from yaml import Dumper
 
-from dist_s1.contstants import N_LOOKBACKS
+from dist_s1.constants import N_LOOKBACKS
 from dist_s1.data_models.output_models import ProductDirectoryData, ProductNameData
 
 
@@ -32,7 +32,7 @@ def generate_burst_dist_paths(
     *,
     top_level_data_dir: Path,
     dst_dir_name: str,
-    lookback: int = 0,
+    lookback: int | None = 0,
     path_token: str | None = None,
     polarization_token: str | None = None,
     date_lut: dict[str, list[pd.Timestamp]] | None = None,
@@ -40,12 +40,20 @@ def generate_burst_dist_paths(
     if path_token is None:
         path_token = dst_dir_name
     data_dir = top_level_data_dir / dst_dir_name
-    lookback_dir = data_dir / f'Delta_{lookback}'
+    if lookback is not None:
+        lookback_dir = data_dir / f'Delta_{lookback}'
+    else:
+        lookback_dir = data_dir
     lookback_dir.mkdir(parents=True, exist_ok=True)
     burst_id = row.jpl_burst_id
-    acq_date = date_lut[burst_id][N_LOOKBACKS - lookback - 1]
+    if lookback is not None:
+        acq_date = date_lut[burst_id][N_LOOKBACKS - lookback - 1]
+    else:
+        acq_date = row.acq_dt
     acq_date_str = acq_date.date().strftime('%Y-%m-%d')
-    fn = f'{path_token}_{burst_id}_{acq_date_str}_delta{lookback}.tif'
+    fn = f'{path_token}_{burst_id}_{acq_date_str}.tif'
+    if lookback is not None:
+        fn = fn.replace('.tif', f'_delta{lookback}.tif')
     if polarization_token is not None:
         fn = fn.replace('.tif', f'_{polarization_token}.tif')
     out_path = lookback_dir / fn
@@ -268,8 +276,12 @@ class RunConfigData(BaseModel):
             burst_ids = df_post.jpl_burst_id.unique()
             df_dist_by_burst = pd.DataFrame({'jpl_burst_id': burst_ids})
 
+            df_date = df_inputs.groupby('jpl_burst_id')['acq_dt'].apply(max).reset_index(drop=False)
+            df_dist_by_burst = pd.merge(df_dist_by_burst, df_date, on='jpl_burst_id', how='left')
+
             # Get the N_LOOKBACKS most recent dates before the current acquisition
             df_pre = df_inputs[df_inputs.input_category == 'pre'].reset_index(drop=True)
+            df_pre.sort_values(by=['jpl_burst_id', 'acq_dt'], inplace=True, ascending=True)
             df_date_pre = df_pre.groupby('jpl_burst_id')['acq_dt'].apply(
                 lambda x: sorted(x.nlargest(N_LOOKBACKS).tolist())
             )
@@ -307,7 +319,7 @@ class RunConfigData(BaseModel):
                 axis=1,
             )
 
-            # Disturbance Paths
+            # Disturbance Paths for Each Lookback
             for lookback in range(N_LOOKBACKS):
                 df_dist_by_burst[f'loc_path_disturb_delta{lookback}'] = df_dist_by_burst.apply(
                     generate_burst_dist_paths,
@@ -318,6 +330,17 @@ class RunConfigData(BaseModel):
                     date_lut=burst2postdates,
                     axis=1,
                 )
+
+            # Disturbance Paths Time Aggregated
+            df_dist_by_burst['loc_path_disturb_time_aggregated'] = df_dist_by_burst.apply(
+                generate_burst_dist_paths,
+                top_level_data_dir=self.dst_dir,
+                dst_dir_name='disturbance/time_aggregated',
+                path_token='disturb',
+                lookback=None,
+                date_lut=None,
+                axis=1,
+            )
 
             self._df_burst_distmetric = df_dist_by_burst
 
