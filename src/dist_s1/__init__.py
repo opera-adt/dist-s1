@@ -2,6 +2,7 @@ import warnings
 from importlib.metadata import PackageNotFoundError, version
 
 from .data_models.runconfig_model import RunConfigData
+from .workflows import run_dist_s1_sas_workflow, run_dist_s1_workflow
 
 
 try:
@@ -16,4 +17,4 @@ except PackageNotFoundError:
     )
 
 
-__all__ = ['RunConfigData']
+__all__ = ['RunConfigData', 'run_dist_s1_workflow', 'run_dist_s1_sas_workflow']

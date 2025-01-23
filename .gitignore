@@ -86,3 +86,6 @@ __pycache__/
 
 # Test Output
 tests/tmp/
+
+# Ignore Out of notebooks
+notebooks/out/

@@ -11,7 +11,7 @@ from dist_s1.rio_tools import check_profiles_match, open_one_ds, serialize_one_d
 
 
 def despeckle_and_serialize_rtc_s1(
-    rtc_s1_paths: list[Path], dst_paths: list[Path], batch_size: int = 100
+    rtc_s1_paths: list[Path], dst_paths: list[Path], batch_size: int = 100, tqdm_enabled: bool = True
 ) -> list[Path]:
     # Cast to Path
     dst_paths = list(map(Path, dst_paths))
@@ -19,7 +19,7 @@ def despeckle_and_serialize_rtc_s1(
     [p.parent.mkdir(exist_ok=True, parents=True) for p in dst_paths]
 
     n_batches = int(np.ceil(len(rtc_s1_paths) / batch_size))
-    for k in tqdm(range(n_batches), desc='batch'):
+    for k in tqdm(range(n_batches), desc='Despeckling batch', disable=not tqdm_enabled):
         paths_subset = rtc_s1_paths[k * batch_size : (k + 1) * batch_size]
         dst_paths_subset = dst_paths[k * batch_size : (k + 1) * batch_size]
 
@@ -32,7 +32,7 @@ def despeckle_and_serialize_rtc_s1(
             data = list(map(open_one_ds, paths_subset_to_create))
             arrs, ps = zip(*data)
             # despeckle
-            arrs_d = despeckle_rtc_arrs_with_tv(arrs)
+            arrs_d = despeckle_rtc_arrs_with_tv(arrs, tqdm_enabled=tqdm_enabled)
             # serialize
             [serialize_one_ds(arr, prof, dst_path) for (arr, prof, dst_path) in zip(arrs_d, ps, dst_paths_subset)]
 

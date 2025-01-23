@@ -8,7 +8,7 @@ from dist_s1_enumerator.asf import append_pass_data, extract_pass_id
 from dist_s1_enumerator.data_models import dist_s1_loc_input_schema
 from dist_s1_enumerator.mgrs_burst_data import get_lut_by_mgrs_tile_ids
 from pandera import check_input
-from pydantic import BaseModel, ValidationError, ValidationInfo, field_validator
+from pydantic import BaseModel, Field, ValidationError, ValidationInfo, field_validator
 from yaml import Dumper
 
 from dist_s1.constants import N_LOOKBACKS
@@ -117,6 +117,11 @@ class RunConfigData(BaseModel):
     dst_dir: Path | str | None = None
     water_mask: Path | str | None = None
     check_input_paths: bool = True
+    memory_strategy: str | None = Field(
+        default='high',
+        pattern='^(high|low)$',
+    )
+    tqdm_enabled: bool = Field(default=True)
 
     # Private attributes that are associated to properties
     _burst_ids: list[str] | None = None
@@ -137,6 +142,12 @@ class RunConfigData(BaseModel):
         if fields_to_overwrite is not None:
             runconfig_data.update(fields_to_overwrite)
         return cls(**runconfig_data)
+
+    @field_validator('memory_strategy')
+    def validate_memory_strategy(cls, memory_strategy: str) -> str:
+        if memory_strategy not in ['high', 'low']:
+            raise ValueError("Memory strategy must be in ['high', 'low']")
+        return memory_strategy
 
     @field_validator('pre_rtc_copol', 'pre_rtc_crosspol', 'post_rtc_copol', 'post_rtc_crosspol', mode='before')
     def convert_to_paths(cls, values: list[Path | str], info: ValidationInfo) -> list[Path]:

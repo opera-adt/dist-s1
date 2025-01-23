@@ -13,7 +13,9 @@ def localize_rtc_s1(
     post_date: str | datetime | pd.Timestamp,
     track_number: int,
     post_date_buffer_days: int = 1,
-    dst_dir: Path = Path('out'),
+    input_data_dir: Path | str | None = None,
+    dst_dir: Path | str | None = 'out',
+    tqdm_enabled: bool = True,
 ) -> RunConfigData:
     df_product = enumerate_one_dist_s1_product(
         mgrs_tile_id,
@@ -23,7 +25,9 @@ def localize_rtc_s1(
         max_pre_imgs_per_burst=(MODEL_CONTEXT_LENGTH + 2),
     )
     # The function will create the out_dir if it doesn't exist
-    df_product_loc = localize_rtc_s1_ts(df_product, dst_dir, max_workers=5)
+    if input_data_dir is None:
+        input_data_dir = dst_dir
+    df_product_loc = localize_rtc_s1_ts(df_product, input_data_dir, max_workers=5, tqdm_enabled=tqdm_enabled)
     # TODO: Add water mask
     runconfig = RunConfigData.from_product_df(df_product_loc, dst_dir, water_mask=None)
     return runconfig

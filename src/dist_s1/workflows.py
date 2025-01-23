@@ -1,6 +1,8 @@
 from datetime import datetime
 from pathlib import Path
 
+from tqdm.auto import tqdm
+
 from dist_s1.constants import MODEL_CONTEXT_LENGTH, N_LOOKBACKS
 from dist_s1.data_models.runconfig_model import RunConfigData
 from dist_s1.localize_rtc_s1 import localize_rtc_s1
@@ -13,13 +15,22 @@ from dist_s1.processing import (
 
 
 def run_dist_s1_localization_workflow(
-    mgrs_tile_id: str, post_date: str | datetime, track_number: int, post_date_buffer_days: int
+    mgrs_tile_id: str,
+    post_date: str | datetime,
+    track_number: int,
+    post_date_buffer_days: int = 1,
+    dst_dir: str | Path = 'out',
+    input_data_dir: str | Path | None = None,
 ) -> RunConfigData:
     # Localize inputs
-    rtc_s1_gdf = localize_rtc_s1(mgrs_tile_id, post_date, track_number, post_date_buffer_days=post_date_buffer_days)
-
-    # Create runconfig
-    run_config = RunConfigData.from_product_df(rtc_s1_gdf)
+    run_config = localize_rtc_s1(
+        mgrs_tile_id,
+        post_date,
+        track_number,
+        post_date_buffer_days=post_date_buffer_days,
+        dst_dir=dst_dir,
+        input_data_dir=input_data_dir,
+    )
 
     return run_config
 
@@ -65,8 +76,17 @@ def run_normal_param_estimation_workflow(run_config: RunConfigData) -> None:
     df_inputs = run_config.df_inputs
     df_burst_distmetrics = run_config.df_burst_distmetrics
 
-    for burst_id in df_inputs.jpl_burst_id.unique():
-        for lookback in range(N_LOOKBACKS):
+    tqdm_disable = not run_config.tqdm_enabled
+    for burst_id in tqdm(
+        df_inputs.jpl_burst_id.unique(), disable=tqdm_disable, desc='Param Est. by Burst', dynamic_ncols=True
+    ):
+        for lookback in tqdm(
+            range(N_LOOKBACKS),
+            disable=tqdm_disable,
+            desc=f'Lookbacks for burst {burst_id}',
+            dynamic_ncols=True,
+            leave=False,
+        ):
             indices_input = (df_inputs.jpl_burst_id == burst_id) & (df_inputs.input_category == 'pre')
             df_burst_input_data = df_inputs[indices_input].reset_index(drop=True)
             df_metric = df_burst_distmetrics[df_burst_distmetrics.jpl_burst_id == burst_id].reset_index(drop=True)
@@ -106,6 +126,7 @@ def run_normal_param_estimation_workflow(run_config: RunConfigData) -> None:
                 output_mu_crosspol_path,
                 output_sigma_copol_path,
                 output_sigma_crosspol_path,
+                memory_strategy=run_config.memory_strategy,
             )
 
 
@@ -113,7 +134,8 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
     df_inputs = run_config.df_inputs
     df_burst_distmetrics = run_config.df_burst_distmetrics
 
-    for burst_id in df_inputs.jpl_burst_id.unique():
+    tqdm_disable = not run_config.tqdm_enabled
+    for burst_id in tqdm(df_inputs.jpl_burst_id.unique(), disable=tqdm_disable, desc='Burst disturbance'):
         indices_input = df_inputs.jpl_burst_id == burst_id
         df_burst_input_data = df_inputs[indices_input].reset_index(drop=True)
         df_metric_burst = df_burst_distmetrics[df_burst_distmetrics.jpl_burst_id == burst_id].reset_index(drop=True)
@@ -123,7 +145,7 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
         copol_paths = df_burst_input_data.loc_path_copol_dspkl.tolist()
         crosspol_paths = df_burst_input_data.loc_path_crosspol_dspkl.tolist()
 
-        for lookback in range(N_LOOKBACKS):
+        for lookback in tqdm(range(N_LOOKBACKS), disable=tqdm_disable, desc='Lookbacks'):
             logit_mean_copol_path = df_metric_burst[f'loc_path_normal_mean_delta{lookback}_copol'].iloc[0]
             logit_mean_crosspol_path = df_metric_burst[f'loc_path_normal_mean_delta{lookback}_crosspol'].iloc[0]
             logit_sigma_copol_path = df_metric_burst[f'loc_path_normal_std_delta{lookback}_copol'].iloc[0]
@@ -185,9 +207,26 @@ def run_dist_s1_sas_workflow(run_config: RunConfigData) -> Path:
 
 
 def run_dist_s1_workflow(
-    mgrs_tile_id: str, post_date: str | datetime, track_number: int, post_date_buffer_days: int
+    mgrs_tile_id: str,
+    post_date: str | datetime,
+    track_number: int,
+    post_date_buffer_days: int = 1,
+    dst_dir: str | Path = 'out',
+    input_data_dir: str | Path | None = None,
+    memory_strategy: str = 'high',
+    tqdm_enabled: bool = True,
 ) -> Path:
-    run_config = run_dist_s1_localization_workflow(mgrs_tile_id, post_date, track_number, post_date_buffer_days)
+    run_config = run_dist_s1_localization_workflow(
+        mgrs_tile_id,
+        post_date,
+        track_number,
+        post_date_buffer_days,
+        dst_dir=dst_dir,
+        input_data_dir=input_data_dir,
+    )
+    run_config.memory_strategy = memory_strategy
+    run_config.tqdm_enabled = tqdm_enabled
+
     _ = run_dist_s1_sas_workflow(run_config)
 
     return run_config
