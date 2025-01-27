@@ -89,3 +89,6 @@ tests/tmp/
 
 # Ignore Out of notebooks
 notebooks/out/
+
+# Notebooks in tests
+tests/*.ipynb

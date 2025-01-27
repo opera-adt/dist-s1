@@ -10,17 +10,44 @@ This is the workflow that generates OPERA's DIST-S1 product. This workflow is de
 
 ## Installation
 
-We recommend using the mamba/conda package manager to install the DIST-S1 workflow, manage the environment, and install the dependencies.
+We recommend using the mamba/conda package manager and `conda-forge` distributions to install the DIST-S1 workflow, manage the environment, and install the dependencies.
 
 ```
 mamba update -f environment.yml
 pip install dist-s1  # update to conda when it is ready on conda-forge
 conda activate dist-s1-env
-python -m ipykernel install --user --name dist-s1-env
 ```
 
 The last command is optional, but will allow this project to be imported into a Jupyter notebook.
 
+### GPU Installation
+
+We have tried to make the environment as open, flexible, and transparent as possible. 
+In particular, we are using the `conda-forge` distributions of the libraries without pinning specific versions, wherever possible.
+
+That said, there instances when a new library will introduce a CPU-only version and will break the ability to use GPU on Linux.
+To resolve such issues, we successfully used `conda-tree` to identify CPU bound dependencies.
+
+For example,
+```
+mamba install -c conda-forge conda-tree
+conda-tree -n dist-s1-env deptree
+```
+We then identified packages with `mkl` and `cpu` in their distribution names.
+There may be other libraries or methods of using `conda-tree` that are more elegant and efficient.
+That said, this provides an avenue for identifying such issues with the environment.
+
+
+### Jupyter Kernel
+
+For the Jupyter notebooks, install the jupyter dependencies:
+```
+mamba install jupyterlab ipywidgets black isort jupyterlab_code_formatter 
+```
+We also install the kernel `dist-s1-env` using the environment above via:
+```
+python -m ipykernel install --user --name dist-s1-env
+```
 
 ### Development Installation
 
