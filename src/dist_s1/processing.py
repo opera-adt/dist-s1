@@ -85,9 +85,11 @@ def compute_logit_mdist(arr_logit: np.ndarray, mean_logit: np.ndarray, sigma_log
 def label_one_disturbance(
     mdist: np.ndarray, moderate_confidence_threshold: float, high_confidence_threshold: float
 ) -> np.ndarray:
+    nodata_mask = np.isnan(mdist)
     arr = np.zeros_like(mdist)
     arr[mdist > moderate_confidence_threshold] = 1
     arr[mdist > high_confidence_threshold] = 2
+    arr[nodata_mask] = 255
     return arr
 
 
@@ -97,17 +99,23 @@ def aggregate_disturbance_over_time(
     high_confidence_threshold: float,
 ) -> np.ndarray:
     n_looks = len(disturbance_one_look_l)
+
+    # Mask
+    disturbance_stack = np.stack(disturbance_one_look_l, axis=0).astype(np.float32)
+    disturbance_stack[disturbance_stack == DISTLABEL2VAL['nodata']] = np.nan
+    nodata_mask = np.all(np.isnan(disturbance_stack), axis=0)
+
     if (n_looks > N_LOOKBACKS) or (n_looks == 0):
         raise ValueError(f'Number of looks ({n_looks}) exceeds maximum number of lookbacks ({N_LOOKBACKS}) or is zero.')
     if n_looks == 1:
-        X_agg = disturbance_one_look_l[0]
+        X_agg = disturbance_stack.squeeze(0)
         X_agg[X_agg == moderate_confidence_threshold] = DISTLABEL2VAL['first_moderate_conf_disturbance']
         X_agg[X_agg == high_confidence_threshold] = DISTLABEL2VAL['first_high_conf_disturbance']
     elif len(disturbance_one_look_l) > 1:
-        disturbance_stack = np.stack(disturbance_one_look_l, axis=0)
-        X_dist_max = np.max(disturbance_stack, axis=0)
-        X_dist_count = np.sum(disturbance_stack.astype(bool).astype(int), axis=0)
+        X_dist_max = np.nanmax(disturbance_stack, axis=0)
+        X_dist_count = np.nansum((disturbance_stack != 0) & ~nodata_mask, axis=0)
         X_agg = np.zeros_like(X_dist_max)
+        # Requires all looks to have data to be labeled otherwise X_dist_count < n_looks
         ind_moderate = (X_dist_count == n_looks) & (X_dist_max == moderate_confidence_threshold)
         ind_high = (X_dist_count == n_looks) & (X_dist_max == high_confidence_threshold)
         if n_looks == 2:
@@ -120,7 +128,6 @@ def aggregate_disturbance_over_time(
             raise NotImplementedError(
                 f'Number of scenes ({n_looks}) is not supported for fixed {N_LOOKBACKS} lookbacks.'
             )
-    nodata_mask = np.isnan(disturbance_one_look_l[-1])
     X_agg[nodata_mask] = DISTLABEL2VAL['nodata']
     X_agg = X_agg.astype(np.uint8)
     return X_agg
@@ -163,9 +170,9 @@ def compute_burst_disturbance_for_lookback_group_and_serialize(
     ]
 
     mdist_l = [
-        np.maximum(mdist_copol, mdist_crosspol) for mdist_copol, mdist_crosspol in zip(mdist_copol_l, mdist_crosspol_l)
+        np.nanmax(np.stack([mdist_copol, mdist_crosspol], axis=0), axis=0)
+        for mdist_copol, mdist_crosspol in zip(mdist_copol_l, mdist_crosspol_l)
     ]
-
     disturbance_one_look_l = [
         label_one_disturbance(mdist, moderate_confidence_threshold, high_confidence_threshold) for mdist in mdist_l
     ]
@@ -195,13 +202,15 @@ def aggregate_burst_disturbance_over_lookbacks_and_serialize(disturbance_paths: 
     X_delta_l, profs = zip(*data)
     for p in profs[1:]:
         check_profiles_match(profs[0], p)
-    X = np.zeros_like(X_delta_l[0])
+    X_time_agg = np.zeros_like(X_delta_l[0])
+    nodata_mask = np.all(np.stack(X_delta_l, axis=0) == 255, axis=0)
     # priority is to largest lookback where we can confirm disturbances
     for X_delta in X_delta_l:
-        ind = (X != 0) | (X_delta != 255)
-        X[ind] = X_delta[ind]
+        ind = (X_delta != 0) | (X_delta != 255)
+        X_time_agg[ind] = X_delta[ind]
+    X_time_agg[nodata_mask] = 255
     p_ref = profs[0]
-    serialize_one_ds(X, p_ref, out_path)
+    serialize_one_ds(X_time_agg, p_ref, out_path)
 
 
 def merge_burst_disturbances_and_serialize(burst_disturbance_paths: list[Path]) -> None:

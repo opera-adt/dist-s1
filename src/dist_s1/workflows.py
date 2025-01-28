@@ -157,14 +157,17 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
 
             n_imgs = len(copol_paths)
             start = max(n_imgs - lookback - 1, 0)
-            stop = n_imgs - lookback
+            stop = n_imgs
             copol_paths_lookback_group = copol_paths[start:stop]
             crosspol_paths_lookback_group = crosspol_paths[start:stop]
             output_metric_path = None
             if lookback == 0:
                 output_metric_path = df_metric_burst[f'loc_path_metric_delta{lookback}'].iloc[0]
 
-            # Computes the disturbance for a a single lookback group
+            # Computes the disturbance for a a single lookback group and serlialize
+            # Delta_0, Delta_1, ..., Delta_N_LOOKBACKS
+            # Labels will be 0 for no disturbance, 1 for moderate confidence disturbance,
+            # 2 for high confidence disturbance, and 255 for nodata
             compute_burst_disturbance_for_lookback_group_and_serialize(
                 copol_paths=copol_paths_lookback_group,
                 crosspol_paths=crosspol_paths_lookback_group,
@@ -180,6 +183,8 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
         disturbance_paths = [
             df_metric_burst[f'loc_path_disturb_delta{lookback}'].iloc[0] for lookback in range(N_LOOKBACKS)
         ]
+        # Aggregate the disturbances maps for all the lookbacks computed above
+        # This will have the labels of the final disturbance map (see constants.py and the function itself)
         aggregate_burst_disturbance_over_lookbacks_and_serialize(disturbance_paths, time_aggregated_disturbance_path)
 
 

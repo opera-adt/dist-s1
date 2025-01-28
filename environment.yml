@@ -15,7 +15,6 @@ dependencies:
  - matplotlib
  - numpy
  - pandas
- - pyarrow
  - pydantic
  - pytest
  - multiprocess # TODO: Remove once distmetrics on conda - need to add this to conda recipe
