@@ -1,10 +1,9 @@
 from pathlib import Path
 
 import numpy as np
-from dem_stitcher.merge import merge_arrays_with_geometadata
 from dem_stitcher.rio_tools import reproject_arr_to_match_profile
 from distmetrics.despeckle import despeckle_rtc_arrs_with_tv
-from distmetrics.rio_tools import merge_with_weighted_overlap, merge_categorical_arrays
+from distmetrics.rio_tools import merge_categorical_arrays, merge_with_weighted_overlap
 from distmetrics.transformer import estimate_normal_params_of_logits, load_transformer_model
 from scipy.special import logit
 from tqdm import tqdm
