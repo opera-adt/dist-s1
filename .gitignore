@@ -89,6 +89,8 @@ tests/tmp/
 
 # Ignore Out of notebooks
 notebooks/out/
+notebooks/los-angeles/
+
 
 # Notebooks in tests
 tests/*.ipynb
