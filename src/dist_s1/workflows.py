@@ -204,7 +204,7 @@ def run_disturbance_merge_workflow(run_config: RunConfigData) -> None:
     merge_burst_disturbances_and_serialize(dist_burst_paths, dst_dist_path, run_config.mgrs_tile_id)
 
 
-def run_dist_s1_processing_workflow(run_config: RunConfigData) -> Path:
+def run_dist_s1_processing_workflow(run_config: RunConfigData) -> RunConfigData:
     # Despeckle by burst
     run_despeckle_workflow(run_config)
 
@@ -214,7 +214,10 @@ def run_dist_s1_processing_workflow(run_config: RunConfigData) -> Path:
     # Compute disturbance per burst and all possible lookbacks
     run_burst_disturbance_workflow(run_config)
 
-    return Path('OPERA_L3_DIST_DIRECTORY')
+    # Merge the burst-wise products
+    run_disturbance_merge_workflow(run_config)
+
+    return run_config
 
 
 def run_dist_s1_packaging_workflow(run_config: RunConfigData) -> Path:
