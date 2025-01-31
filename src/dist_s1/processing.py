@@ -4,7 +4,7 @@ import numpy as np
 from dem_stitcher.merge import merge_arrays_with_geometadata
 from dem_stitcher.rio_tools import reproject_arr_to_match_profile
 from distmetrics.despeckle import despeckle_rtc_arrs_with_tv
-from distmetrics.rio_tools import merge_with_weighted_overlap
+from distmetrics.rio_tools import merge_with_weighted_overlap, merge_categorical_arrays
 from distmetrics.transformer import estimate_normal_params_of_logits, load_transformer_model
 from scipy.special import logit
 from tqdm import tqdm
@@ -221,13 +221,11 @@ def merge_burst_disturbances_and_serialize(
 ) -> None:
     data = [open_one_ds(path) for path in burst_disturbance_paths]
     X_dist_burst_l, profs = zip(*data)
-    X_merged, p_merged = merge_arrays_with_geometadata(X_dist_burst_l, profs, method='min')
-
-    assert p_merged['nodata'] == 255
-    assert p_merged['dtype'] == np.uint8
+    X_merged, p_merged = merge_categorical_arrays(X_dist_burst_l, profs, exterior_mask_dilation=30, merge_method='max')
 
     p_mgrs = get_mgrs_profile(mgrs_tile_id)
-    X_dist_mgrs, p_dist_mgrs = reproject_arr_to_match_profile(X_merged, p_mgrs, resampling='nearest')
+    X_dist_mgrs, p_dist_mgrs = reproject_arr_to_match_profile(X_merged, p_merged, p_mgrs, resampling='nearest')
+    # From BIP back to 2D array
     X_dist_mgrs = X_dist_mgrs[0, ...]
 
     serialize_one_2d_ds(X_dist_mgrs, p_dist_mgrs, dst_path)
@@ -244,11 +242,8 @@ def merge_burst_metrics_and_serialize(burst_metrics_paths: list[Path], dst_path:
         use_distance_weighting_from_exterior_mask=True,
     )
 
-    assert p_merged['nodata'] == 255
-    assert p_merged['dtype'] == np.uint8
-
     p_mgrs = get_mgrs_profile(mgrs_tile_id)
-    X_dist_mgrs, p_dist_mgrs = reproject_arr_to_match_profile(X_metric_merged, p_mgrs, resampling='bilinear')
+    X_dist_mgrs, p_dist_mgrs = reproject_arr_to_match_profile(X_metric_merged, p_merged, p_mgrs, resampling='bilinear')
     # From BIP back to 2D array
     X_dist_mgrs = X_dist_mgrs[0, ...]
 

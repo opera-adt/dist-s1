@@ -6,7 +6,7 @@ from dist_s1_enumerator.mgrs_burst_data import get_mgrs_tile_table_by_ids
 from rasterio.crs import CRS
 from rasterio.profiles import default_gtiff_profile
 from rasterio.transform import from_origin
-from shapely.geometry import from_wkt
+from shapely import from_wkt
 
 
 def check_profiles_match(prof_0: dict, prof_1: dict) -> None:
