@@ -1,13 +1,16 @@
 from pathlib import Path
 
 import numpy as np
+from dem_stitcher.merge import merge_arrays_with_geometadata
+from dem_stitcher.rio_tools import reproject_arr_to_match_profile
 from distmetrics.despeckle import despeckle_rtc_arrs_with_tv
+from distmetrics.rio_tools import merge_with_weighted_overlap
 from distmetrics.transformer import estimate_normal_params_of_logits, load_transformer_model
 from scipy.special import logit
 from tqdm import tqdm
 
 from dist_s1.constants import DISTLABEL2VAL, N_LOOKBACKS
-from dist_s1.rio_tools import check_profiles_match, open_one_ds, serialize_one_ds
+from dist_s1.rio_tools import check_profiles_match, get_mgrs_profile, open_one_ds, serialize_one_2d_ds
 
 
 def despeckle_and_serialize_rtc_s1(
@@ -34,7 +37,7 @@ def despeckle_and_serialize_rtc_s1(
             # despeckle
             arrs_d = despeckle_rtc_arrs_with_tv(arrs, tqdm_enabled=tqdm_enabled)
             # serialize
-            [serialize_one_ds(arr, prof, dst_path) for (arr, prof, dst_path) in zip(arrs_d, ps, dst_paths_subset)]
+            [serialize_one_2d_ds(arr, prof, dst_path) for (arr, prof, dst_path) in zip(arrs_d, ps, dst_paths_subset)]
 
     return dst_paths
 
@@ -68,10 +71,10 @@ def compute_normal_params_per_burst_and_serialize(
     logits_mu_copol, logits_mu_crosspol = logits_mu[0, ...], logits_mu[1, ...]
     logits_sigma_copol, logits_sigma_crosspol = logits_sigma[0, ...], logits_sigma[1, ...]
 
-    serialize_one_ds(logits_mu_copol, p_ref, out_path_mu_copol)
-    serialize_one_ds(logits_mu_crosspol, p_ref, out_path_mu_crosspol)
-    serialize_one_ds(logits_sigma_copol, p_ref, out_path_sigma_copol)
-    serialize_one_ds(logits_sigma_crosspol, p_ref, out_path_sigma_crosspol)
+    serialize_one_2d_ds(logits_mu_copol, p_ref, out_path_mu_copol)
+    serialize_one_2d_ds(logits_mu_crosspol, p_ref, out_path_mu_crosspol)
+    serialize_one_2d_ds(logits_sigma_copol, p_ref, out_path_sigma_copol)
+    serialize_one_2d_ds(logits_sigma_crosspol, p_ref, out_path_sigma_crosspol)
 
 
 def compute_disturbance(metric_paths: list[Path], out_dir: Path) -> None:
@@ -184,9 +187,9 @@ def compute_burst_disturbance_for_lookback_group_and_serialize(
     p_dist_ref = profs_copol[0].copy()
     p_dist_ref['nodata'] = 255
     p_dist_ref['dtype'] = np.uint8
-    serialize_one_ds(disturbance_temporal_agg, p_dist_ref, out_dist_path)
+    serialize_one_2d_ds(disturbance_temporal_agg, p_dist_ref, out_dist_path)
     if out_metric_path is not None:
-        serialize_one_ds(mdist_l[-1], profs_copol[0], out_metric_path)
+        serialize_one_2d_ds(mdist_l[-1], profs_copol[0], out_metric_path)
 
 
 def aggregate_burst_disturbance_over_lookbacks_and_serialize(disturbance_paths: list[Path], out_path: Path) -> None:
@@ -210,12 +213,43 @@ def aggregate_burst_disturbance_over_lookbacks_and_serialize(disturbance_paths: 
         X_time_agg[ind] = X_delta[ind]
     X_time_agg[nodata_mask] = 255
     p_ref = profs[0]
-    serialize_one_ds(X_time_agg, p_ref, out_path)
+    serialize_one_2d_ds(X_time_agg, p_ref, out_path)
 
 
-def merge_burst_disturbances_and_serialize(burst_disturbance_paths: list[Path]) -> None:
-    pass
+def merge_burst_disturbances_and_serialize(
+    burst_disturbance_paths: list[Path], dst_path: Path, mgrs_tile_id: str
+) -> None:
+    data = [open_one_ds(path) for path in burst_disturbance_paths]
+    X_dist_burst_l, profs = zip(*data)
+    X_merged, p_merged = merge_arrays_with_geometadata(X_dist_burst_l, profs, method='min')
+
+    assert p_merged['nodata'] == 255
+    assert p_merged['dtype'] == np.uint8
+
+    p_mgrs = get_mgrs_profile(mgrs_tile_id)
+    X_dist_mgrs, p_dist_mgrs = reproject_arr_to_match_profile(X_merged, p_mgrs, resampling='nearest')
+    X_dist_mgrs = X_dist_mgrs[0, ...]
+
+    serialize_one_2d_ds(X_dist_mgrs, p_dist_mgrs, dst_path)
 
 
-def merge_burst_metrics_and_serialize(burst_metrics_paths: list[Path]) -> None:
-    pass
+def merge_burst_metrics_and_serialize(burst_metrics_paths: list[Path], dst_path: Path, mgrs_tile_id: str) -> None:
+    data = [open_one_ds(path) for path in burst_metrics_paths]
+    X_metric_burst_l, profs = zip(*data)
+    X_metric_merged, p_merged = merge_with_weighted_overlap(
+        X_metric_burst_l,
+        profs,
+        exterior_mask_dilation=10,
+        distance_weight_exponent=1.0,
+        use_distance_weighting_from_exterior_mask=True,
+    )
+
+    assert p_merged['nodata'] == 255
+    assert p_merged['dtype'] == np.uint8
+
+    p_mgrs = get_mgrs_profile(mgrs_tile_id)
+    X_dist_mgrs, p_dist_mgrs = reproject_arr_to_match_profile(X_metric_merged, p_mgrs, resampling='bilinear')
+    # From BIP back to 2D array
+    X_dist_mgrs = X_dist_mgrs[0, ...]
+
+    serialize_one_2d_ds(X_dist_mgrs, p_dist_mgrs, dst_path)

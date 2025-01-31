@@ -11,6 +11,8 @@ from dist_s1.processing import (
     compute_burst_disturbance_for_lookback_group_and_serialize,
     compute_normal_params_per_burst_and_serialize,
     despeckle_and_serialize_rtc_s1,
+    merge_burst_disturbances_and_serialize,
+    merge_burst_metrics_and_serialize,
 )
 
 
@@ -186,6 +188,20 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
         # Aggregate the disturbances maps for all the lookbacks computed above
         # This will have the labels of the final disturbance map (see constants.py and the function itself)
         aggregate_burst_disturbance_over_lookbacks_and_serialize(disturbance_paths, time_aggregated_disturbance_path)
+
+
+def run_disturbance_merge_workflow(run_config: RunConfigData) -> None:
+    dst_tif_paths = run_config.final_unformatted_tif_paths
+
+    # Metrics
+    metric_burst_paths = run_config.df_burst_distmetrics['loc_path_metric_delta0'].tolist()
+    dst_metric_path = dst_tif_paths['metric_status_path']
+    merge_burst_metrics_and_serialize(metric_burst_paths, dst_metric_path, run_config.mgrs_tile_id)
+
+    # Disturbance
+    dist_burst_paths = run_config.df_burst_distmetrics['loc_path_disturb_delta0'].tolist()
+    dst_dist_path = dst_tif_paths['alert_status_path']
+    merge_burst_disturbances_and_serialize(dist_burst_paths, dst_dist_path, run_config.mgrs_tile_id)
 
 
 def run_dist_s1_processing_workflow(run_config: RunConfigData) -> Path:

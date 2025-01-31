@@ -277,6 +277,18 @@ class RunConfigData(BaseModel):
         return self._df_tile_dist
 
     @property
+    def final_unformatted_tif_paths(self) -> dict:
+        # We are going to have a directory without metadata, colorbar, tags, etc.
+        pre_product_dir = self.dst_dir / 'pre_product'
+        pre_product_dir.mkdir(parents=True, exist_ok=True)
+        final_unformatted_tif_paths = {
+            'alert_status_path': pre_product_dir / 'alert_status.tif',
+            'metric_status_path': pre_product_dir / 'metric_status.tif',
+        }
+
+        return final_unformatted_tif_paths
+
+    @property
     def df_burst_distmetrics(self) -> pd.DataFrame:
         if self._df_burst_distmetric is None:
             normal_param_dir = self.dst_dir / 'normal_params'

@@ -31,4 +31,5 @@ dependencies:
  - dist_s1_enumerator
  - distmetrics
  - dem_stitcher
+ - cudatoolkit>=11.8
 

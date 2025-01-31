@@ -40,7 +40,7 @@ def open_one_profile(path: Path) -> dict:
     return p
 
 
-def serialize_one_ds(arr: np.ndarray, p: dict, out_path: Path) -> Path:
+def serialize_one_2d_ds(arr: np.ndarray, p: dict, out_path: Path) -> Path:
     with rasterio.open(out_path, 'w', **p) as ds:
         ds.write(arr, 1)
     return out_path
