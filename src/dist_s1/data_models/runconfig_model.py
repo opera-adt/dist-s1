@@ -55,7 +55,7 @@ def generate_burst_dist_paths(
     if lookback is not None:
         fn = fn.replace('.tif', f'_delta{lookback}.tif')
     if polarization_token is not None:
-        fn = fn.replace('.tif', f'_{polarization_token}.tif')
+        fn = fn.replace(f'{path_token}', f'{path_token}_{polarization_token}')
     out_path = lookback_dir / fn
     return out_path
 

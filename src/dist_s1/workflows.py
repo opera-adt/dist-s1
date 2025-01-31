@@ -1,6 +1,7 @@
 from datetime import datetime
 from pathlib import Path
 
+import pandas as pd
 from tqdm.auto import tqdm
 
 from dist_s1.constants import MODEL_CONTEXT_LENGTH, N_LOOKBACKS
@@ -14,6 +15,36 @@ from dist_s1.processing import (
     merge_burst_disturbances_and_serialize,
     merge_burst_metrics_and_serialize,
 )
+
+
+def curate_input_burst_rtc_s1_paths_for_normal_param_est(
+    copol_paths: list[str], crosspol_paths: list[str], lookback: int
+) -> tuple[list[Path], list[Path]]:
+    """Curate the paths to the correct length for normal param estimation."""
+    if len(copol_paths) != len(crosspol_paths):
+        raise ValueError('The number of copol and crosspol paths must be the same')
+    dates_copol = [Path(path).stem.split('_')[4] for path in copol_paths]
+    dates_crosspol = [Path(path).stem.split('_')[4] for path in crosspol_paths]
+    if dates_copol != dates_crosspol:
+        raise ValueError('The copol and crosspol paths must have the same dates')
+
+    n_imgs = len(copol_paths)
+    start = max(n_imgs - MODEL_CONTEXT_LENGTH - lookback - 1, 0)
+    stop = min(n_imgs - lookback - 1, n_imgs - 1)
+    copol_paths_pre = copol_paths[start:stop]
+    crosspol_paths_pre = crosspol_paths[start:stop]
+    return copol_paths_pre, crosspol_paths_pre
+
+
+def check_dates_of_normal_param_files(pre_paths: list[str], normal_out_path: Path) -> bool:
+    last_date_of_pre_paths = pre_paths[-1].split('/')[-1].split('_')[4]
+    # Format in these paths is YYYYMMDDTHHMMSS - will be within 1 day of the normal param output
+    ts_pre = pd.Timestamp(last_date_of_pre_paths, tz='UTC')
+
+    # Format in this path is YYYY-MM-DD
+    ts_normal_out = pd.Timestamp(normal_out_path.name.split('_')[-2], tz='UTC')
+    ts_agree = (ts_pre - ts_normal_out).days < 1
+    return ts_agree
 
 
 def run_dist_s1_localization_workflow(
@@ -97,11 +128,9 @@ def run_normal_param_estimation_workflow(run_config: RunConfigData) -> None:
             crosspol_paths = df_burst_input_data.loc_path_crosspol_dspkl.tolist()
 
             # curate the paths to the correct length
-            n_imgs = len(copol_paths)
-            start = max(n_imgs - MODEL_CONTEXT_LENGTH - lookback - 1 + N_LOOKBACKS, 0)
-            stop = min(n_imgs - lookback - 1 + N_LOOKBACKS, n_imgs - 1)
-            copol_paths = copol_paths[start:stop]
-            crosspol_paths = crosspol_paths[start:stop]
+            copol_paths_pre, crosspol_paths_pre = curate_input_burst_rtc_s1_paths_for_normal_param_est(
+                copol_paths, crosspol_paths, lookback
+            )
 
             output_mu_copol_l = df_metric[f'loc_path_normal_mean_delta{lookback}_copol'].tolist()
             output_mu_crosspol_l = df_metric[f'loc_path_normal_mean_delta{lookback}_crosspol'].tolist()
@@ -121,9 +150,17 @@ def run_normal_param_estimation_workflow(run_config: RunConfigData) -> None:
             output_sigma_copol_path = output_sigma_copol_l[0]
             output_sigma_crosspol_path = output_sigma_crosspol_l[0]
 
+            checks = [
+                check_dates_of_normal_param_files(copol_paths_pre, output_mu_copol_path),
+                check_dates_of_normal_param_files(crosspol_paths_pre, output_mu_crosspol_path),
+                check_dates_of_normal_param_files(copol_paths_pre, output_sigma_copol_path),
+                check_dates_of_normal_param_files(crosspol_paths_pre, output_sigma_crosspol_path),
+            ]
+            assert all(checks)
+
             compute_normal_params_per_burst_and_serialize(
-                copol_paths,
-                crosspol_paths,
+                copol_paths_pre,
+                crosspol_paths_pre,
                 output_mu_copol_path,
                 output_mu_crosspol_path,
                 output_sigma_copol_path,
