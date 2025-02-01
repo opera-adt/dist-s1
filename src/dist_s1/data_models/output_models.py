@@ -7,15 +7,16 @@ from pydantic import BaseModel, field_validator
 
 
 PRODUCT_VERSION = '0.0.1'
-LAYERS = ['DIST-STATUS', 'DIST-STATUS-ACQ', 'GEN-METRIC', 'DATE-FIRST', 'DATE-LATEST', 'N-OBS', 'N-DIST']
+LAYERS = ['DIST-STATUS', 'GEN-METRIC']
+# LAYERS = ['DIST-STATUS', 'DIST-STATUS-ACQ', 'GEN-METRIC', 'DATE-FIRST', 'DATE-LATEST', 'N-OBS', 'N-DIST']
 LAYER_DTYPES = {
     'DIST-STATUS': 'uint8',
-    'DIST-STATUS-ACQ': 'uint8',
+    # 'DIST-STATUS-ACQ': 'uint8',
     'GEN-METRIC': 'float32',
-    'DATE-FIRST': 'uint32',
-    'DATE-LATEST': 'uint32',
-    'N-OBS': 'uint32',
-    'N-DIST': 'uint32',
+    # 'DATE-FIRST': 'uint32',
+    # 'DATE-LATEST': 'uint32',
+    # 'N-OBS': 'uint32',
+    # 'N-DIST': 'uint32',
 }
 EXPECTED_FORMAT_STRING = (
     'OPERA_L3_DIST-ALERT-S1_T{mgrs_tile_id}_{acq_datetime}_{proc_datetime}_S1_30_v{PRODUCT_VERSION}'
