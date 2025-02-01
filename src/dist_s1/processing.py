@@ -220,7 +220,7 @@ def merge_burst_disturbances_and_serialize(
 ) -> None:
     data = [open_one_ds(path) for path in burst_disturbance_paths]
     X_dist_burst_l, profs = zip(*data)
-    X_merged, p_merged = merge_categorical_arrays(X_dist_burst_l, profs, exterior_mask_dilation=30, merge_method='max')
+    X_merged, p_merged = merge_categorical_arrays(X_dist_burst_l, profs, exterior_mask_dilation=10, merge_method='max')
 
     p_mgrs = get_mgrs_profile(mgrs_tile_id)
     X_dist_mgrs, p_dist_mgrs = reproject_arr_to_match_profile(X_merged, p_merged, p_mgrs, resampling='nearest')
