@@ -8,7 +8,7 @@ from distmetrics.transformer import estimate_normal_params_of_logits, load_trans
 from scipy.special import logit
 from tqdm import tqdm
 
-from dist_s1.constants import DISTLABEL2VAL, N_LOOKBACKS
+from dist_s1.constants import COLORBLIND_DIST_CMAP, DISTLABEL2VAL, N_LOOKBACKS
 from dist_s1.rio_tools import check_profiles_match, get_mgrs_profile, open_one_ds, serialize_one_2d_ds
 
 
@@ -97,8 +97,8 @@ def label_one_disturbance(
 
 def aggregate_disturbance_over_time(
     disturbance_one_look_l: list[np.ndarray],
-    moderate_confidence_threshold: float,
-    high_confidence_threshold: float,
+    moderate_confidence_label: float = 1,
+    high_confidence_label: float = 2,
 ) -> np.ndarray:
     n_looks = len(disturbance_one_look_l)
 
@@ -111,15 +111,15 @@ def aggregate_disturbance_over_time(
         raise ValueError(f'Number of looks ({n_looks}) exceeds maximum number of lookbacks ({N_LOOKBACKS}) or is zero.')
     if n_looks == 1:
         X_agg = disturbance_stack.squeeze(0)
-        X_agg[X_agg == moderate_confidence_threshold] = DISTLABEL2VAL['first_moderate_conf_disturbance']
-        X_agg[X_agg == high_confidence_threshold] = DISTLABEL2VAL['first_high_conf_disturbance']
+        X_agg[X_agg == moderate_confidence_label] = DISTLABEL2VAL['first_moderate_conf_disturbance']
+        X_agg[X_agg == high_confidence_label] = DISTLABEL2VAL['first_high_conf_disturbance']
     elif len(disturbance_one_look_l) > 1:
         X_dist_max = np.nanmax(disturbance_stack, axis=0)
-        X_dist_count = np.nansum((disturbance_stack != 0) & ~nodata_mask, axis=0)
+        X_dist_count = np.nansum((disturbance_stack != 0) & (~nodata_mask), axis=0).astype(np.uint8)
         X_agg = np.zeros_like(X_dist_max)
         # Requires all looks to have data to be labeled otherwise X_dist_count < n_looks
-        ind_moderate = (X_dist_count == n_looks) & (X_dist_max == moderate_confidence_threshold)
-        ind_high = (X_dist_count == n_looks) & (X_dist_max == high_confidence_threshold)
+        ind_moderate = (X_dist_count == n_looks) & (X_dist_max == moderate_confidence_label)
+        ind_high = (X_dist_count == n_looks) & (X_dist_max == high_confidence_label)
         if n_looks == 2:
             X_agg[ind_moderate] = DISTLABEL2VAL['provisional_moderate_conf_disturbance']
             X_agg[ind_high] = DISTLABEL2VAL['provisional_high_conf_disturbance']
@@ -179,9 +179,7 @@ def compute_burst_disturbance_for_lookback_group_and_serialize(
         label_one_disturbance(mdist, moderate_confidence_threshold, high_confidence_threshold) for mdist in mdist_l
     ]
 
-    disturbance_temporal_agg = aggregate_disturbance_over_time(
-        disturbance_one_look_l, moderate_confidence_threshold, high_confidence_threshold
-    )
+    disturbance_temporal_agg = aggregate_disturbance_over_time(disturbance_one_look_l)
 
     p_dist_ref = profs_copol[0].copy()
     p_dist_ref['nodata'] = 255
@@ -208,7 +206,7 @@ def aggregate_burst_disturbance_over_lookbacks_and_serialize(disturbance_paths: 
     nodata_mask = np.all(np.stack(X_delta_l, axis=0) == 255, axis=0)
     # priority is to largest lookback where we can confirm disturbances
     for X_delta in X_delta_l:
-        ind = (X_delta != 0) | (X_delta != 255)
+        ind = ~np.isin(X_delta, [0, 255])
         X_time_agg[ind] = X_delta[ind]
     X_time_agg[nodata_mask] = 255
     p_ref = profs[0]
@@ -220,14 +218,15 @@ def merge_burst_disturbances_and_serialize(
 ) -> None:
     data = [open_one_ds(path) for path in burst_disturbance_paths]
     X_dist_burst_l, profs = zip(*data)
-    X_merged, p_merged = merge_categorical_arrays(X_dist_burst_l, profs, exterior_mask_dilation=10, merge_method='max')
+    X_merged, p_merged = merge_categorical_arrays(X_dist_burst_l, profs, exterior_mask_dilation=15, merge_method='max')
+    X_merged[0, ...] = X_merged
+    serialize_one_2d_ds(X_merged[0, ...], p_merged, 'wtf.tif')
 
     p_mgrs = get_mgrs_profile(mgrs_tile_id)
     X_dist_mgrs, p_dist_mgrs = reproject_arr_to_match_profile(X_merged, p_merged, p_mgrs, resampling='nearest')
     # From BIP back to 2D array
     X_dist_mgrs = X_dist_mgrs[0, ...]
-
-    serialize_one_2d_ds(X_dist_mgrs, p_dist_mgrs, dst_path)
+    serialize_one_2d_ds(X_dist_mgrs, p_dist_mgrs, dst_path, colormap=COLORBLIND_DIST_CMAP)
 
 
 def merge_burst_metrics_and_serialize(burst_metrics_paths: list[Path], dst_path: Path, mgrs_tile_id: str) -> None:
@@ -236,7 +235,7 @@ def merge_burst_metrics_and_serialize(burst_metrics_paths: list[Path], dst_path:
     X_metric_merged, p_merged = merge_with_weighted_overlap(
         X_metric_burst_l,
         profs,
-        exterior_mask_dilation=10,
+        exterior_mask_dilation=15,
         distance_weight_exponent=1.0,
         use_distance_weighting_from_exterior_mask=True,
     )

@@ -17,6 +17,24 @@ from dist_s1.processing import (
 )
 
 
+def curate_input_burst_rtc_input_for_dist(
+    copol_paths: list[str], crosspol_paths: list[str], lookback: int
+) -> tuple[list[Path], list[Path]]:
+    """Curate the paths to the correct length for mdist estimation."""
+    if len(copol_paths) != len(crosspol_paths):
+        raise ValueError('The number of copol and crosspol paths must be the same')
+    dates_copol = [Path(path).stem.split('_')[4] for path in copol_paths]
+    dates_crosspol = [Path(path).stem.split('_')[4] for path in crosspol_paths]
+    if dates_copol != dates_crosspol:
+        raise ValueError('The copol and crosspol paths must have the same dates')
+    n_imgs = len(copol_paths)
+    start = max(n_imgs - lookback - 1, 0)
+    stop = n_imgs
+    copol_paths_lookback_group = copol_paths[start:stop]
+    crosspol_paths_lookback_group = crosspol_paths[start:stop]
+    return copol_paths_lookback_group, crosspol_paths_lookback_group
+
+
 def curate_input_burst_rtc_s1_paths_for_normal_param_est(
     copol_paths: list[str], crosspol_paths: list[str], lookback: int
 ) -> tuple[list[Path], list[Path]]:
@@ -194,11 +212,9 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
             assert len(dist_path_lookback_l) == 1
             output_dist_path = dist_path_lookback_l[0]
 
-            n_imgs = len(copol_paths)
-            start = max(n_imgs - lookback - 1, 0)
-            stop = n_imgs
-            copol_paths_lookback_group = copol_paths[start:stop]
-            crosspol_paths_lookback_group = crosspol_paths[start:stop]
+            copol_paths_lookback_group, crosspol_paths_lookback_group = curate_input_burst_rtc_input_for_dist(
+                copol_paths, crosspol_paths, lookback
+            )
             output_metric_path = None
             if lookback == 0:
                 output_metric_path = df_metric_burst[f'loc_path_metric_delta{lookback}'].iloc[0]
@@ -236,8 +252,9 @@ def run_disturbance_merge_workflow(run_config: RunConfigData) -> None:
     merge_burst_metrics_and_serialize(metric_burst_paths, dst_metric_path, run_config.mgrs_tile_id)
 
     # Disturbance
-    dist_burst_paths = run_config.df_burst_distmetrics['loc_path_disturb_delta0'].tolist()
+    dist_burst_paths = run_config.df_burst_distmetrics['loc_path_disturb_time_aggregated'].tolist()
     dst_dist_path = dst_tif_paths['alert_status_path']
+    breakpoint()
     merge_burst_disturbances_and_serialize(dist_burst_paths, dst_dist_path, run_config.mgrs_tile_id)
 
 
