@@ -23,12 +23,13 @@ The last command is optional, but will allow this project to be imported into a 
 ### GPU Installation
 
 We have tried to make the environment as open, flexible, and transparent as possible. 
-In particular, we are using the `conda-forge` distributions of the libraries without pinning specific versions, wherever possible.
-We have provided an `environment_gpu.yml` which adds `cudatools` to the environment to ensure on our systems that GPU is accessible.
-`cudatoolkit` is the `conda-forge` distribution of Nvidia's tool kit (see [here](https://anaconda.org/conda-forge/cudatoolkit)).
+In particular, we are using the `conda-forge` distribution of the libraries, including relevant GPU-drivers.
+We have provided an `environment_gpu.yml` which simply adds a minimum version of conda-forge's `cudatoolkit` to the environment to ensure on our systems that GPU is accessible.
+This will *not* be installable on non-Linux systems (and maybe even non-Linux systems without GPUs).
+The library `cudatoolkit` is the `conda-forge` distribution of NVIDIA's cuda tool kit (see [here](https://anaconda.org/conda-forge/cudatoolkit)).
 That said, there could be instances when a new library will introduce a CPU-only version and will break the ability to use GPU on Linux.
-To resolve such issues, we successfully used `conda-tree` to identify CPU bound dependencies.
 
+To resolve environment issues related to having access to the GPU, we successfully used `conda-tree` to identify CPU bound dependencies.
 For example,
 ```
 mamba install -c conda-forge conda-tree
