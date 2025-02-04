@@ -8,7 +8,7 @@ from distmetrics.transformer import estimate_normal_params_of_logits, load_trans
 from scipy.special import logit
 from tqdm import tqdm
 
-from dist_s1.constants import COLORBLIND_DIST_CMAP, DISTLABEL2VAL, N_LOOKBACKS
+from dist_s1.constants import COLORBLIND_DIST_CMAP, DISTLABEL2VAL
 from dist_s1.rio_tools import check_profiles_match, get_mgrs_profile, open_one_ds, serialize_one_2d_ds
 
 
@@ -99,24 +99,28 @@ def aggregate_disturbance_over_time(
     disturbance_one_look_l: list[np.ndarray],
     moderate_confidence_label: float = 1,
     high_confidence_label: float = 2,
+    max_lookbacks: int | None = None,
+    nodata_value: int = 255,
 ) -> np.ndarray:
     n_looks = len(disturbance_one_look_l)
 
-    # Mask
+    # Mask - easier to handle 255 ignore via numpy builtins of nan
     disturbance_stack = np.stack(disturbance_one_look_l, axis=0).astype(np.float32)
-    disturbance_stack[disturbance_stack == DISTLABEL2VAL['nodata']] = np.nan
+    disturbance_stack[disturbance_stack == nodata_value] = np.nan
     # Right now, we require the n_looks to have disturbances for all Deltas - any nodata will be no disturbance
     nodata_mask = np.any(np.isnan(disturbance_stack), axis=0)
 
-    if (n_looks > N_LOOKBACKS) or (n_looks == 0):
-        raise ValueError(f'Number of looks ({n_looks}) exceeds maximum number of lookbacks ({N_LOOKBACKS}) or is zero.')
+    if (max_lookbacks is not None) and (n_looks > max_lookbacks) or (n_looks == 0):
+        raise ValueError(
+            f'Number of looks ({n_looks}) exceeds maximum number of lookbacks ({max_lookbacks}) or is zero.'
+        )
     if n_looks == 1:
         X_agg = disturbance_stack.squeeze(0)
         X_agg[X_agg == moderate_confidence_label] = DISTLABEL2VAL['first_moderate_conf_disturbance']
         X_agg[X_agg == high_confidence_label] = DISTLABEL2VAL['first_high_conf_disturbance']
     elif len(disturbance_one_look_l) > 1:
         X_dist_min = np.nanmin(disturbance_stack, axis=0)
-        X_dist_count = np.nansum((disturbance_stack != 0) & (~nodata_mask), axis=0).astype(np.uint8)
+        X_dist_count = np.nansum((disturbance_stack != 0), axis=0).astype(np.uint8)
         X_agg = np.zeros_like(X_dist_min)
         # Requires all looks to have data to be labeled otherwise X_dist_count < n_looks
         ind_moderate = (X_dist_count == n_looks) & (X_dist_min == moderate_confidence_label)
@@ -128,10 +132,8 @@ def aggregate_disturbance_over_time(
             X_agg[ind_moderate] = DISTLABEL2VAL['confirmed_moderate_conf_disturbance']
             X_agg[ind_high] = DISTLABEL2VAL['confirmed_high_conf_disturbance']
         else:
-            raise NotImplementedError(
-                f'Number of scenes ({n_looks}) is not supported for fixed {N_LOOKBACKS} lookbacks.'
-            )
-    X_agg[nodata_mask] = DISTLABEL2VAL['nodata']
+            raise NotImplementedError(f'Number of scenes ({n_looks}) is not implemented.')
+    X_agg[nodata_mask] = nodata_value
     X_agg = X_agg.astype(np.uint8)
     return X_agg
 
@@ -145,15 +147,16 @@ def compute_burst_disturbance_for_lookback_group_and_serialize(
     logit_sigma_copol_path: Path,
     logit_sigma_crosspol_path: Path,
     out_dist_path: Path,
+    max_lookbacks: int,
     out_metric_path: Path | None = None,
     moderate_confidence_threshold: float = 2.5,
     high_confidence_threshold: float = 4.5,
 ) -> None:
     if len(copol_paths) != len(crosspol_paths):
         raise ValueError('Length of Copolar and crosspolar arrays do not match')
-    if len(copol_paths) > N_LOOKBACKS:
+    if len(copol_paths) > max_lookbacks:
         raise ValueError(
-            f'Number of looks ({len(copol_paths)}) exceeds maximum number of lookbacks ({N_LOOKBACKS}) for '
+            f'Number of looks ({len(copol_paths)}) exceeds maximum number of lookbacks ({max_lookbacks}) for '
             f'paths: {copol_paths} and {crosspol_paths}'
         )
     copol_data = [open_one_ds(path) for path in copol_paths]
@@ -188,7 +191,7 @@ def compute_burst_disturbance_for_lookback_group_and_serialize(
         label_one_disturbance(mdist, moderate_confidence_threshold, high_confidence_threshold) for mdist in mdist_l
     ]
 
-    disturbance_temporal_agg = aggregate_disturbance_over_time(disturbance_one_look_l)
+    disturbance_temporal_agg = aggregate_disturbance_over_time(disturbance_one_look_l, max_lookbacks=max_lookbacks)
 
     p_dist_ref = profs_copol[0].copy()
     p_dist_ref['nodata'] = 255
@@ -200,25 +203,27 @@ def compute_burst_disturbance_for_lookback_group_and_serialize(
 
 
 def aggregate_disturbance_over_lookbacks(X_delta_l: list[np.ndarray]) -> np.ndarray:
-    X_time_agg = np.zeros_like(X_delta_l[0])
-    # Only care about last acquisition for nodata
-    nodata_mask = X_delta_l[-1] == 255
+    X_agg = np.zeros_like(X_delta_l[0])
+    # nodata is where any lookback group had nodata
+    nodata_mask = np.any(np.stack(X_delta_l, axis=0) == 255, axis=0)
     # priority is to largest lookback where we can confirm disturbances
     for X_delta in X_delta_l:
         ind = ~np.isin(X_delta, [0, 255])
-        X_time_agg[ind] = X_delta[ind]
-    X_time_agg[nodata_mask] = 255
-    return X_time_agg
+        X_agg[ind] = X_delta[ind]
+    X_agg[nodata_mask] = 255
+    return X_agg
 
 
-def aggregate_burst_disturbance_over_lookbacks_and_serialize(disturbance_paths: list[Path], out_path: Path) -> None:
+def aggregate_burst_disturbance_over_lookbacks_and_serialize(
+    disturbance_paths: list[Path], out_path: Path, max_lookbacks: int
+) -> None:
     stems = [Path(p).stem for p in disturbance_paths]
     # Make sure the paths are in order of lookback, delta key is the last token
     assert 'delta' in stems[0].split('_')[-1]
     if sorted(stems, key=lambda x: x.split('_')[-1]) != stems:
         raise ValueError('Disturbance paths must be supplied in order of lookback.')
-    if len(disturbance_paths) != N_LOOKBACKS:
-        raise ValueError(f'Expected {N_LOOKBACKS} disturbance paths, got {len(disturbance_paths)}.')
+    if len(disturbance_paths) != max_lookbacks:
+        raise ValueError(f'Expected {max_lookbacks} disturbance paths, got {len(disturbance_paths)}.')
 
     data = [open_one_ds(path) for path in disturbance_paths]
     X_delta_l, profs = zip(*data)

@@ -233,6 +233,7 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
                 logit_sigma_crosspol_path=logit_sigma_crosspol_path,
                 out_dist_path=output_dist_path,
                 out_metric_path=output_metric_path,
+                max_lookbacks=run_config.n_lookbacks,
             )
         # Aggregate over lookbacks
         time_aggregated_disturbance_path = df_metric_burst['loc_path_disturb_time_aggregated'].iloc[0]
