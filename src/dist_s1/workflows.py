@@ -242,7 +242,9 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
         ]
         # Aggregate the disturbances maps for all the lookbacks computed above
         # This will have the labels of the final disturbance map (see constants.py and the function itself)
-        aggregate_burst_disturbance_over_lookbacks_and_serialize(disturbance_paths, time_aggregated_disturbance_path)
+        aggregate_burst_disturbance_over_lookbacks_and_serialize(
+            disturbance_paths, time_aggregated_disturbance_path, run_config.n_lookbacks
+        )
 
 
 def run_disturbance_merge_workflow(run_config: RunConfigData) -> None:
