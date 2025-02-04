@@ -105,7 +105,8 @@ def aggregate_disturbance_over_time(
     # Mask
     disturbance_stack = np.stack(disturbance_one_look_l, axis=0).astype(np.float32)
     disturbance_stack[disturbance_stack == DISTLABEL2VAL['nodata']] = np.nan
-    nodata_mask = np.all(np.isnan(disturbance_stack), axis=0)
+    # Right now, we require the n_looks to have disturbances for all Deltas - any nodata will be no disturbance
+    nodata_mask = np.any(np.isnan(disturbance_stack), axis=0)
 
     if (n_looks > N_LOOKBACKS) or (n_looks == 0):
         raise ValueError(f'Number of looks ({n_looks}) exceeds maximum number of lookbacks ({N_LOOKBACKS}) or is zero.')
@@ -114,12 +115,12 @@ def aggregate_disturbance_over_time(
         X_agg[X_agg == moderate_confidence_label] = DISTLABEL2VAL['first_moderate_conf_disturbance']
         X_agg[X_agg == high_confidence_label] = DISTLABEL2VAL['first_high_conf_disturbance']
     elif len(disturbance_one_look_l) > 1:
-        X_dist_max = np.nanmax(disturbance_stack, axis=0)
+        X_dist_min = np.nanmin(disturbance_stack, axis=0)
         X_dist_count = np.nansum((disturbance_stack != 0) & (~nodata_mask), axis=0).astype(np.uint8)
-        X_agg = np.zeros_like(X_dist_max)
+        X_agg = np.zeros_like(X_dist_min)
         # Requires all looks to have data to be labeled otherwise X_dist_count < n_looks
-        ind_moderate = (X_dist_count == n_looks) & (X_dist_max == moderate_confidence_label)
-        ind_high = (X_dist_count == n_looks) & (X_dist_max == high_confidence_label)
+        ind_moderate = (X_dist_count == n_looks) & (X_dist_min == moderate_confidence_label)
+        ind_high = (X_dist_count == n_looks) & (X_dist_min == high_confidence_label)
         if n_looks == 2:
             X_agg[ind_moderate] = DISTLABEL2VAL['provisional_moderate_conf_disturbance']
             X_agg[ind_high] = DISTLABEL2VAL['provisional_high_conf_disturbance']
@@ -148,8 +149,16 @@ def compute_burst_disturbance_for_lookback_group_and_serialize(
     moderate_confidence_threshold: float = 2.5,
     high_confidence_threshold: float = 4.5,
 ) -> None:
+    if len(copol_paths) != len(crosspol_paths):
+        raise ValueError('Length of Copolar and crosspolar arrays do not match')
+    if len(copol_paths) > N_LOOKBACKS:
+        raise ValueError(
+            f'Number of looks ({len(copol_paths)}) exceeds maximum number of lookbacks ({N_LOOKBACKS}) for '
+            f'paths: {copol_paths} and {crosspol_paths}'
+        )
     copol_data = [open_one_ds(path) for path in copol_paths]
     crosspol_data = [open_one_ds(path) for path in crosspol_paths]
+
     arrs_copol, profs_copol = zip(*copol_data)
     arrs_crosspol, profs_crosspol = zip(*crosspol_data)
 
@@ -184,9 +193,22 @@ def compute_burst_disturbance_for_lookback_group_and_serialize(
     p_dist_ref = profs_copol[0].copy()
     p_dist_ref['nodata'] = 255
     p_dist_ref['dtype'] = np.uint8
+
     serialize_one_2d_ds(disturbance_temporal_agg, p_dist_ref, out_dist_path)
     if out_metric_path is not None:
         serialize_one_2d_ds(mdist_l[-1], profs_copol[0], out_metric_path)
+
+
+def aggregate_disturbance_over_lookbacks(X_delta_l: list[np.ndarray]) -> np.ndarray:
+    X_time_agg = np.zeros_like(X_delta_l[0])
+    # Only care about last acquisition for nodata
+    nodata_mask = X_delta_l[-1] == 255
+    # priority is to largest lookback where we can confirm disturbances
+    for X_delta in X_delta_l:
+        ind = ~np.isin(X_delta, [0, 255])
+        X_time_agg[ind] = X_delta[ind]
+    X_time_agg[nodata_mask] = 255
+    return X_time_agg
 
 
 def aggregate_burst_disturbance_over_lookbacks_and_serialize(disturbance_paths: list[Path], out_path: Path) -> None:
@@ -202,13 +224,9 @@ def aggregate_burst_disturbance_over_lookbacks_and_serialize(disturbance_paths: 
     X_delta_l, profs = zip(*data)
     for p in profs[1:]:
         check_profiles_match(profs[0], p)
-    X_time_agg = np.zeros_like(X_delta_l[0])
-    nodata_mask = np.all(np.stack(X_delta_l, axis=0) == 255, axis=0)
-    # priority is to largest lookback where we can confirm disturbances
-    for X_delta in X_delta_l:
-        ind = ~np.isin(X_delta, [0, 255])
-        X_time_agg[ind] = X_delta[ind]
-    X_time_agg[nodata_mask] = 255
+
+    X_time_agg = aggregate_disturbance_over_lookbacks(X_delta_l)
+
     p_ref = profs[0]
     serialize_one_2d_ds(X_time_agg, p_ref, out_path)
 
@@ -218,7 +236,7 @@ def merge_burst_disturbances_and_serialize(
 ) -> None:
     data = [open_one_ds(path) for path in burst_disturbance_paths]
     X_dist_burst_l, profs = zip(*data)
-    X_merged, p_merged = merge_categorical_arrays(X_dist_burst_l, profs, exterior_mask_dilation=15, merge_method='max')
+    X_merged, p_merged = merge_categorical_arrays(X_dist_burst_l, profs, exterior_mask_dilation=15, merge_method='min')
     X_merged[0, ...] = X_merged
     serialize_one_2d_ds(X_merged[0, ...], p_merged, 'wtf.tif')
 

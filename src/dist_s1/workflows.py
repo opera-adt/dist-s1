@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 from tqdm.auto import tqdm
 
-from dist_s1.constants import MODEL_CONTEXT_LENGTH, N_LOOKBACKS
+from dist_s1.constants import MODEL_CONTEXT_LENGTH
 from dist_s1.data_models.runconfig_model import RunConfigData
 from dist_s1.localize_rtc_s1 import localize_rtc_s1
 from dist_s1.processing import (
@@ -132,7 +132,7 @@ def run_normal_param_estimation_workflow(run_config: RunConfigData) -> None:
         df_inputs.jpl_burst_id.unique(), disable=tqdm_disable, desc='Param Est. by Burst', dynamic_ncols=True
     ):
         for lookback in tqdm(
-            range(N_LOOKBACKS),
+            range(run_config.n_lookbacks),
             disable=tqdm_disable,
             desc=f'Lookbacks for burst {burst_id}',
             dynamic_ncols=True,
@@ -199,10 +199,10 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
 
         assert df_metric_burst.shape[0] == 1
 
-        copol_paths = df_burst_input_data.loc_path_copol_dspkl.tolist()
-        crosspol_paths = df_burst_input_data.loc_path_crosspol_dspkl.tolist()
+        copol_paths = sorted(df_burst_input_data.loc_path_copol_dspkl.tolist())
+        crosspol_paths = sorted(df_burst_input_data.loc_path_crosspol_dspkl.tolist())
 
-        for lookback in tqdm(range(N_LOOKBACKS), disable=tqdm_disable, desc='Lookbacks'):
+        for lookback in tqdm(range(run_config.n_lookbacks), disable=tqdm_disable, desc='Lookbacks'):
             logit_mean_copol_path = df_metric_burst[f'loc_path_normal_mean_delta{lookback}_copol'].iloc[0]
             logit_mean_crosspol_path = df_metric_burst[f'loc_path_normal_mean_delta{lookback}_crosspol'].iloc[0]
             logit_sigma_copol_path = df_metric_burst[f'loc_path_normal_std_delta{lookback}_copol'].iloc[0]
@@ -215,6 +215,7 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
             copol_paths_lookback_group, crosspol_paths_lookback_group = curate_input_burst_rtc_input_for_dist(
                 copol_paths, crosspol_paths, lookback
             )
+            # breakpoint()
             output_metric_path = None
             if lookback == 0:
                 output_metric_path = df_metric_burst[f'loc_path_metric_delta{lookback}'].iloc[0]
@@ -236,7 +237,7 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
         # Aggregate over lookbacks
         time_aggregated_disturbance_path = df_metric_burst['loc_path_disturb_time_aggregated'].iloc[0]
         disturbance_paths = [
-            df_metric_burst[f'loc_path_disturb_delta{lookback}'].iloc[0] for lookback in range(N_LOOKBACKS)
+            df_metric_burst[f'loc_path_disturb_delta{lookback}'].iloc[0] for lookback in range(run_config.n_lookbacks)
         ]
         # Aggregate the disturbances maps for all the lookbacks computed above
         # This will have the labels of the final disturbance map (see constants.py and the function itself)
@@ -254,8 +255,12 @@ def run_disturbance_merge_workflow(run_config: RunConfigData) -> None:
     # Disturbance
     dist_burst_paths = run_config.df_burst_distmetrics['loc_path_disturb_time_aggregated'].tolist()
     dst_dist_path = dst_tif_paths['alert_status_path']
-    breakpoint()
     merge_burst_disturbances_and_serialize(dist_burst_paths, dst_dist_path, run_config.mgrs_tile_id)
+
+    for lookback in range(run_config.n_lookbacks):
+        dist_burst_paths_delta0 = run_config.df_burst_distmetrics[f'loc_path_disturb_delta{lookback}'].tolist()
+        dst_last_pass_path = dst_tif_paths[f'alert_delta{lookback}_path']
+        merge_burst_disturbances_and_serialize(dist_burst_paths_delta0, dst_last_pass_path, run_config.mgrs_tile_id)
 
 
 def run_dist_s1_processing_workflow(run_config: RunConfigData) -> RunConfigData:

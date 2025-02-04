@@ -11,7 +11,6 @@ from pandera import check_input
 from pydantic import BaseModel, Field, ValidationError, ValidationInfo, field_validator
 from yaml import Dumper
 
-from dist_s1.constants import N_LOOKBACKS
 from dist_s1.data_models.output_models import ProductDirectoryData, ProductNameData
 
 
@@ -36,6 +35,7 @@ def generate_burst_dist_paths(
     path_token: str | None = None,
     polarization_token: str | None = None,
     date_lut: dict[str, list[pd.Timestamp]] | None = None,
+    n_lookbacks: int | None = None,
 ) -> Path:
     if path_token is None:
         path_token = dst_dir_name
@@ -46,8 +46,8 @@ def generate_burst_dist_paths(
         lookback_dir = data_dir
     lookback_dir.mkdir(parents=True, exist_ok=True)
     burst_id = row.jpl_burst_id
-    if lookback is not None:
-        acq_date = date_lut[burst_id][N_LOOKBACKS - lookback - 1]
+    if date_lut is not None and lookback is not None:
+        acq_date = date_lut[burst_id][n_lookbacks - lookback - 1]
     else:
         acq_date = row.acq_dt
     acq_date_str = acq_date.date().strftime('%Y-%m-%d')
@@ -122,6 +122,7 @@ class RunConfigData(BaseModel):
         pattern='^(high|low)$',
     )
     tqdm_enabled: bool = Field(default=True)
+    n_lookbacks: int = Field(default=3, ge=1, le=10)
 
     # Private attributes that are associated to properties
     _burst_ids: list[str] | None = None
@@ -285,6 +286,8 @@ class RunConfigData(BaseModel):
             'alert_status_path': pre_product_dir / 'alert_status.tif',
             'metric_status_path': pre_product_dir / 'metric_status.tif',
         }
+        for lookback in range(self.n_lookbacks):
+            final_unformatted_tif_paths[f'alert_delta{lookback}_path'] = pre_product_dir / f'alert_delta{lookback}.tif'
 
         return final_unformatted_tif_paths
 
@@ -306,16 +309,12 @@ class RunConfigData(BaseModel):
             df_pre = df_inputs[df_inputs.input_category == 'pre'].reset_index(drop=True)
             df_pre.sort_values(by=['jpl_burst_id', 'acq_dt'], inplace=True, ascending=True)
             df_date_pre = df_pre.groupby('jpl_burst_id')['acq_dt'].apply(
-                lambda x: sorted(x.nlargest(N_LOOKBACKS).tolist())
+                lambda x: sorted(x.nlargest(self.n_lookbacks).tolist())
             )
             burst2predates = df_date_pre.to_dict()
-            df_date = df_inputs.groupby('jpl_burst_id')['acq_dt'].apply(
-                lambda x: sorted(x.nlargest(N_LOOKBACKS).tolist())
-            )
-            burst2postdates = df_date.to_dict()
 
             # Distribution Paths
-            for lookback in range(N_LOOKBACKS):
+            for lookback in range(self.n_lookbacks):
                 for normal_param_token in ['mean', 'std']:
                     for polarization_token in ['copol', 'crosspol']:
                         df_dist_by_burst[
@@ -329,6 +328,7 @@ class RunConfigData(BaseModel):
                             lookback=lookback,
                             date_lut=burst2predates,
                             axis=1,
+                            n_lookbacks=self.n_lookbacks,
                         )
 
             # Metrics Paths
@@ -338,20 +338,22 @@ class RunConfigData(BaseModel):
                 dst_dir_name='metrics',
                 path_token='distmetric',
                 lookback=0,
-                date_lut=burst2postdates,
+                date_lut=None,
                 axis=1,
+                n_lookbacks=self.n_lookbacks,
             )
 
             # Disturbance Paths for Each Lookback
-            for lookback in range(N_LOOKBACKS):
+            for lookback in range(self.n_lookbacks):
                 df_dist_by_burst[f'loc_path_disturb_delta{lookback}'] = df_dist_by_burst.apply(
                     generate_burst_dist_paths,
                     top_level_data_dir=self.dst_dir,
                     dst_dir_name='disturbance',
                     path_token='disturb',
                     lookback=lookback,
-                    date_lut=burst2postdates,
+                    date_lut=None,
                     axis=1,
+                    n_lookbacks=self.n_lookbacks,
                 )
 
             # Disturbance Paths Time Aggregated
@@ -363,6 +365,7 @@ class RunConfigData(BaseModel):
                 lookback=None,
                 date_lut=None,
                 axis=1,
+                n_lookbacks=self.n_lookbacks,
             )
 
             self._df_burst_distmetric = df_dist_by_burst
