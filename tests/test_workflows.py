@@ -42,7 +42,7 @@ def test_despeckle_workflow(test_dir: Path, test_data_dir: Path, change_local_di
         profiles = [open_one_profile(path) for path in dst_path_by_burst_id]
         assert all(check_profiles_match(profiles[0], profile) for profile in profiles[1:])
 
-    shutil.rmtree(tmp_dir)
+    # shutil.rmtree(tmp_dir)
 
 
 def test_normal_params_workflow(test_dir: Path, test_data_dir: Path, change_local_dir: Callable) -> None:
@@ -64,7 +64,7 @@ def test_normal_params_workflow(test_dir: Path, test_data_dir: Path, change_loca
 
     run_normal_param_estimation_workflow(config)
 
-    shutil.rmtree(tmp_dir)
+    # shutil.rmtree(tmp_dir)
 
 
 def test_burst_disturbance_workflow(test_dir: Path, test_data_dir: Path, change_local_dir: Callable) -> None:
@@ -85,7 +85,7 @@ def test_burst_disturbance_workflow(test_dir: Path, test_data_dir: Path, change_
 
     run_burst_disturbance_workflow(config)
 
-    shutil.rmtree(tmp_dir)
+    # shutil.rmtree(tmp_dir)
 
 
 @pytest.mark.parametrize('lookback', [0, 1, 2, 3])
@@ -108,7 +108,7 @@ def test_curation_of_burst_rtc_s1_paths_for_normal_param_est(lookback: int) -> N
         copol_paths, cross_pol_paths, lookback=lookback
     )
     assert len(copol_paths_pre) == len(crosspol_paths_pre)
-    assert crosspol_paths_pre == cross_pol_paths[:]
+    assert crosspol_paths_pre == cross_pol_paths[: -lookback - 1]
 
 
 @pytest.mark.parametrize('lookback', [0, 1, 2, 3])
