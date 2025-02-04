@@ -24,8 +24,9 @@ The last command is optional, but will allow this project to be imported into a 
 
 We have tried to make the environment as open, flexible, and transparent as possible. 
 In particular, we are using the `conda-forge` distributions of the libraries without pinning specific versions, wherever possible.
-
-That said, there instances when a new library will introduce a CPU-only version and will break the ability to use GPU on Linux.
+We have provided an `environment_gpu.yml` which adds `cudatools` to the environment to ensure on our systems that GPU is accessible.
+`cudatoolkit` is the `conda-forge` distribution of Nvidia's tool kit (see [here](https://anaconda.org/conda-forge/cudatoolkit)).
+That said, there could be instances when a new library will introduce a CPU-only version and will break the ability to use GPU on Linux.
 To resolve such issues, we successfully used `conda-tree` to identify CPU bound dependencies.
 
 For example,
@@ -35,7 +36,7 @@ conda-tree -n dist-s1-env deptree
 ```
 We then identified packages with `mkl` and `cpu` in their distribution names.
 There may be other libraries or methods of using `conda-tree` that are more elegant and efficient.
-That said, this provides an avenue for identifying such issues with the environment.
+That said, the above provides an avenue for identifying such issues with the environment.
 
 
 ### Jupyter Kernel
