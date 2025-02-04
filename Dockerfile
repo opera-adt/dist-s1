@@ -26,14 +26,14 @@ WORKDIR /home/ops
 
 # Ensures we cached mamba install per
 # https://docs.docker.com/develop/develop-images/dockerfile_best-practices/#leverage-build-cache
-COPY --chown=dist_user:dist_user environment.yml /home/ops/dist-s1/environment.yml
+COPY --chown=dist_user:dist_user environment.yml /home/ops/dist-s1/environment_gpu.yml
 COPY --chown=dist_user:dist_user . /home/ops/dist-s1
 
 # Ensure all files are read/write by the user
 # RUN chmod -R 777 /home/ops
 
 # Create the environment with mamba
-RUN mamba env create -f /home/ops/dist-s1/environment.yml && \
+RUN mamba env create -f /home/ops/dist-s1/environment_gpu.yml && \
     conda clean -afy
 
 # Ensure that environment is activated on startup and interactive shell
