@@ -8,10 +8,11 @@ import pytest
 from dist_s1.data_models.runconfig_model import RunConfigData
 from dist_s1.rio_tools import check_profiles_match, open_one_profile
 from dist_s1.workflows import (
+    # run_dist_s1_workflow,
+    curate_input_burst_rtc_input_for_dist,
     curate_input_burst_rtc_s1_paths_for_normal_param_est,
     run_burst_disturbance_workflow,
     run_despeckle_workflow,
-    # run_dist_s1_workflow,
     run_normal_param_estimation_workflow,
 )
 
@@ -107,7 +108,31 @@ def test_curation_of_burst_rtc_s1_paths_for_normal_param_est(lookback: int) -> N
         copol_paths, cross_pol_paths, lookback=lookback
     )
     assert len(copol_paths_pre) == len(crosspol_paths_pre)
-    assert crosspol_paths_pre == cross_pol_paths[: -lookback - 1]
+    assert crosspol_paths_pre == cross_pol_paths[:]
+
+
+@pytest.mark.parametrize('lookback', [0, 1, 2, 3])
+def test_curate_input_burst_rtc_input_for_dist(lookback: int) -> None:
+    cross_pol_paths = [
+        './tv_despeckle/2024-01-08/OPERA_L2_RTC-S1_T137-292318-IW1_20240108T015902Z_20240109T091413Z_S1A_30_v1.0_VH_tv.tif',
+        './tv_despeckle/2024-01-20/OPERA_L2_RTC-S1_T137-292318-IW1_20240120T015902Z_20240120T143322Z_S1A_30_v1.0_VH_tv.tif',
+        './tv_despeckle/2024-02-01/OPERA_L2_RTC-S1_T137-292318-IW1_20240201T015901Z_20240201T114629Z_S1A_30_v1.0_VH_tv.tif',
+        './tv_despeckle/2024-02-13/OPERA_L2_RTC-S1_T137-292318-IW1_20240213T015901Z_20240213T091319Z_S1A_30_v1.0_VH_tv.tif',
+        './tv_despeckle/2024-02-25/OPERA_L2_RTC-S1_T137-292318-IW1_20240225T015901Z_20240225T100928Z_S1A_30_v1.0_VH_tv.tif',
+        './tv_despeckle/2024-03-08/OPERA_L2_RTC-S1_T137-292318-IW1_20240308T015901Z_20240409T075111Z_S1A_30_v1.0_VH_tv.tif',
+        './tv_despeckle/2024-03-20/OPERA_L2_RTC-S1_T137-292318-IW1_20240320T015901Z_20240321T155238Z_S1A_30_v1.0_VH_tv.tif',
+        './tv_despeckle/2024-04-01/OPERA_L2_RTC-S1_T137-292318-IW1_20240401T015902Z_20240418T135305Z_S1A_30_v1.0_VH_tv.tif',
+        './tv_despeckle/2024-04-13/OPERA_L2_RTC-S1_T137-292318-IW1_20240413T015901Z_20240419T082133Z_S1A_30_v1.0_VH_tv.tif',
+        './tv_despeckle/2024-04-25/OPERA_L2_RTC-S1_T137-292318-IW1_20240425T015902Z_20240427T061145Z_S1A_30_v1.0_VH_tv.tif',
+    ]
+    copol_paths = [path.replace('VH_tv.tif', 'VV_tv.tif') for path in cross_pol_paths]
+
+    copol_paths_post, crosspol_paths_post = curate_input_burst_rtc_input_for_dist(
+        copol_paths, cross_pol_paths, lookback=lookback
+    )
+    assert len(copol_paths_post) == len(crosspol_paths_post)
+    assert crosspol_paths_post == cross_pol_paths[-lookback - 1 :]
+    assert copol_paths_post == copol_paths[-lookback - 1 :]
 
 
 # def test_dist_s1_workflow(test_dir: Path, test_data_dir: Path, change_local_dir: Callable) -> None:
