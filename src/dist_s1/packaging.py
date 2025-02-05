@@ -42,7 +42,8 @@ def convert_geotiff_to_png(
         if colormap is None:
             colormap = ds.colormap(1) if ds.count == 1 else None
 
-        band = apply_water_mask(band, profile_src, water_mask_path)
+        if water_mask_path is not None:
+            band = apply_water_mask(band, profile_src, water_mask_path)
 
         output_height = output_height or band.shape[0]
         output_width = output_width or band.shape[1]
@@ -65,9 +66,10 @@ def package_disturbance_tifs(run_config: RunConfigData) -> None:
     X_dist_delta0, p_dist_delta0 = open_one_ds(run_config.final_unformatted_tif_paths['alert_delta0_path'])
     X_metric, p_metric = open_one_ds(run_config.final_unformatted_tif_paths['metric_status_path'])
 
-    X_dist = apply_water_mask(X_dist, p_dist, run_config.water_mask_path)
-    X_dist_delta0 = apply_water_mask(X_dist_delta0, p_dist_delta0, run_config.water_mask_path)
-    X_metric = apply_water_mask(X_metric, p_metric, run_config.water_mask_path)
+    if run_config.apply_water_mask:
+        X_dist = apply_water_mask(X_dist, p_dist, run_config.water_mask_path)
+        X_dist_delta0 = apply_water_mask(X_dist_delta0, p_dist_delta0, run_config.water_mask_path)
+        X_metric = apply_water_mask(X_metric, p_metric, run_config.water_mask_path)
 
     product_data = run_config.product_data_model
 

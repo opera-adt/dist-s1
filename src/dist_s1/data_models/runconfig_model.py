@@ -118,6 +118,7 @@ class RunConfigData(BaseModel):
     mgrs_tile_id: str
     dst_dir: Path | str | None = None
     water_mask_path: Path | str | None = None
+    apply_water_mask: bool = Field(default=False)
     check_input_paths: bool = True
     memory_strategy: str | None = Field(
         default='high',
@@ -421,10 +422,10 @@ class RunConfigData(BaseModel):
         return self._df_inputs.copy()
 
     def model_post_init(self, __context: ValidationInfo) -> None:
-        if self.water_mask_path is None:
+        if self.water_mask_path is None and self.apply_water_mask:
             water_mask_path = self.dst_dir / 'water_mask.tif'
             self.water_mask_path = get_water_mask(self.mgrs_tile_id, water_mask_path, overwrite=False)
-        elif isinstance(self.water_mask_path, str | Path):
+        elif isinstance(self.water_mask_path, str | Path) and self.apply_water_mask:
             raise NotImplementedError(
                 'A merged water mask path will likely need additional pre-processing '
                 '(windowed reading, resampling etc.)'
