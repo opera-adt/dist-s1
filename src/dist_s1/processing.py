@@ -242,7 +242,7 @@ def merge_burst_disturbances_and_serialize(
     data = [open_one_ds(path) for path in burst_disturbance_paths]
     X_dist_burst_l, profs = zip(*data)
 
-    X_merged, p_merged = merge_categorical_arrays(X_dist_burst_l, profs, exterior_mask_dilation=20, merge_method='min')
+    X_merged, p_merged = merge_categorical_arrays(X_dist_burst_l, profs, exterior_mask_dilation=20, merge_method='max')
     X_merged[0, ...] = X_merged
     serialize_one_2d_ds(X_merged[0, ...], p_merged, 'wtf.tif')
 
