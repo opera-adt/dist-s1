@@ -131,7 +131,7 @@ class RunConfigData(BaseModel):
     _df_burst_distmetric: pd.DataFrame | None = None
     _df_mgrs_burst_lut: gpd.GeoDataFrame | None = None
     _product_name: ProductNameData | None = None
-    _product_dir_data: ProductDirectoryData | None = None
+    _product_data_model: ProductDirectoryData | None = None
     _min_acq_date: datetime | None = None
     _processing_datetime: datetime | None = None
 
@@ -166,11 +166,12 @@ class RunConfigData(BaseModel):
         return paths
 
     @field_validator('product_dst_dir', mode='before')
-    def validate_product_dir(cls, product_dir: Path | str | None, info: ValidationInfo) -> Path:
-        if product_dir is None:
-            product_dir = info.data.get('dst_dir')
-        product_dir = Path(product_dir) if isinstance(product_dir, str) else product_dir
-        return product_dir
+    def validate_product_dst_dir(cls, product_dst_dir: Path | str | None, info: ValidationInfo) -> Path | None:
+        if product_dst_dir is None:
+            product_dst_dir = info.data.get('dst_dir', Path.cwd())
+        if isinstance(product_dst_dir, str):
+            product_dst_dir = Path(product_dst_dir)
+        return product_dst_dir
 
     @field_validator('pre_rtc_crosspol', 'post_rtc_crosspol')
     def check_matching_lengths_copol_and_crosspol(
@@ -233,14 +234,14 @@ class RunConfigData(BaseModel):
         return self._product_name.name()
 
     @property
-    def product_dir_data(self) -> ProductDirectoryData:
-        if self._product_dir_data is None:
+    def product_data_model(self) -> ProductDirectoryData:
+        if self._product_data_model is None:
             product_name = self.product_name
-            self._product_dir_data = ProductDirectoryData(
-                dst_dir=self.dst_dir,
+            self._product_data_model = ProductDirectoryData(
+                dst_dir=self.product_dst_dir,
                 product_name=product_name,
             )
-        return self._product_dir_data
+        return self._product_data_model
 
     def to_yaml(self, yaml_file: str | Path) -> None:
         """Save configuration to a YAML file."""
@@ -416,3 +417,7 @@ class RunConfigData(BaseModel):
             df = df.sort_values(by=['jpl_burst_id', 'acq_dt']).reset_index(drop=True)
             self._df_inputs = df
         return self._df_inputs.copy()
+
+    def model_post_init(self, __context: ValidationInfo) -> None:
+        if self.product_dst_dir is None:
+            self.product_dst_dir = self.dst_dir

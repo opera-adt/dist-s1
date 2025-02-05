@@ -7,6 +7,7 @@ from tqdm.auto import tqdm
 from dist_s1.constants import MODEL_CONTEXT_LENGTH
 from dist_s1.data_models.runconfig_model import RunConfigData
 from dist_s1.localize_rtc_s1 import localize_rtc_s1
+from dist_s1.packaging import generate_browse_image, package_disturbance_tifs
 from dist_s1.processing import (
     aggregate_burst_disturbance_over_lookbacks_and_serialize,
     compute_burst_disturbance_for_lookback_group_and_serialize,
@@ -283,7 +284,8 @@ def run_dist_s1_processing_workflow(run_config: RunConfigData) -> RunConfigData:
 
 
 def run_dist_s1_packaging_workflow(run_config: RunConfigData) -> Path:
-    return Path('OPERA_L3_DIST_DIRECTORY')
+    package_disturbance_tifs(run_config)
+    generate_browse_image(run_config)
 
 
 def run_dist_s1_sas_workflow(run_config: RunConfigData) -> Path:

@@ -1,30 +1,59 @@
-# import numpy as np
-# from pathlib import Path
+from pathlib import Path
 
-# from dist_s1.constants import DIST_CMAP
-# from dist_s1.rio_tools import convert_geotiff_to_png, serialize_one_2d_ds
+import numpy as np
+import rasterio
+from rasterio.enums import Resampling
+
+from dist_s1.constants import DIST_CMAP
+from dist_s1.data_models.runconfig_model import RunConfigData
+from dist_s1.rio_tools import open_one_ds, serialize_one_2d_ds
 
 
-# def generate_disturbance_map(metric: np.ndarray, metric_p: dict, dist_out_path: str, metric_name: str) -> None:
-#     dist_arr = np.zeros(metric.shape[-2:], dtype=np.uint8)
-#     nan_mask = np.isnan(metric[0, :, :])
-#     dist_arr[nan_mask] = 255  # Set NaN values to 255 (nodata)
+def convert_geotiff_to_png(
+    geotiff_path: Path,
+    out_png_path: Path,
+    output_height: int = None,
+    output_width: int = None,
+    colormap: dict | None = None,
+) -> None:
+    with rasterio.open(geotiff_path) as ds:
+        band = ds.read(1)
+        if colormap is None:
+            colormap = ds.colormap(1) if ds.count == 1 else None
 
-#     if metric_name == 'transformer':
-#         dist_arr[metric[0, :, :] >= 2.5] = 1
-#         dist_arr[metric[0, :, :] >= 4.5] = 4
-#     elif metric_name == 'cusum_prob_max':
-#         dist_arr[metric[0, :, :] >= 0.9] = 1
-#         dist_arr[metric[0, :, :] >= 0.95] = 4
+        output_height = output_height or band.shape[0]
+        output_width = output_width or band.shape[1]
 
-#     p_dist = metric_p.copy()
-#     p_dist['dtype'] = 'uint8'
-#     p_dist['nodata'] = 255
+        if (output_height, output_width) != band.shape:
+            band = ds.read(1, out_shape=(output_height, output_width), resampling=Resampling.nearest)
 
-#     serialize_one_2d_ds(dist_arr, p_dist, dist_out_path, colormap=DIST_CMAP)
-#     dest_png_file = Path(dist_out_path).with_name(f"browse_{Path(dist_out_path).stem}.png")
+        band = band.astype(np.float32)
+        band = (255 * (band - band.min()) / (band.max() - band.min())).astype(np.uint8)
 
-#     convert_geotiff_to_png(
-#         src_geotiff_filename=dist_out_path,
-#         dest_png_filename=dest_png_file
-#     )
+        profile = {'driver': 'PNG', 'height': output_height, 'width': output_width, 'count': 1, 'dtype': band.dtype}
+
+        serialize_one_2d_ds(band, profile, out_png_path, colormap)
+
+
+def package_disturbance_tifs(run_config: RunConfigData) -> None:
+    X_dist, p_dist = open_one_ds(run_config.final_unformatted_tif_paths['alert_status_path'])
+    X_dist_delta0, p_dist_delta0 = open_one_ds(run_config.final_unformatted_tif_paths['alert_delta0_path'])
+    X_metric, p_metric = open_one_ds(run_config.final_unformatted_tif_paths['metric_status_path'])
+
+    product_data = run_config.product_data_model
+
+    serialize_one_2d_ds(X_dist, p_dist, product_data.layer_path_dict['DIST-GEN-STATUS'])
+    serialize_one_2d_ds(X_dist_delta0, p_dist_delta0, product_data.layer_path_dict['DIST-GEN-STATUS-ACQ'])
+    serialize_one_2d_ds(X_metric, p_metric, product_data.layer_path_dict['GEN-METRIC'])
+
+    product_data.validate_tif_layer_dtypes()
+    product_data.validate_layer_paths()
+
+
+def generate_browse_image(run_config: RunConfigData) -> None:
+    product_data = run_config.product_data_model
+    convert_geotiff_to_png(
+        run_config.final_unformatted_tif_paths['alert_status_path'],
+        product_data.layer_path_dict['browse'],
+        colormap=DIST_CMAP,
+    )
