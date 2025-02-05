@@ -312,7 +312,7 @@ class RunConfigData(BaseModel):
             burst_ids = df_post.jpl_burst_id.unique()
             df_dist_by_burst = pd.DataFrame({'jpl_burst_id': burst_ids})
 
-            df_date = df_inputs.groupby('jpl_burst_id')['acq_dt'].apply(max).reset_index(drop=False)
+            df_date = df_inputs.groupby('jpl_burst_id')['acq_dt'].apply('np.maximum.reduce').reset_index(drop=False)
             df_dist_by_burst = pd.merge(df_dist_by_burst, df_date, on='jpl_burst_id', how='left')
 
             # Get the N_LOOKBACKS most recent dates before the current acquisition
