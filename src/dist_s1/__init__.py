@@ -2,6 +2,15 @@ import warnings
 from importlib.metadata import PackageNotFoundError, version
 
 from .data_models.runconfig_model import RunConfigData
+from .workflows import (
+    run_burst_disturbance_workflow,
+    run_despeckle_workflow,
+    run_dist_s1_localization_workflow,
+    run_dist_s1_sas_workflow,
+    run_dist_s1_workflow,
+    run_disturbance_merge_workflow,
+    run_normal_param_estimation_workflow,
+)
 
 
 try:
@@ -16,4 +25,13 @@ except PackageNotFoundError:
     )
 
 
-__all__ = ['RunConfigData']
+__all__ = [
+    'RunConfigData',
+    'run_dist_s1_workflow',
+    'run_dist_s1_sas_workflow',
+    'run_dist_s1_localization_workflow',
+    'run_normal_param_estimation_workflow',
+    'run_burst_disturbance_workflow',
+    'run_despeckle_workflow',
+    'run_disturbance_merge_workflow',
+]

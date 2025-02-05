@@ -8,23 +8,48 @@
 
 This is the workflow that generates OPERA's DIST-S1 product. This workflow is designed to delineate *generic* disturbance from a time-series of OPERA Radiometric and Terrain Corrected Sentinel-1 (OPERA RTC-S1) products. The output DIST-S1 product is resampled to a 30 meter Military Grid Reference System (MGRS) tile.
 
-Currently, this workflow is just *scaffolding*. It is not ready for use!
-
 ## Installation
 
-### Using `pip`
-
-We recommend using the mamba/conda package manager to install the DIST-S1 workflow, manage the environment, and install the dependencies.
+We recommend using the mamba/conda package manager and `conda-forge` distributions to install the DIST-S1 workflow, manage the environment, and install the dependencies.
 
 ```
 mamba update -f environment.yml
 pip install dist-s1  # update to conda when it is ready on conda-forge
 conda activate dist-s1-env
-python -m ipykernel install --user --name dist-s1-env
 ```
 
 The last command is optional, but will allow this project to be imported into a Jupyter notebook.
 
+### GPU Installation
+
+We have tried to make the environment as open, flexible, and transparent as possible. 
+In particular, we are using the `conda-forge` distribution of the libraries, including relevant GPU-drivers.
+We have provided an `environment_gpu.yml` which simply adds a minimum version of conda-forge's `cudatoolkit` to the environment to ensure on our systems that GPU is accessible.
+This will *not* be installable on non-Linux systems (and maybe even non-Linux systems without GPUs).
+The library `cudatoolkit` is the `conda-forge` distribution of NVIDIA's cuda tool kit (see [here](https://anaconda.org/conda-forge/cudatoolkit)).
+That said, there could be instances when a new library will introduce a CPU-only version and will break the ability to use GPU on Linux.
+
+To resolve environment issues related to having access to the GPU, we successfully used `conda-tree` to identify CPU bound dependencies.
+For example,
+```
+mamba install -c conda-forge conda-tree
+conda-tree -n dist-s1-env deptree
+```
+We then identified packages with `mkl` and `cpu` in their distribution names.
+There may be other libraries or methods of using `conda-tree` that are more elegant and efficient.
+That said, the above provides an avenue for identifying such issues with the environment.
+
+
+### Jupyter Kernel
+
+For the Jupyter notebooks, install the jupyter dependencies:
+```
+mamba install jupyterlab ipywidgets black isort jupyterlab_code_formatter 
+```
+We also install the kernel `dist-s1-env` using the environment above via:
+```
+python -m ipykernel install --user --name dist-s1-env
+```
 
 ### Development Installation
 

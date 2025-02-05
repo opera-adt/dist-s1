@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.4]
+
+### Added 
+- Minimum working example of generation fo the product via `dist-s1 run`
+- Integration of `dist-s1-enumerator` to identify/localize the inputs from MGRS tile ID, post-date, and track number
+- Notebook to run e2e workflow
+
+## Changed
+- Pyproject.toml file to handle ruff
+
 ## [0.0.3]
 
 ### Added

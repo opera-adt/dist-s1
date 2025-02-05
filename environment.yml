@@ -3,28 +3,34 @@ channels:
  - conda-forge
 dependencies:
  - python>=3.12
+ - pip
  - asf_search
  - backoff
  - click
+ - dem_stitcher
+ - dist_s1_enumerator
+ - distmetrics
  - flake8
  - flake8-blind-except
  - flake8-builtins
  - flake8-import-order
+ - git # older versions of git on servers
  - geopandas
  - jupyterlab
  - matplotlib
+ - multiprocess # TODO: Remove once distmetrics on conda - need to add this to conda recipe
  - numpy
  - pandas
- - pyarrow
  - pydantic
  - pytest
  - pytest-cov
  - pytorch
  - rasterio
- - setuptools
- - setuptools_scm
  - ruff
  - scipy
+ - setuptools
+ - setuptools_scm
  - shapely
- - pip:
-    - git+https://github.com/opera-adt/dist-s1-enumerator.git
+ - tile_mate
+ - tqdm
+

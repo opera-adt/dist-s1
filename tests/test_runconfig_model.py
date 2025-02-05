@@ -2,33 +2,22 @@ from collections.abc import Callable
 from pathlib import Path
 
 import geopandas as gpd
+import numpy as np
 
 from dist_s1.data_models.runconfig_model import RunConfigData
 
 
-def test_input_data_model_from_cropped_dataset(test_dir: Path, test_data_dir: Path, change_local_dir: Callable):
+def test_input_data_model_from_cropped_dataset(test_dir: Path, test_data_dir: Path, change_local_dir: Callable) -> None:
     change_local_dir(test_dir)
 
-    df_pre = gpd.read_parquet(test_data_dir / '10SGD_cropped' / 'pre_10SGD.parquet')
-    df_post = gpd.read_parquet(test_data_dir / '10SGD_cropped' / 'post_10SGD.parquet')
+    df_product = gpd.read_parquet(test_data_dir / '10SGD_cropped' / '10SGD__137__2024-01-08_dist_s1_inputs.parquet')
 
-    pre_rtc_copol_paths = df_pre.loc_path_vv.tolist()
-    pre_rtc_crosspol_paths = df_pre.loc_path_vh.tolist()
-    post_rtc_copol_paths = df_post.loc_path_vv.tolist()
-    post_rtc_crosspol_paths = df_post.loc_path_vh.tolist()
+    config = RunConfigData.from_product_df(df_product)
 
-    mgrs_tile_id = '10SGD'
-
-    config = RunConfigData(
-        pre_rtc_copol=pre_rtc_copol_paths,
-        pre_rtc_crosspol=pre_rtc_crosspol_paths,
-        post_rtc_copol=post_rtc_copol_paths,
-        post_rtc_crosspol=post_rtc_crosspol_paths,
-        mgrs_tile_id=mgrs_tile_id,
-    )
+    df = config.df_inputs
 
     # Check burst ids
-    burst_ids_actual = sorted(list(config.time_series_by_burst.keys()))
+    burst_ids_actual = df.jpl_burst_id.unique().tolist()
     burst_ids_expected = [
         'T137-292318-IW1',
         'T137-292318-IW2',
@@ -48,76 +37,82 @@ def test_input_data_model_from_cropped_dataset(test_dir: Path, test_data_dir: Pa
     ]
     assert burst_ids_actual == burst_ids_expected
 
-    # Check Copol/crosspol ids for 1 burst - we expect each list to be sorted by date of acq
-    pre_rtc_crosspol_paths = config.time_series_by_burst['T137-292319-IW2']['pre_rtc_crosspol']
-    pre_rtc_crosspol_ids_actual = [p.stem for p in pre_rtc_crosspol_paths]
+    ind_burst = df.jpl_burst_id == 'T137-292319-IW2'
+    ind_pre = df.input_category == 'pre'
+    ind_post = df.input_category == 'post'
 
-    pre_rtc_copol_paths = config.time_series_by_burst['T137-292319-IW2']['pre_rtc_copol']
-    pre_rtc_copol_ids_actual = [p.stem for p in pre_rtc_copol_paths]
+    pre_rtc_crosspol_paths = df[ind_pre & ind_burst].loc_path_crosspol.tolist()
+    pre_rtc_copol_paths = df[ind_pre & ind_burst].loc_path_copol.tolist()
 
-    post_rtc_crosspol_paths = config.time_series_by_burst['T137-292319-IW2']['post_rtc_crosspol']
-    post_rtc_crosspol_ids_actual = [p.stem for p in post_rtc_crosspol_paths]
+    pre_rtc_crosspol_tif_filenames_actual = [Path(p).name for p in pre_rtc_crosspol_paths]
+    pre_rtc_copol_tif_filenames_actual = [Path(p).name for p in pre_rtc_copol_paths]
 
-    post_rtc_copol_paths = config.time_series_by_burst['T137-292319-IW2']['post_rtc_copol']
-    post_rtc_copol_ids_actual = [p.stem for p in post_rtc_copol_paths]
+    post_rtc_crosspol_paths = df[ind_post & ind_burst].loc_path_crosspol.tolist()
+    post_rtc_copol_paths = df[ind_post & ind_burst].loc_path_copol.tolist()
 
-    pre_rtc_copol_ids_expected = [
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240706T015904Z_20240708T000435Z_S1A_30_v1.0_VV',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240718T015904Z_20240718T072557Z_S1A_30_v1.0_VV',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240730T015904Z_20240730T064555Z_S1A_30_v1.0_VV',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240811T015904Z_20240811T064742Z_S1A_30_v1.0_VV',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240823T015904Z_20240823T084936Z_S1A_30_v1.0_VV',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240904T015904Z_20240904T150822Z_S1A_30_v1.0_VV',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240916T015905Z_20240916T114330Z_S1A_30_v1.0_VV',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240928T015905Z_20240929T005548Z_S1A_30_v1.0_VV',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20241010T015906Z_20241010T101259Z_S1A_30_v1.0_VV',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20241022T015905Z_20241022T180854Z_S1A_30_v1.0_VV',
+    post_rtc_crosspol_tif_filenames_actual = [Path(p).name for p in post_rtc_crosspol_paths]
+    post_rtc_copol_tif_filenames_actual = [Path(p).name for p in post_rtc_copol_paths]
+
+    pre_rtc_copol_tif_filenames_expected = [
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20240108T015906Z_20240109T091413Z_S1A_30_v1.0_VV.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20240120T015905Z_20240120T143322Z_S1A_30_v1.0_VV.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20240201T015905Z_20240201T114629Z_S1A_30_v1.0_VV.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20240213T015905Z_20240213T091319Z_S1A_30_v1.0_VV.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20240225T015905Z_20240225T100928Z_S1A_30_v1.0_VV.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20240308T015905Z_20240409T075111Z_S1A_30_v1.0_VV.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20240320T015905Z_20240321T155238Z_S1A_30_v1.0_VV.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20240401T015906Z_20240418T135305Z_S1A_30_v1.0_VV.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20240413T015904Z_20240419T082133Z_S1A_30_v1.0_VV.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20240425T015906Z_20240427T061145Z_S1A_30_v1.0_VV.tif',
     ]
 
-    pre_rtc_crosspol_ids_expected = [
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240706T015904Z_20240708T000435Z_S1A_30_v1.0_VH',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240718T015904Z_20240718T072557Z_S1A_30_v1.0_VH',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240730T015904Z_20240730T064555Z_S1A_30_v1.0_VH',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240811T015904Z_20240811T064742Z_S1A_30_v1.0_VH',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240823T015904Z_20240823T084936Z_S1A_30_v1.0_VH',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240904T015904Z_20240904T150822Z_S1A_30_v1.0_VH',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240916T015905Z_20240916T114330Z_S1A_30_v1.0_VH',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240928T015905Z_20240929T005548Z_S1A_30_v1.0_VH',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20241010T015906Z_20241010T101259Z_S1A_30_v1.0_VH',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20241022T015905Z_20241022T180854Z_S1A_30_v1.0_VH',
+    pre_rtc_crosspol_tif_filenames_expected = [
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20240108T015906Z_20240109T091413Z_S1A_30_v1.0_VH.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20240120T015905Z_20240120T143322Z_S1A_30_v1.0_VH.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20240201T015905Z_20240201T114629Z_S1A_30_v1.0_VH.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20240213T015905Z_20240213T091319Z_S1A_30_v1.0_VH.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20240225T015905Z_20240225T100928Z_S1A_30_v1.0_VH.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20240308T015905Z_20240409T075111Z_S1A_30_v1.0_VH.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20240320T015905Z_20240321T155238Z_S1A_30_v1.0_VH.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20240401T015906Z_20240418T135305Z_S1A_30_v1.0_VH.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20240413T015904Z_20240419T082133Z_S1A_30_v1.0_VH.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20240425T015906Z_20240427T061145Z_S1A_30_v1.0_VH.tif',
     ]
 
-    post_rtc_copol_ids_expected = ['OPERA_L2_RTC-S1_T137-292319-IW2_20241103T015905Z_20241103T071409Z_S1A_30_v1.0_VV']
-    post_rtc_crosspol_ids_expected = [
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20241103T015905Z_20241103T071409Z_S1A_30_v1.0_VH'
+    post_rtc_copol_tif_filenames_expected = [
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20250102T015901Z_20250102T190143Z_S1A_30_v1.0_VV.tif'
     ]
 
-    assert pre_rtc_crosspol_ids_actual == pre_rtc_crosspol_ids_expected
-    assert pre_rtc_copol_ids_actual == pre_rtc_copol_ids_expected
-    assert post_rtc_copol_ids_actual == post_rtc_copol_ids_expected
-    assert post_rtc_crosspol_ids_actual == post_rtc_crosspol_ids_expected
+    post_rtc_crosspol_tif_filenames_expected = [
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20250102T015901Z_20250102T190143Z_S1A_30_v1.0_VH.tif'
+    ]
+
+    assert pre_rtc_crosspol_tif_filenames_actual == pre_rtc_crosspol_tif_filenames_expected
+    assert pre_rtc_copol_tif_filenames_actual == pre_rtc_copol_tif_filenames_expected
+    assert post_rtc_copol_tif_filenames_actual == post_rtc_copol_tif_filenames_expected
+    assert post_rtc_crosspol_tif_filenames_actual == post_rtc_crosspol_tif_filenames_expected
 
     # Check acquisition dates for 1 burst
-    pre_acq_dts = config.time_series_by_burst['T137-292319-IW2']['pre_acq_dts']
-    post_acq_dts = config.time_series_by_burst['T137-292319-IW2']['post_acq_dts']
+    pre_acq_dts = np.array(df[ind_pre & ind_burst].acq_dt.dt.to_pydatetime())
+    post_acq_dts = np.array(df[ind_post & ind_burst].acq_dt.dt.to_pydatetime())
 
     pre_acq_dts_str_actual = [dt.strftime('%Y%m%dT%H%M%S') for dt in pre_acq_dts]
     post_acq_dts_str_actual = [dt.strftime('%Y%m%dT%H%M%S') for dt in post_acq_dts]
 
     pre_acq_dts_str_expected = [
-        '20240706T015904',
-        '20240718T015904',
-        '20240730T015904',
-        '20240811T015904',
-        '20240823T015904',
-        '20240904T015904',
-        '20240916T015905',
-        '20240928T015905',
-        '20241010T015906',
-        '20241022T015905',
+        '20240108T015906',
+        '20240120T015905',
+        '20240201T015905',
+        '20240213T015905',
+        '20240225T015905',
+        '20240308T015905',
+        '20240320T015905',
+        '20240401T015906',
+        '20240413T015904',
+        '20240425T015906',
     ]
 
-    post_acq_dts_str_expected = ['20241103T015905']
+    post_acq_dts_str_expected = ['20250102T015901']
 
     assert pre_acq_dts_str_actual == pre_acq_dts_str_expected
     assert post_acq_dts_str_actual == post_acq_dts_str_expected

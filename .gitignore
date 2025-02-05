@@ -83,3 +83,14 @@ __pycache__/
 
 # pre-commit
 .pre-commit-config.yaml
+
+# Test Output
+tests/tmp/
+
+# Ignore Out of notebooks
+notebooks/out/
+notebooks/los-angeles/
+
+
+# Notebooks in tests
+tests/*.ipynb
