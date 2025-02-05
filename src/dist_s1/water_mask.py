@@ -19,9 +19,10 @@ def get_water_mask(mgrs_tile_id: str, out_path: Path, overwrite: bool = False) -
     width = profile_mgrs['width']
     transform = profile_mgrs['transform']
     mgrs_bounds_utm = get_array_bounds(height, width, transform)
-    mgrs_bounds_4326 = transform_bounds_into_crs(mgrs_bounds_utm, CRS.from_epsg(4326))
+    mgrs_bounds_4326 = transform_bounds_into_crs(profile_mgrs['crs'], CRS.from_epsg(4326), *mgrs_bounds_utm)
 
     X_glad_lc, p_glad_lc = get_raster_from_tiles(mgrs_bounds_4326, tile_shortname='glad_landcover', year=2020)
+
     # open water classes
     water_labels = [k for k in range(203, 208)]  # These are pixels that have surface water at least 50% of the time.
     water_labels.extend(
