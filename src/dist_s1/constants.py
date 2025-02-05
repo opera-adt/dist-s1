@@ -40,5 +40,5 @@ DIST_CMAP = {
     6: (224, 27, 7, 255),  # Confirmed high
     7: (119, 119, 119, 255),  # Confirmed low finished
     8: (221, 221, 221, 255),  # Confirmed high finished
-    9: (0, 0, 0, 255),  # No data
+    255: (0, 0, 0, 255),  # No data
 }

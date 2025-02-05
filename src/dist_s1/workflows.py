@@ -287,6 +287,10 @@ def run_dist_s1_packaging_workflow(run_config: RunConfigData) -> Path:
     package_disturbance_tifs(run_config)
     generate_browse_image(run_config)
 
+    product_data = run_config.product_data_model
+    product_data.validate_tif_layer_dtypes()
+    product_data.validate_layer_paths()
+
 
 def run_dist_s1_sas_workflow(run_config: RunConfigData) -> Path:
     _ = run_dist_s1_processing_workflow(run_config)

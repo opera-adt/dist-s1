@@ -130,3 +130,97 @@ class ProductDirectoryData(BaseModel):
                         )
                         failed_layers.append(layer)
         return len(failed_layers) == 0
+
+    def __eq__(
+        self, other: 'ProductDirectoryData', *, rtol: float = 1e-05, atol: float = 1e-06, equal_nan: bool = True
+    ) -> bool:
+        """Compare two ProductDirectoryData instances for equality.
+
+        Checks that:
+        1. The MGRS tile IDs match
+        2. The acquisition datetimes match
+        3. All TIF layers have numerically close data using numpy.allclose
+
+        Parameters
+        ----------
+        other : ProductDirectoryData
+            The other instance to compare against
+        rtol : float, optional
+            Relative tolerance for numpy.allclose, by default 1e-05
+        atol : float, optional
+            Absolute tolerance for numpy.allclose, by default 1e-08
+        equal_nan : bool, optional
+            Whether to compare NaN's as equal, by default True
+
+        Returns
+        -------
+        bool
+            True if the instances are considered equal, False otherwise
+        """
+        import numpy as np
+
+        # Parse product names to get MGRS tile ID and acquisition datetime
+        tokens_self = self.product_name.split('_')
+        tokens_other = other.product_name.split('_')
+
+        # Compare MGRS tile IDs
+        mgrs_self = tokens_self[3][1:]  # Remove 'T' prefix
+        mgrs_other = tokens_other[3][1:]
+        if mgrs_self != mgrs_other:
+            return False
+
+        # Compare acquisition datetimes
+        acq_dt_self = datetime.strptime(tokens_self[4], '%Y%m%dT%H%M%SZ')
+        acq_dt_other = datetime.strptime(tokens_other[4], '%Y%m%dT%H%M%SZ')
+        if acq_dt_self != acq_dt_other:
+            return False
+
+        # Compare TIF layer data
+        for layer in self.layers:
+            path_self = self.layer_path_dict[layer]
+            path_other = other.layer_path_dict[layer]
+
+            with rasterio.open(path_self) as src_self, rasterio.open(path_other) as src_other:
+                data_self = src_self.read()
+                data_other = src_other.read()
+                if not np.allclose(data_self, data_other, rtol=rtol, atol=atol, equal_nan=equal_nan):
+                    return False
+
+        return True
+
+    @classmethod
+    def from_product_path(cls, product_dir_path: Path | str) -> 'ProductDirectoryData':
+        """Create a ProductDirectoryData instance from an existing product directory path.
+
+        Parameters
+        ----------
+        product_dir_path : Path or str
+            Path to an existing DIST-ALERT-S1 product directory
+
+        Returns
+        -------
+        ProductDirectoryData
+            Instance of ProductDirectoryData initialized from the directory
+
+        Raises
+        ------
+        ValueError
+            If product directory is invalid or missing required files/layers
+        """
+        product_dir_path = Path(product_dir_path)
+        if not product_dir_path.exists() or not product_dir_path.is_dir():
+            raise ValueError(f'Product directory does not exist or is not a directory: {product_dir_path}')
+
+        product_name = product_dir_path.name
+        if not ProductNameData.validate_product_name(product_name):
+            raise ValueError(f'Invalid product name: {product_name}')
+
+        obj = cls(product_name=product_name, dst_dir=product_dir_path.parent)
+
+        # Validate all layers exist and have correct dtypes
+        if not obj.validate_layer_paths():
+            raise ValueError(f'Product directory missing required layers: {product_dir_path}')
+        if not obj.validate_tif_layer_dtypes():
+            raise ValueError(f'Product directory contains layers with incorrect dtypes: {product_dir_path}')
+
+        return obj

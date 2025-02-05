@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field, ValidationError, ValidationInfo, field_va
 from yaml import Dumper
 
 from dist_s1.data_models.output_models import ProductDirectoryData, ProductNameData
+from dist_s1.water_mask import get_water_mask
 
 
 def posix_path_encoder(dumper: Dumper, data: PosixPath) -> yaml.Node:
@@ -115,7 +116,7 @@ class RunConfigData(BaseModel):
     post_rtc_crosspol: list[Path | str]
     mgrs_tile_id: str
     dst_dir: Path | str | None = None
-    water_mask: Path | str | None = None
+    water_mask_path: Path | str | None = None
     check_input_paths: bool = True
     memory_strategy: str | None = Field(
         default='high',
@@ -272,7 +273,7 @@ class RunConfigData(BaseModel):
             post_rtc_crosspol=df_post.loc_path_crosspol.tolist(),
             mgrs_tile_id=df_pre.mgrs_tile_id.iloc[0],
             dst_dir=dst_dir,
-            water_mask=water_mask,
+            water_mask_path=water_mask,
         )
         return runconfig_data
 
@@ -419,5 +420,14 @@ class RunConfigData(BaseModel):
         return self._df_inputs.copy()
 
     def model_post_init(self, __context: ValidationInfo) -> None:
+        if self.water_mask_path is None:
+            water_mask_path = self.dst_dir / 'water_mask.tif'
+            self.water_mask_path = get_water_mask(self.mgrs_tile_id, water_mask_path, overwrite=False)
+        elif isinstance(self.water_mask_path, str | Path):
+            raise NotImplementedError(
+                'A merged water mask path will likely need additional pre-processing '
+                '(windowed reading, resampling etc.)'
+            )
+
         if self.product_dst_dir is None:
             self.product_dst_dir = self.dst_dir

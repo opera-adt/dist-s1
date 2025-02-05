@@ -95,6 +95,18 @@ def label_one_disturbance(
     return arr
 
 
+def check_water_mask(water_mask_profile: dict, disturbance_profile: dict) -> None:
+    if water_mask_profile['crs'] != disturbance_profile['crs']:
+        raise ValueError('Water mask and disturbance array CRS do not match')
+    if water_mask_profile['transform'] != disturbance_profile['transform']:
+        raise ValueError('Water mask and disturbance array transform do not match')
+    if water_mask_profile['height'] != disturbance_profile['height']:
+        raise ValueError('Water mask and disturbance array height do not match')
+    if water_mask_profile['width'] != disturbance_profile['width']:
+        raise ValueError('Water mask and disturbance array width do not match')
+    return True
+
+
 def aggregate_disturbance_over_time(
     disturbance_one_look_l: list[np.ndarray],
     moderate_confidence_label: float = 1,
@@ -237,28 +249,43 @@ def aggregate_burst_disturbance_over_lookbacks_and_serialize(
 
 
 def merge_burst_disturbances_and_serialize(
-    burst_disturbance_paths: list[Path], dst_path: Path, mgrs_tile_id: str
+    burst_disturbance_paths: list[Path], dst_path: Path, mgrs_tile_id: str, water_mask_path: Path | str | None = None
 ) -> None:
+    if water_mask_path is not None:
+        X_wm, p_wm = open_one_ds(water_mask_path)
+
     data = [open_one_ds(path) for path in burst_disturbance_paths]
     X_dist_burst_l, profs = zip(*data)
-    X_merged, p_merged = merge_categorical_arrays(X_dist_burst_l, profs, exterior_mask_dilation=15, merge_method='min')
+
+    check_water_mask(p_wm, profs[0])
+
+    X_merged, p_merged = merge_categorical_arrays(X_dist_burst_l, profs, exterior_mask_dilation=30, merge_method='min')
     X_merged[0, ...] = X_merged
+    X_merged[p_wm == 1] = 255
     serialize_one_2d_ds(X_merged[0, ...], p_merged, 'wtf.tif')
 
     p_mgrs = get_mgrs_profile(mgrs_tile_id)
     X_dist_mgrs, p_dist_mgrs = reproject_arr_to_match_profile(X_merged, p_merged, p_mgrs, resampling='nearest')
     # From BIP back to 2D array
     X_dist_mgrs = X_dist_mgrs[0, ...]
+    if water_mask_path is not None:
+        X_dist_mgrs[X_wm == 1] = profs[0]['nodata']
     serialize_one_2d_ds(X_dist_mgrs, p_dist_mgrs, dst_path, colormap=COLORBLIND_DIST_CMAP)
 
 
-def merge_burst_metrics_and_serialize(burst_metrics_paths: list[Path], dst_path: Path, mgrs_tile_id: str) -> None:
+def merge_burst_metrics_and_serialize(
+    burst_metrics_paths: list[Path], dst_path: Path, mgrs_tile_id: str, water_mask_path: Path | str | None = None
+) -> None:
+    if water_mask_path is not None:
+        X_wm, p_wm = open_one_ds(water_mask_path)
     data = [open_one_ds(path) for path in burst_metrics_paths]
     X_metric_burst_l, profs = zip(*data)
+    if water_mask_path is not None:
+        check_water_mask(p_wm, profs[0])
     X_metric_merged, p_merged = merge_with_weighted_overlap(
         X_metric_burst_l,
         profs,
-        exterior_mask_dilation=15,
+        exterior_mask_dilation=30,
         distance_weight_exponent=1.0,
         use_distance_weighting_from_exterior_mask=True,
     )
@@ -267,5 +294,6 @@ def merge_burst_metrics_and_serialize(burst_metrics_paths: list[Path], dst_path:
     X_dist_mgrs, p_dist_mgrs = reproject_arr_to_match_profile(X_metric_merged, p_merged, p_mgrs, resampling='bilinear')
     # From BIP back to 2D array
     X_dist_mgrs = X_dist_mgrs[0, ...]
-
+    if water_mask_path is not None:
+        X_dist_mgrs[X_wm == 1] = profs[0]['nodata']
     serialize_one_2d_ds(X_dist_mgrs, p_dist_mgrs, dst_path)
