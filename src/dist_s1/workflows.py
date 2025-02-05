@@ -307,6 +307,7 @@ def run_dist_s1_workflow(
     input_data_dir: str | Path | None = None,
     memory_strategy: str = 'high',
     tqdm_enabled: bool = True,
+    apply_water_mask: bool = True,
 ) -> Path:
     run_config = run_dist_s1_localization_workflow(
         mgrs_tile_id,
@@ -315,9 +316,11 @@ def run_dist_s1_workflow(
         post_date_buffer_days,
         dst_dir=dst_dir,
         input_data_dir=input_data_dir,
+        apply_water_mask=apply_water_mask,
     )
     run_config.memory_strategy = memory_strategy
     run_config.tqdm_enabled = tqdm_enabled
+    run_config.apply_water_mask = apply_water_mask
 
     _ = run_dist_s1_sas_workflow(run_config)
 

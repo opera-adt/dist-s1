@@ -3,6 +3,7 @@ from pathlib import Path
 import numpy as np
 import rasterio
 from rasterio.enums import Resampling
+from rasterio.env import Env
 
 from dist_s1.constants import DIST_CMAP
 from dist_s1.data_models.runconfig_model import RunConfigData
@@ -82,9 +83,10 @@ def package_disturbance_tifs(run_config: RunConfigData) -> None:
 
 def generate_browse_image(run_config: RunConfigData) -> None:
     product_data = run_config.product_data_model
-    convert_geotiff_to_png(
-        run_config.final_unformatted_tif_paths['alert_status_path'],
-        product_data.layer_path_dict['browse'],
-        colormap=DIST_CMAP,
-        water_mask_path=run_config.water_mask_path,
-    )
+    with Env(GDAL_PAM_ENABLED='NO'):
+        convert_geotiff_to_png(
+            run_config.final_unformatted_tif_paths['alert_status_path'],
+            product_data.layer_path_dict['browse'],
+            colormap=DIST_CMAP,
+            water_mask_path=run_config.water_mask_path,
+        )

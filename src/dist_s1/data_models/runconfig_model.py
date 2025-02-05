@@ -118,7 +118,7 @@ class RunConfigData(BaseModel):
     mgrs_tile_id: str
     dst_dir: Path | str | None = None
     water_mask_path: Path | str | None = None
-    apply_water_mask: bool = Field(default=False)
+    apply_water_mask: bool = Field(default=True)
     check_input_paths: bool = True
     memory_strategy: str | None = Field(
         default='high',
