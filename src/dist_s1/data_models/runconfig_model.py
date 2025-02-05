@@ -123,6 +123,7 @@ class RunConfigData(BaseModel):
     )
     tqdm_enabled: bool = Field(default=True)
     n_lookbacks: int = Field(default=3, ge=1, le=10)
+    product_dst_dir: Path | str | None = None
 
     # Private attributes that are associated to properties
     _burst_ids: list[str] | None = None
@@ -163,6 +164,13 @@ class RunConfigData(BaseModel):
                 bad_paths_str = 'The following paths do not exist: ' + ', '.join(str(path) for path in bad_paths)
                 raise ValueError(bad_paths_str)
         return paths
+
+    @field_validator('product_dst_dir', mode='before')
+    def validate_product_dir(cls, product_dir: Path | str | None, info: ValidationInfo) -> Path:
+        if product_dir is None:
+            product_dir = info.data.get('dst_dir')
+        product_dir = Path(product_dir) if isinstance(product_dir, str) else product_dir
+        return product_dir
 
     @field_validator('pre_rtc_crosspol', 'post_rtc_crosspol')
     def check_matching_lengths_copol_and_crosspol(

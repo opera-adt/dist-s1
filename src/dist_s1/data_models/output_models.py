@@ -3,21 +3,17 @@ from pathlib import Path
 from warnings import warn
 
 import rasterio
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
+
+from dist_s1.constants import PRODUCT_VERSION
 
 
-PRODUCT_VERSION = '0.0.1'
-LAYERS = ['DIST-STATUS', 'GEN-METRIC']
-# LAYERS = ['DIST-STATUS', 'DIST-STATUS-ACQ', 'GEN-METRIC', 'DATE-FIRST', 'DATE-LATEST', 'N-OBS', 'N-DIST']
-LAYER_DTYPES = {
-    'DIST-STATUS': 'uint8',
-    # 'DIST-STATUS-ACQ': 'uint8',
+TIF_LAYER_DTYPES = {
+    'DIST-GEN-STATUS': 'uint8',
     'GEN-METRIC': 'float32',
-    # 'DATE-FIRST': 'uint32',
-    # 'DATE-LATEST': 'uint32',
-    # 'N-OBS': 'uint32',
-    # 'N-DIST': 'uint32',
+    'DIST-GEN-STATUS-ACQ': 'uint8',
 }
+TIF_LAYERS = TIF_LAYER_DTYPES.keys()
 EXPECTED_FORMAT_STRING = (
     'OPERA_L3_DIST-ALERT-S1_T{mgrs_tile_id}_{acq_datetime}_{proc_datetime}_S1_30_v{PRODUCT_VERSION}'
 )
@@ -83,35 +79,36 @@ class ProductNameData(BaseModel):
 class ProductDirectoryData(BaseModel):
     product_name: str
     dst_dir: Path | str
-    layers: list[str] = LAYERS
 
     @property
-    def path(self) -> Path:
+    def product_dir_path(self) -> Path:
         path = self.dst_dir / self.product_name
         return path
 
     @field_validator('product_name')
-    @classmethod
     def validate_product_name(cls, product_name: str) -> str:
         if not ProductNameData.validate_product_name(product_name):
             raise ValueError(f'Invalid product name: {product_name}; should match: {EXPECTED_FORMAT_STRING}')
         return product_name
 
-    @field_validator('dst_dir')
-    @classmethod
-    def validate_product_directory(cls, dst_dir: Path | str, values: dict) -> Path:
-        if isinstance(dst_dir, str):
-            dst_dir = Path(dst_dir)
-        product_dir = dst_dir / values.data['product_name']
+    @model_validator(mode='after')
+    def validate_product_directory(self) -> Path:
+        product_dir = self.product_dir_path
         if product_dir.exists() and not product_dir.is_dir():
             raise ValueError(f'Path {product_dir} exists but is not a directory')
         if not product_dir.exists():
             product_dir.mkdir(parents=True, exist_ok=True)
-        return dst_dir
+        return self
+
+    @property
+    def layers(self) -> list[str]:
+        return list(TIF_LAYERS)
 
     @property
     def layer_path_dict(self) -> dict[str, Path]:
-        return {layer: self.path / f'{self.product_name}_{layer}.tif' for layer in self.layers}
+        layer_dict = {layer: self.product_dir_path / f'{self.product_name}_{layer}.tif' for layer in self.layers}
+        layer_dict['browse'] = self.product_dir_path / f'{self.product_name}.png'
+        return layer_dict
 
     def validate_layer_paths(self) -> bool:
         failed_layers = []
@@ -121,14 +118,15 @@ class ProductDirectoryData(BaseModel):
                 failed_layers.append(layer)
         return len(failed_layers) == 0
 
-    def validate_layer_dtypes(self) -> bool:
+    def validate_tif_layer_dtypes(self) -> bool:
         failed_layers = []
         for layer, path in self.layer_path_dict.items():
-            with rasterio.open(path) as src:
-                if src.dtypes[0] != LAYER_DTYPES[layer]:
-                    warn(
-                        f'Layer {layer} has incorrect dtype: {src.dtypes[0]}; should be: {LAYER_DTYPES[layer]}',
-                        UserWarning,
-                    )
-                    failed_layers.append(layer)
+            if path.suffix == '.tif':
+                with rasterio.open(path) as src:
+                    if src.dtypes[0] != TIF_LAYER_DTYPES[layer]:
+                        warn(
+                            f'Layer {layer} has incorrect dtype: {src.dtypes[0]}; should be: {TIF_LAYER_DTYPES[layer]}',
+                            UserWarning,
+                        )
+                        failed_layers.append(layer)
         return len(failed_layers) == 0
