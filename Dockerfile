@@ -26,7 +26,7 @@ WORKDIR /home/ops
 
 # Ensures we cached mamba install per
 # https://docs.docker.com/develop/develop-images/dockerfile_best-practices/#leverage-build-cache
-COPY --chown=dist_user:dist_user environment.yml /home/ops/dist-s1/environment_gpu.yml
+COPY --chown=dist_user:dist_user environment_gpu.yml /home/ops/dist-s1/environment_gpu.yml
 COPY --chown=dist_user:dist_user . /home/ops/dist-s1
 
 # Ensure all files are read/write by the user
