@@ -10,6 +10,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     bzip2 \
     ca-certificates \
     git \
+    vim \
+    ibgl1-mesa-glx \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Miniconda
@@ -19,11 +21,8 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86
     /bin/bash miniconda.sh -b -p $CONDA_DIR && \
     rm miniconda.sh
 
-RUN conda install -n base -c conda-forge mamba \
-    && conda clean -afy
-
-# Default command
-CMD ["bash"]
+# run commands in a bash login shell
+SHELL ["/bin/bash", "-l", "-c"]
 
 # Create non-root user/group with default inputs
 ARG UID=1000
