@@ -251,7 +251,6 @@ def merge_burst_disturbances_and_serialize(
 
     X_merged, p_merged = merge_categorical_arrays(X_dist_burst_l, profs, exterior_mask_dilation=20, merge_method='max')
     X_merged[0, ...] = X_merged
-    serialize_one_2d_ds(X_merged[0, ...], p_merged, 'wtf.tif')
 
     p_mgrs = get_mgrs_profile(mgrs_tile_id)
     X_dist_mgrs, p_dist_mgrs = reproject_arr_to_match_profile(X_merged, p_merged, p_mgrs, resampling='nearest')
