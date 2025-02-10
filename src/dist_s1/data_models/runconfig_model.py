@@ -129,8 +129,8 @@ class RunConfigData(BaseModel):
     tqdm_enabled: bool = Field(default=True)
     n_lookbacks: int = Field(default=3, ge=1, le=3)
     # This is where default thresholds are set!
-    moderate_confidence_threshold: float = Field(default=4.0, ge=0.0, le=15.0)
-    high_confidence_threshold: float = Field(default=6.0, ge=0.0, le=15.0)
+    moderate_confidence_threshold: float = Field(default=3.5, ge=0.0, le=15.0)
+    high_confidence_threshold: float = Field(default=5.5, ge=0.0, le=15.0)
     product_dst_dir: Path | str | None = None
 
     # Private attributes that are associated to properties

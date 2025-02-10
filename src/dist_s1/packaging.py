@@ -52,6 +52,30 @@ def convert_geotiff_to_png(
         serialize_one_2d_ds(band, profile, out_png_path, colormap=colormap)
 
 
+def update_tags_with_opera_ids(tags: dict) -> dict:
+    input_keys = ['pre_rtc_copol', 'post_rtc_copol', 'post_rtc_crosspol', 'pre_rtc_crosspol']
+    for key in input_keys:
+        value = tags.pop(key)
+        if 'crosspol' in key:
+            continue
+        else:
+            opera_ids = [path.name for path in value]
+            opera_ids = [opera_id.replace('_VV.tif', '') for opera_id in opera_ids]
+            # pre_rtc_copol -> pre_opera_ids, etc.
+            new_key = key.replace('_copol', '_opera_ids')
+            tags[new_key] = opera_ids
+    return tags
+
+
+def update_tag_types(tags: dict) -> dict:
+    for key, value in tags.items():
+        if isinstance(value, Path):
+            tags[key] = str(value)
+        elif isinstance(value, list | tuple):
+            tags[key] = ','.join(list(map(str, value)))
+    return tags
+
+
 def package_disturbance_tifs(run_config: RunConfigData) -> None:
     X_dist, p_dist = open_one_ds(run_config.final_unformatted_tif_paths['alert_status_path'])
     X_dist_delta0, p_dist_delta0 = open_one_ds(run_config.final_unformatted_tif_paths['alert_delta0_path'])
@@ -59,6 +83,8 @@ def package_disturbance_tifs(run_config: RunConfigData) -> None:
 
     tags = run_config.get_public_attributes()
     tags['version'] = dist_s1.__version__
+    tags = update_tags_with_opera_ids(tags)
+    tags = update_tag_types(tags)
 
     if run_config.apply_water_mask:
         X_dist = apply_water_mask(X_dist, p_dist, run_config.water_mask_path)
@@ -69,7 +95,11 @@ def package_disturbance_tifs(run_config: RunConfigData) -> None:
 
     serialize_one_2d_ds(X_dist, p_dist, product_data.layer_path_dict['DIST-GEN-STATUS'], colormap=DIST_CMAP, tags=tags)
     serialize_one_2d_ds(
-        X_dist_delta0, p_dist_delta0, product_data.layer_path_dict['DIST-GEN-STATUS-ACQ'], colormap=DIST_CMAP, tags=tags
+        X_dist_delta0,
+        p_dist_delta0,
+        product_data.layer_path_dict['DIST-GEN-STATUS-ACQ'],
+        colormap=DIST_CMAP,
+        tags=tags,
     )
     serialize_one_2d_ds(X_metric, p_metric, product_data.layer_path_dict['GEN-METRIC'], colormap=DIST_CMAP, tags=tags)
 

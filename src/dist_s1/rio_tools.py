@@ -48,12 +48,7 @@ def serialize_one_2d_ds(
         if colormap is not None:
             ds.write_colormap(1, colormap)
         if tags is not None:
-            tags_to_disk = {}
-            for key, value in tags.items():
-                if isinstance(value, list | tuple):
-                    value_out = ','.join(list(map(str, value)))
-                    tags_to_disk[key] = str(value_out)
-            ds.update_tags(**tags_to_disk)
+            ds.update_tags(**tags)
     return out_path
 
 

@@ -50,11 +50,11 @@ def common_options(func: Callable) -> Callable:
         '--moderate_confidence_threshold',
         type=float,
         required=False,
-        default=4.5,
+        default=3.5,
         help='Moderate confidence threshold.',
     )
     @click.option(
-        '--high_confidence_threshold', type=float, required=False, default=6.5, help='High confidence threshold.'
+        '--high_confidence_threshold', type=float, required=False, default=5.5, help='High confidence threshold.'
     )
     @click.option('--tqdm_enabled', type=bool, required=False, default=True, help='Enable tqdm.')
     @click.option(
@@ -63,20 +63,6 @@ def common_options(func: Callable) -> Callable:
         default=None,
         required=False,
         help='Input data directory. If None, uses `dst_dir`. Default None.',
-    )
-    @click.option(
-        '--moderate_confidence_threshold',
-        type=float,
-        default=4.5,
-        required=False,
-        help='Moderate confidence threshold for disturbance detection.',
-    )
-    @click.option(
-        '--high_confidence_threshold',
-        type=float,
-        default=6.5,
-        required=False,
-        help='High confidence threshold for disturbance detection.',
     )
     @click.option(
         '--water_mask_path',
