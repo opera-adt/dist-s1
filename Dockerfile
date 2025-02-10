@@ -11,7 +11,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     git \
     vim \
-    ibgl1-mesa-glx \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Miniconda
