@@ -426,6 +426,6 @@ run_config:
     memory_strategy: high
     tqdm_enabled: true
     n_lookbacks: 3
-    moderate_confidence_threshold: 4.5
-    high_confidence_threshold: 6.5
+    moderate_confidence_threshold: 3.5
+    high_confidence_threshold: 5.5
     product_dst_dir: ../notebooks/los-angeles

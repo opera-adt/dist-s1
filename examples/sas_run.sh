@@ -3,8 +3,8 @@ dist-s1 run_sas_prep --mgrs_tile_id '11SLT' \
     --track_number 71 \
     --dst_dir '../notebooks/los-angeles' \
     --memory_strategy 'high' \
-    --moderate_confidence_threshold 4.5 \
-    --high_confidence_threshold 6.5 \
+    --moderate_confidence_threshold 3.5 \
+    --high_confidence_threshold 5.5 \
     --post_date_buffer_days 1 \
     --apply_water_mask true \
     --n_lookbacks 3 \
