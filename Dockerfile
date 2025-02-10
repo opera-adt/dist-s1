@@ -1,23 +1,23 @@
-FROM nvidia/cuda:11.8.0-devel-ubuntu22.04
+FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
 
 LABEL description="DIST-S1 Container"
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install some necessary linux packagers
-RUN apt-get update && apt-get install -y \
-    curl \
-    ca-certificates \
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget \
     bzip2 \
+    ca-certificates \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Miniconda
-RUN curl -fsSL https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -o miniconda.sh \
-    && bash miniconda.sh -b -p /opt/conda \
-    && rm miniconda.sh
+ENV CONDA_DIR=/opt/conda
 
-# Set up conda path
-ENV PATH="/opt/conda/bin:$PATH"
+RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh && \
+    /bin/bash miniconda.sh -b -p $CONDA_DIR && \
+    rm miniconda.sh
 
 RUN conda install -n base -c conda-forge mamba \
     && conda clean -afy
