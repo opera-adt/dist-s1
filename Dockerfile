@@ -13,12 +13,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     vim \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Miniconda
+# Install Mambaforge instead of Miniconda
 ENV CONDA_DIR=/opt/conda
+RUN wget -qO /tmp/mambaforge.sh \
+    "https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-Linux-x86_64.sh" && \
+    bash /tmp/mambaforge.sh -b -p $CONDA_DIR && \
+    rm /tmp/mambaforge.sh
 
-RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh && \
-    /bin/bash miniconda.sh -b -p $CONDA_DIR && \
-    rm miniconda.sh
+# Add conda to path
+ENV PATH="${CONDA_DIR}/bin:${PATH}"
 
 # run commands in a bash login shell
 SHELL ["/bin/bash", "-l", "-c"]
@@ -35,17 +38,13 @@ RUN groupadd -g "${GID}" --system dist_user && \
 USER dist_user
 WORKDIR /home/ops
 
-# Ensures we cached mamba install per
-# https://docs.docker.com/develop/develop-images/dockerfile_best-practices/#leverage-build-cache
+# Copy environment file first for better caching
 COPY --chown=dist_user:dist_user environment_gpu.yml /home/ops/dist-s1/environment_gpu.yml
 COPY --chown=dist_user:dist_user . /home/ops/dist-s1
 
-# Ensure all files are read/write by the user
-# RUN chmod -R 777 /home/ops
-
 # Create the environment with mamba
 RUN mamba env create -f /home/ops/dist-s1/environment_gpu.yml && \
-    conda clean -afy
+    mamba clean -afy
 
 # Ensure that environment is activated on startup and interactive shell
 RUN echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.profile && \
