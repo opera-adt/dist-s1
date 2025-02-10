@@ -264,11 +264,15 @@ class RunConfigData(BaseModel):
             )
         return self._product_data_model
 
+    def get_public_attributes(self) -> dict:
+        config_dict = {k: v for k, v in self.model_dump().items() if not k.startswith('_')}
+        config_dict.pop('check_input_paths', None)
+        return config_dict
+
     def to_yaml(self, yaml_file: str | Path) -> None:
         """Save configuration to a YAML file."""
         # Get only the non-private attributes (those that don't start with _)
-        config_dict = {k: v for k, v in self.model_dump().items() if not k.startswith('_')}
-        config_dict.pop('check_input_paths', None)
+        config_dict = self.get_public_attributes()
         yml_dict = {'run_config': config_dict}
 
         # Write to YAML file

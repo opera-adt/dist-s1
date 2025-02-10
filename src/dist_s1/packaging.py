@@ -5,6 +5,7 @@ import rasterio
 from rasterio.enums import Resampling
 from rasterio.env import Env
 
+import dist_s1
 from dist_s1.constants import DIST_CMAP
 from dist_s1.data_models.runconfig_model import RunConfigData
 from dist_s1.rio_tools import open_one_ds, serialize_one_2d_ds
@@ -56,6 +57,9 @@ def package_disturbance_tifs(run_config: RunConfigData) -> None:
     X_dist_delta0, p_dist_delta0 = open_one_ds(run_config.final_unformatted_tif_paths['alert_delta0_path'])
     X_metric, p_metric = open_one_ds(run_config.final_unformatted_tif_paths['metric_status_path'])
 
+    tags = run_config.get_public_attributes()
+    tags['version'] = dist_s1.__version__
+
     if run_config.apply_water_mask:
         X_dist = apply_water_mask(X_dist, p_dist, run_config.water_mask_path)
         X_dist_delta0 = apply_water_mask(X_dist_delta0, p_dist_delta0, run_config.water_mask_path)
@@ -63,11 +67,11 @@ def package_disturbance_tifs(run_config: RunConfigData) -> None:
 
     product_data = run_config.product_data_model
 
-    serialize_one_2d_ds(X_dist, p_dist, product_data.layer_path_dict['DIST-GEN-STATUS'], colormap=DIST_CMAP)
+    serialize_one_2d_ds(X_dist, p_dist, product_data.layer_path_dict['DIST-GEN-STATUS'], colormap=DIST_CMAP, tags=tags)
     serialize_one_2d_ds(
-        X_dist_delta0, p_dist_delta0, product_data.layer_path_dict['DIST-GEN-STATUS-ACQ'], colormap=DIST_CMAP
+        X_dist_delta0, p_dist_delta0, product_data.layer_path_dict['DIST-GEN-STATUS-ACQ'], colormap=DIST_CMAP, tags=tags
     )
-    serialize_one_2d_ds(X_metric, p_metric, product_data.layer_path_dict['GEN-METRIC'])
+    serialize_one_2d_ds(X_metric, p_metric, product_data.layer_path_dict['GEN-METRIC'], colormap=DIST_CMAP, tags=tags)
 
 
 def generate_browse_image(run_config: RunConfigData) -> None:
