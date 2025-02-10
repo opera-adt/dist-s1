@@ -8,23 +8,12 @@ from rasterio.env import Env
 from dist_s1.constants import DIST_CMAP
 from dist_s1.data_models.runconfig_model import RunConfigData
 from dist_s1.rio_tools import open_one_ds, serialize_one_2d_ds
-
-
-def check_water_mask(water_mask_profile: dict, disturbance_profile: dict) -> None:
-    if water_mask_profile['crs'] != disturbance_profile['crs']:
-        raise ValueError('Water mask and disturbance array CRS do not match')
-    if water_mask_profile['transform'] != disturbance_profile['transform']:
-        raise ValueError('Water mask and disturbance array transform do not match')
-    if water_mask_profile['height'] != disturbance_profile['height']:
-        raise ValueError('Water mask and disturbance array height do not match')
-    if water_mask_profile['width'] != disturbance_profile['width']:
-        raise ValueError('Water mask and disturbance array width do not match')
-    return True
+from dist_s1.water_mask import check_water_mask_profile
 
 
 def apply_water_mask(band_src: np.ndarray, profile_src: dict, water_mask_path: Path | str | None = None) -> np.ndarray:
     X_wm, p_wm = open_one_ds(water_mask_path)
-    check_water_mask(p_wm, profile_src)
+    check_water_mask_profile(p_wm, profile_src)
     band_src[X_wm == 1] = profile_src['nodata']
     return band_src
 

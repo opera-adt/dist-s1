@@ -6,7 +6,67 @@
 [![Conda version](https://img.shields.io/conda/vn/conda-forge/dist_s1)](https://anaconda.org/conda-forge/dist_s1)
 [![Conda platforms](https://img.shields.io/conda/pn/conda-forge/dist_s1)](https://anaconda.org/conda-forge/dist_s1)
 
-This is the workflow that generates OPERA's DIST-S1 product. This workflow is designed to delineate *generic* disturbance from a time-series of OPERA Radiometric and Terrain Corrected Sentinel-1 (OPERA RTC-S1) products. The output DIST-S1 product is resampled to a 30 meter Military Grid Reference System (MGRS) tile.
+This is the workflow that generates OPERA's DIST-S1 product. This workflow is designed to delineate *generic* disturbance from a time-series of OPERA Radiometric and Terrain Corrected Sentinel-1 (OPERA RTC-S1) products. The output DIST-S1 product is resampled to a 30 meter Military Grid Reference System (MGRS) tile. Below is a sample product (T11SLT from data acquired January 21, 2025) subset over impacted areas of wildfires in Los Angeles, CA 2024-2025.
+
+![sample product](assets/subset_OPERA_L3_DIST-ALERT-S1_T11SLT_20250121T135246Z_20250205T190752Z_S1_30_v0.1.png)
+
+
+## Usage
+
+We have a command line interface (CLI) and python interface. 
+All the examples below generate the full sample product above.
+We only expose the required paramters below.
+See the [examples](examples/) directory for additional parameters available. 
+For a description about the organization of the repository see the [Design/Organization of the Repository](#designorganization-of-the-repository) section.
+To determine the relevant parameters for `DIST-S1` submission, please see the repository [dist-s1-enumerator](https://github.com/opera-adt/dist-s1-enumerator) and the notebooks within it.
+
+### Python
+
+A variation of the script below can be found in [examples/e2e.py](examples/e2e.py). 
+It is possible to run steps of the workflow after the runconfig data has been created (primarily for debugging a step of the workflow).
+An example of this step-wise execution can be found in [examples/run_steps.py](examples/run_steps.py).
+The same scripts are also found in the [notebooks](notebooks) directory.
+
+```
+from pathlib import Path
+
+from dist_s1 import run_dist_s1_workflow
+
+# Parameters for DIST-S1 submission
+mgrs_tile_id = '11SLT'  # MGRS tile ID
+post_date = '2025-01-21'  # date of recent pass of Sentinel-1
+track_number = 71  # Sentinel-1 track number
+dst_dir = Path('out')  # directory to save the intermediate and output DIST-S1 product
+
+# Run the workflow
+run_dist_s1_workflow(mgrs_tile_id, 
+                     post_date, 
+                     track_number, 
+                     dst_dir=dst_dir)
+```
+
+
+### CLI
+
+#### Main Entrypoint
+
+The main entrypoint mirrors the python interface above and localizes all the necessary RTC-S1 inputs. 
+
+```
+dist-s1 run \
+    --mgrs_tile_id '11SLT' \
+    --post_date '2025-01-21' \
+    --track_number 71
+```
+
+#### As a SDS Science Application Software (SAS)
+
+See the [examples/sas_run.sh](examples/sas_run.sh) script for an example of how to run the DIST-S1 workflow as a SDS Science Application Software (SAS) with a preparation script to localize the necessary RTC-S1 inputs.
+
+```
+dist-s1 run_sas --runconfig_yml_path run_config.yml
+```
+There sample `run_config.yml` file is provided in the [examples](examples) directory from this prepatory step.
 
 ## Installation
 
@@ -16,9 +76,20 @@ We recommend using the mamba/conda package manager and `conda-forge` distributio
 mamba update -f environment.yml
 pip install dist-s1  # update to conda when it is ready on conda-forge
 conda activate dist-s1-env
+python -m ipykernel install --user --name dist-s1-env
 ```
 
-The last command is optional, but will allow this project to be imported into a Jupyter notebook.
+The last 2 commands are optional, but will allow this project to be imported into a Jupyter notebook using the examples in this repository (see below for more details).
+
+
+### Additional Setup for Localization of RTC-S1 inputs
+
+If you are using the primary workflow that downloads all the necessary RTC-S1 inputs, you will need to create `~/.netrc` file with your earthdata login credentials that can be used at the Alaska Satellite Facility (ASF) data portal to download data. The `netrc`file should have the following entry:
+```
+machine urs.earthdata.nasa.gov
+    login <username>
+    password <password>
+``` 
 
 ### GPU Installation
 
@@ -42,13 +113,13 @@ That said, the above provides an avenue for identifying such issues with the env
 
 ### Jupyter Kernel
 
-For the Jupyter notebooks, install the jupyter dependencies:
-```
-mamba install jupyterlab ipywidgets black isort jupyterlab_code_formatter 
-```
-We also install the kernel `dist-s1-env` using the environment above via:
+As noted above, we install the kernel `dist-s1-env` using the environment above via:
 ```
 python -m ipykernel install --user --name dist-s1-env
+```
+We also recommend installing the jupyter dependencies:
+```
+mamba install jupyterlab ipywidgets black isort jupyterlab_code_formatter 
 ```
 
 ### Development Installation
@@ -62,26 +133,6 @@ conda activate dist-s1-env
 python -m ipykernel install --user --name dist-s1-env
 ```
 
-## Usage
-
-There are two entrypoints for the DIST-S1 workflow:
-
-1. `dist-s1 run_sas` - This is the primary entrypoint for Science Data System (SDS) operations in which this library is viewed as the Science Application Software (SAS) for DIST-S1 within JPL's Hybrid Science Data System (HySDS).
-2. `dist-s1 run` (not implemented yet) - This is the simplified entrypoint for scientific and research users (non-SDS), allowing for the localization of data from publicly available data sources with more human readable inputs.
-
-It is worth noting that the SDS workflow (`dist-s1 run_sas`) is *not* user friendly requiring the explicit specification of the numerous input RTC-S1 datasets (nominally there are 100s of these files required for the generation of a single DIST-S1 product over an MGRS tile). The `dist-s1 run` entrypoint has far fewer inputs and is designed to be human-operable. Specifically, the `dist-s1 run` takes care of the localization and accounting of the all the necessary input RTC-S1 datasets.
-
-### The `dist-s1 run_sas` Entrypoint
-
-```
-dist-s1 run_sas --runconfig_yml_path <path/to/runconfig.yml>
-```
-
-See `tests/test_main.py` for an example of how to use the CLI with sample data.
-
-### The `dist-s1 run` Entrypoint
-
-This is not yet implemented.
 
 ## Docker
 
@@ -111,6 +162,33 @@ To run the container interactively:
 docker run -ti dist-s1
 ```
 Within the container, you can run the CLI commands and the test suite.
+
+
+# Contribution Instructions
+
+This is an open-source plugin and we welcome contributions and issue tickets. 
+
+Because we use this plugin for producing publicly available datasets, we are heavily reliant on utilizing our test suite and CI/CD pipeline for more rapid development. If you are apart of the OPERA project, please ask to be added to the Github organization so you can create a PR via branch in this repository. That way, you will have access to the secrets needed to run the test suite and build the Docker image. That said, a maintainer can always integrate a PR from a fork to ensure the automated CI/CD is working as expected.
+
+
+# Design/Organization of the Repository
+
+There are two main components to the DIST-S1 workflow:
+
+1. Curation and localization of the OPERA RTC-S1 products. This is captured in the `run_dist_s1_sas_prep_workflow` function within the [`workflows.py` file](src/dist_s1/workflows.py).
+2. Application of the DIST-S1 algorithm to the localized RTC-S1 products. This is captured in the `run_dist_s1_sas_workflow` function within the [`workflows.py` file](src/dist_s1/workflows.py).
+
+These two steps can be run serially as a single workflow via `run_dist_s1_sas_workflow` in the [`workflows.py` file](src/dist_s1/workflows.py). There are associated CLI entrypoints to the functions via the `dist-s1` main command (see [SAS usage](#as-a-sds-science-application-software-sas) or the [run_sas.sh](examples/run_sas.sh) script).
+
+In terms of design, each step of the workflow relies heavily on writing its outputs to disk. This allows for testing of each step via staging of inputs on disk. It also provides a means to visually inspect the outputs of a given step (e.g. via QGIS) without additional boilerplate code to load/serialize in-memory data. There is a Class `RunConfigData` (that can be serialized as a `run_config.yml`) that functions to validate the inputs provided by the user and store the necessary paths for intermediate and output products (including those required for each of the workflow's steps). Storing these paths is quite tedious and each run config instance stores these paths via tables or dictionaries for easier lookup (e.g. by `jpl_burst_id` and acquisition timestamp).
+
+There are also important libraries used to do the core of the disturbance detections including:
+
+1. [`distmetrics`](https://github.com/opera-adt/distmetrics) which provides an easy interface to compute the disturbance metrics as they relate to a baseline of RTC-S1 inputs and a recent set of acquisition data.
+2. [`dist-s1-enumerator`](https://github.com/opera-adt/dist-s1-enumerator) which provides the functionality to localize the necessary RTC-S1 inputs.
+3. [`tile-mate`](https://github.com/opera-calval/tile-mate) which provides the functionality to localize static tiles including the water mask.
+
+These are all available via `conda-forge` and maintained by the DIST-S1 team.
 
 
 # Delivery Instructions

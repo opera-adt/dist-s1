@@ -235,6 +235,8 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
                 out_dist_path=output_dist_path,
                 out_metric_path=output_metric_path,
                 max_lookbacks=run_config.n_lookbacks,
+                moderate_confidence_threshold=run_config.moderate_confidence_threshold,
+                high_confidence_threshold=run_config.high_confidence_threshold,
             )
         # Aggregate over lookbacks
         time_aggregated_disturbance_path = df_metric_burst['loc_path_disturb_time_aggregated'].iloc[0]
@@ -292,6 +294,41 @@ def run_dist_s1_packaging_workflow(run_config: RunConfigData) -> Path:
     product_data.validate_layer_paths()
 
 
+def run_dist_s1_sas_prep_workflow(
+    mgrs_tile_id: str,
+    post_date: str | datetime,
+    track_number: int,
+    post_date_buffer_days: int = 1,
+    dst_dir: str | Path = 'out',
+    input_data_dir: str | Path | None = None,
+    memory_strategy: str = 'high',
+    moderate_confidence_threshold: float = 4.5,
+    high_confidence_threshold: float = 6.5,
+    tqdm_enabled: bool = True,
+    apply_water_mask: bool = True,
+    n_lookbacks: int = 3,
+    water_mask_path: str | Path | None = None,
+    product_dst_dir: str | Path | None = None,
+) -> RunConfigData:
+    run_config = run_dist_s1_localization_workflow(
+        mgrs_tile_id,
+        post_date,
+        track_number,
+        post_date_buffer_days,
+        dst_dir=dst_dir,
+        input_data_dir=input_data_dir,
+    )
+    run_config.memory_strategy = memory_strategy
+    run_config.tqdm_enabled = tqdm_enabled
+    run_config.apply_water_mask = apply_water_mask
+    run_config.moderate_confidence_threshold = moderate_confidence_threshold
+    run_config.high_confidence_threshold = high_confidence_threshold
+    run_config.n_lookbacks = n_lookbacks
+    run_config.water_mask_path = water_mask_path
+    run_config.product_dst_dir = product_dst_dir
+    return run_config
+
+
 def run_dist_s1_sas_workflow(run_config: RunConfigData) -> Path:
     _ = run_dist_s1_processing_workflow(run_config)
     _ = run_dist_s1_packaging_workflow(run_config)
@@ -306,22 +343,30 @@ def run_dist_s1_workflow(
     dst_dir: str | Path = 'out',
     input_data_dir: str | Path | None = None,
     memory_strategy: str = 'high',
+    moderate_confidence_threshold: float = 4.5,
+    high_confidence_threshold: float = 6.5,
+    water_mask_path: str | Path | None = None,
     tqdm_enabled: bool = True,
     apply_water_mask: bool = True,
+    n_lookbacks: int = 3,
+    product_dst_dir: str | Path | None = None,
 ) -> Path:
-    run_config = run_dist_s1_localization_workflow(
+    run_config = run_dist_s1_sas_prep_workflow(
         mgrs_tile_id,
         post_date,
         track_number,
-        post_date_buffer_days,
+        post_date_buffer_days=post_date_buffer_days,
         dst_dir=dst_dir,
         input_data_dir=input_data_dir,
+        memory_strategy=memory_strategy,
+        moderate_confidence_threshold=moderate_confidence_threshold,
+        high_confidence_threshold=high_confidence_threshold,
+        tqdm_enabled=tqdm_enabled,
         apply_water_mask=apply_water_mask,
+        n_lookbacks=n_lookbacks,
+        water_mask_path=water_mask_path,
+        product_dst_dir=product_dst_dir,
     )
-    run_config.memory_strategy = memory_strategy
-    run_config.tqdm_enabled = tqdm_enabled
-    run_config.apply_water_mask = apply_water_mask
-
     _ = run_dist_s1_sas_workflow(run_config)
 
     return run_config

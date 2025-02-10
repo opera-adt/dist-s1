@@ -148,9 +148,9 @@ def compute_burst_disturbance_for_lookback_group_and_serialize(
     logit_sigma_crosspol_path: Path,
     out_dist_path: Path,
     max_lookbacks: int,
+    moderate_confidence_threshold: float,
+    high_confidence_threshold: float,
     out_metric_path: Path | None = None,
-    moderate_confidence_threshold: float = 2.5,
-    high_confidence_threshold: float = 4.5,
 ) -> None:
     if len(copol_paths) != len(crosspol_paths):
         raise ValueError('Length of Copolar and crosspolar arrays do not match')
@@ -187,10 +187,17 @@ def compute_burst_disturbance_for_lookback_group_and_serialize(
         np.nanmax(np.stack([mdist_copol, mdist_crosspol], axis=0), axis=0)
         for mdist_copol, mdist_crosspol in zip(mdist_copol_l, mdist_crosspol_l)
     ]
+
+    # Intermediate (single comparison with baseline using moderate/high confidence thresholds):
+    # 0 - No disturbance
+    # 1 - Moderate confidence
+    # 2 - High confidence
+    # 255 - Nodata
     disturbance_one_look_l = [
         label_one_disturbance(mdist, moderate_confidence_threshold, high_confidence_threshold) for mdist in mdist_l
     ]
 
+    # Translates intermediate labels to disturbance labels dictated in constants.py
     disturbance_temporal_agg = aggregate_disturbance_over_time(disturbance_one_look_l, max_lookbacks=max_lookbacks)
 
     p_dist_ref = profs_copol[0].copy()

@@ -94,3 +94,8 @@ notebooks/los-angeles/
 
 # Notebooks in tests
 tests/*.ipynb
+
+tests/test_data/
+
+# Runner in nb directory
+notebooks/runner.py

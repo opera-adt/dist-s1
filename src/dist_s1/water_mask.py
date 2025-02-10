@@ -11,6 +11,18 @@ from tile_mate import get_raster_from_tiles
 from dist_s1.rio_tools import get_mgrs_profile
 
 
+def check_water_mask_profile(water_mask_profile: dict, ref_profile: dict) -> None:
+    if water_mask_profile['crs'] != ref_profile['crs']:
+        raise ValueError('Water mask and disturbance array CRS do not match')
+    if water_mask_profile['transform'] != ref_profile['transform']:
+        raise ValueError('Water mask and disturbance array transform do not match')
+    if water_mask_profile['height'] != ref_profile['height']:
+        raise ValueError('Water mask and disturbance array height do not match')
+    if water_mask_profile['width'] != ref_profile['width']:
+        raise ValueError('Water mask and disturbance array width do not match')
+    return True
+
+
 def get_water_mask(mgrs_tile_id: str, out_path: Path, overwrite: bool = False) -> Path:
     if out_path.exists() and not overwrite:
         return out_path

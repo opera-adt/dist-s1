@@ -14,9 +14,6 @@ DISTLABEL2VAL = {
 }
 DISTVAL2LABEL = {v: k for k, v in DISTLABEL2VAL.items()}
 
-MODERATE_CONF_THRESHOLD = 5.5
-HIGH_CONF_THRESHOLD = 7.5
-
 COLORBLIND_DIST_CMAP = {
     0: (255, 255, 255, 255),  # No disturbance (White)
     1: (173, 216, 230, 255),  # First low (Light Blue)
