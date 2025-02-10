@@ -4,12 +4,14 @@ LABEL description="DIST-S1 Container"
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Install some necessary linux packagers
 RUN apt-get update && apt-get install -y \
     curl \
     ca-certificates \
     bzip2 \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Miniconda
 RUN curl -fsSL https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -o miniconda.sh \
     && bash miniconda.sh -b -p /opt/conda \
     && rm miniconda.sh
