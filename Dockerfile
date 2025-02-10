@@ -1,16 +1,27 @@
-FROM condaforge/mambaforge:latest
+FROM nvidia/cuda:11.8.0-devel-ubuntu22.04
 
 LABEL description="DIST-S1 Container"
 
-ARG DEBIAN_FRONTEND=noninteractive
-ENV PYTHONDONTWRITEBYTECODE=true
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Install libgl1-mesa-glx unzip vim
-RUN apt-get update && apt-get install -y --no-install-recommends libgl1-mesa-glx unzip vim && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y \
+    curl \
+    ca-certificates \
+    bzip2 \
+    && rm -rf /var/lib/apt/lists/*
 
-# run commands in a bash login shell
-SHELL ["/bin/bash", "-l", "-c"]
+RUN curl -fsSL https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -o miniconda.sh \
+    && bash miniconda.sh -b -p /opt/conda \
+    && rm miniconda.sh
+
+# Set up conda path
+ENV PATH="/opt/conda/bin:$PATH"
+
+RUN conda install -n base -c conda-forge mamba \
+    && conda clean -afy
+
+# Default command
+CMD ["bash"]
 
 # Create non-root user/group with default inputs
 ARG UID=1000
