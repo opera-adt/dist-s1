@@ -69,4 +69,5 @@ RUN echo "conda activate dist-s1-env" >> ~/.profile
 RUN echo "conda activate dist-s1-env" >> ~/.bashrc
 
 # Install repository with pip
+RUN conda activate dist-s1-env
 RUN python -m pip install --no-cache-dir /home/conda/dist-s1
