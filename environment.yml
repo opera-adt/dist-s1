@@ -31,6 +31,7 @@ dependencies:
  - setuptools
  - setuptools_scm
  - shapely
- - tile_mate
  - tqdm
+ - pip:
+   - tile-mate>=0.0.12
 
