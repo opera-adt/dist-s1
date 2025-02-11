@@ -1,8 +1,4 @@
 name: dist-s1-env
-channels:
- - pytorch
- - nvidia
- - conda-forge
 dependencies:
  - python>=3.12
  - pip
@@ -10,7 +6,6 @@ dependencies:
  - backoff
  - click
  - dem_stitcher
- - dist_s1_enumerator
  - distmetrics
  - flake8
  - flake8-blind-except
@@ -36,4 +31,5 @@ dependencies:
  - tile_mate
  - tqdm
  - cudatoolkit>=11.8
+
 
