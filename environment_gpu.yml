@@ -36,4 +36,4 @@ dependencies:
  - tqdm
  - cuda-toolkit>=11.8
  - pip:
-   - tile-mate>=0.0.12
+   - tile-mate>=0.0.12 # TODO: unclear why this is downgraded when in conda-forge
