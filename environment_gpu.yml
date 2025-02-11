@@ -26,7 +26,7 @@ dependencies:
  - pytest
  - pytest-cov
  - pytorch
- - pytorch-cuda=11.8
+ - pytorch-cuda>=11.8
  - rasterio
  - ruff
  - scipy
@@ -35,6 +35,4 @@ dependencies:
  - shapely
  - tile_mate
  - tqdm
- - cudatoolkit>=11.8
-
-
+ - cuda-toolkit>=11.8

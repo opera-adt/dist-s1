@@ -61,13 +61,11 @@ COPY --chown=${CONDA_UID}:${CONDA_GID} . /home/conda/dist-s1
 # # RUN chmod -R 777 /home/ops
 
 # Create the environment with mamba
-RUN mamba env create -f /home/conda/dist-s1/environment_gpu.yml && \
-    conda clean -afy
+# RUN mamba env create -f /home/conda/dist-s1/environment_gpu.yml && \
+#     conda clean -afy
 
 # Ensure that environment is activated on startup and interactive shell
 RUN echo "conda activate dist-s1-env" >> ~/.profile
-RUN echo "conda activate dist-s1-env" >> ~/.bashrc
 
 # Install repository with pip
-RUN conda activate dist-s1-env
 RUN python -m pip install --no-cache-dir /home/conda/dist-s1
