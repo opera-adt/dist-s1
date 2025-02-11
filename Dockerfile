@@ -1,27 +1,13 @@
-FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
+FROM condaforge/mambaforge:latest
 
 LABEL description="DIST-S1 Container"
 
-ENV DEBIAN_FRONTEND=noninteractive
+ARG DEBIAN_FRONTEND=noninteractive
+ENV PYTHONDONTWRITEBYTECODE=true
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    wget \
-    bzip2 \
-    ca-certificates \
-    git \
-    vim \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Mambaforge instead of Miniconda
-ENV CONDA_DIR=/opt/conda
-RUN wget -qO /tmp/mambaforge.sh \
-    "https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-Linux-x86_64.sh" && \
-    bash /tmp/mambaforge.sh -b -p $CONDA_DIR && \
-    rm /tmp/mambaforge.sh
-
-# Add conda to path
-ENV PATH="${CONDA_DIR}/bin:${PATH}"
+# Install libgl1-mesa-glx unzip vim
+RUN apt-get update && apt-get install -y --no-install-recommends libgl1-mesa-glx unzip vim && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # run commands in a bash login shell
 SHELL ["/bin/bash", "-l", "-c"]
@@ -38,13 +24,17 @@ RUN groupadd -g "${GID}" --system dist_user && \
 USER dist_user
 WORKDIR /home/ops
 
-# Copy environment file first for better caching
+# Ensures we cached mamba install per
+# https://docs.docker.com/develop/develop-images/dockerfile_best-practices/#leverage-build-cache
 COPY --chown=dist_user:dist_user environment_gpu.yml /home/ops/dist-s1/environment_gpu.yml
 COPY --chown=dist_user:dist_user . /home/ops/dist-s1
 
+# Ensure all files are read/write by the user
+# RUN chmod -R 777 /home/ops
+
 # Create the environment with mamba
 RUN mamba env create -f /home/ops/dist-s1/environment_gpu.yml && \
-    mamba clean -afy
+    conda clean -afy
 
 # Ensure that environment is activated on startup and interactive shell
 RUN echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.profile && \
