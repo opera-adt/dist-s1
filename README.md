@@ -74,8 +74,8 @@ We recommend using the mamba/conda package manager and `conda-forge` distributio
 
 ```
 mamba update -f environment.yml
-pip install dist-s1  # update to conda when it is ready on conda-forge
 conda activate dist-s1-env
+pip install dist-s1  # update to conda when it is ready on conda-forge
 python -m ipykernel install --user --name dist-s1-env
 ```
 
@@ -128,8 +128,9 @@ As above, we recommend using the mamba/conda package manager to install the DIST
 
 ```
 mamba update -f environment.yml
-pip install -e .
 conda activate dist-s1-env
+pip install -e .
+# Optional for Jupyter notebook development
 python -m ipykernel install --user --name dist-s1-env
 ```
 

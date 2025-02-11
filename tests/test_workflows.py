@@ -17,6 +17,9 @@ from dist_s1.workflows import (
 )
 
 
+GENERATE_TEST_DATA = True
+
+
 def test_despeckle_workflow(test_dir: Path, test_data_dir: Path, change_local_dir: Callable) -> None:
     # Ensure that validation is relative to the test directory
     change_local_dir(test_dir)
@@ -26,7 +29,8 @@ def test_despeckle_workflow(test_dir: Path, test_data_dir: Path, change_local_di
     df_product = gpd.read_parquet(test_data_dir / '10SGD_cropped' / '10SGD__137__2024-01-08_dist_s1_inputs.parquet')
     assert tmp_dir.exists() and tmp_dir.is_dir()
 
-    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, apply_water_mask=False)
+    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir)
+    config.apply_water_mask = False
 
     run_despeckle_workflow(config)
 
@@ -42,7 +46,8 @@ def test_despeckle_workflow(test_dir: Path, test_data_dir: Path, change_local_di
         profiles = [open_one_profile(path) for path in dst_path_by_burst_id]
         assert all(check_profiles_match(profiles[0], profile) for profile in profiles[1:])
 
-    # shutil.rmtree(tmp_dir)
+    if GENERATE_TEST_DATA:
+        shutil.rmtree(tmp_dir)
 
 
 def test_normal_params_workflow(test_dir: Path, test_data_dir: Path, change_local_dir: Callable) -> None:
@@ -60,11 +65,13 @@ def test_normal_params_workflow(test_dir: Path, test_data_dir: Path, change_loca
     shutil.copytree(src_tv_dir, dst_tv_dir)
 
     df_product = gpd.read_parquet(test_data_dir / '10SGD_cropped' / '10SGD__137__2024-01-08_dist_s1_inputs.parquet')
-    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, apply_water_mask=False)
+    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir)
+    config.apply_water_mask = False
 
     run_normal_param_estimation_workflow(config)
 
-    # shutil.rmtree(tmp_dir)
+    if GENERATE_TEST_DATA:
+        shutil.rmtree(tmp_dir)
 
 
 def test_burst_disturbance_workflow(test_dir: Path, test_data_dir: Path, change_local_dir: Callable) -> None:
@@ -81,11 +88,12 @@ def test_burst_disturbance_workflow(test_dir: Path, test_data_dir: Path, change_
         shutil.copytree(src_dir, dst_dir)
 
     df_product = gpd.read_parquet(test_data_dir / '10SGD_cropped' / '10SGD__137__2024-01-08_dist_s1_inputs.parquet')
-    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, apply_water_mask=False)
+    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir)
+    config.apply_water_mask = False
 
     run_burst_disturbance_workflow(config)
 
-    # shutil.rmtree(tmp_dir)
+    shutil.rmtree(tmp_dir)
 
 
 @pytest.mark.parametrize('lookback', [0, 1, 2, 3])
