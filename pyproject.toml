@@ -23,7 +23,7 @@ classifiers = [
 license = { text = 'Apache-2.0' }
 dynamic = ['version']
 
-dependencies = ['numpy', 'asf_search', 'geopandas', 'rasterio', 'distmetrics', 'dist-s1-enumerator', 'pytorch', 'geopandas', 'pandas', 'scipy', 'tile-mate', 'pydantic']
+dependencies = ['numpy', 'asf_search', 'geopandas', 'rasterio', 'distmetrics', 'dist-s1-enumerator', 'torch', 'geopandas', 'pandas', 'scipy', 'tile-mate', 'pydantic']
 
 [project.urls]
 Homepage = "https://github.com/opera-adt/dist-s1"
