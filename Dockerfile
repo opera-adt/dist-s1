@@ -68,4 +68,4 @@ COPY --chown=${CONDA_UID}:${CONDA_GID} . /home/conda/dist-s1
 RUN echo "conda activate dist-s1-env" >> ~/.profile
 
 # Install repository with pip
-RUN python -m pip install --no-cache-dir /home/conda/dist-s1
+RUN conda activate dist-s1-env && python -m pip install --no-cache-dir /home/conda/dist-s1
