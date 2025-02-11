@@ -40,11 +40,15 @@ def open_one_profile(path: Path) -> dict:
     return p
 
 
-def serialize_one_2d_ds(arr: np.ndarray, p: dict, out_path: Path, colormap: dict | None = None) -> Path:
+def serialize_one_2d_ds(
+    arr: np.ndarray, p: dict, out_path: Path, colormap: dict | None = None, tags: dict | None = None
+) -> Path:
     with rasterio.open(out_path, 'w', **p) as ds:
         ds.write(arr, 1)
         if colormap is not None:
             ds.write_colormap(1, colormap)
+        if tags is not None:
+            ds.update_tags(**tags)
     return out_path
 
 

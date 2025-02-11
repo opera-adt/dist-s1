@@ -11,7 +11,10 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added 
 - Minimum working example of generation fo the product via `dist-s1 run`
 - Integration of `dist-s1-enumerator` to identify/localize the inputs from MGRS tile ID, post-date, and track number
-- Notebook to run e2e workflow
+- Notebooks and examples to run end-to-end workflows as well as Science Application Software (SAS) workflows
+- Docker image with nvidia compatibility (fixes the cuda version at 11.8)
+- Using the water mask.
+- Extensive instructions in the README for various use-case scenarios.
 
 ## Changed
 - Pyproject.toml file to handle ruff

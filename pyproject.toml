@@ -23,7 +23,7 @@ classifiers = [
 license = { text = 'Apache-2.0' }
 dynamic = ['version']
 
-dependencies = ['numpy', 'asf_search', 'geopandas', 'rasterio']
+dependencies = ['numpy', 'asf_search', 'geopandas', 'rasterio', 'distmetrics', 'dist-s1-enumerator', 'torch', 'geopandas', 'pandas', 'scipy', 'tile-mate', 'pydantic']
 
 [project.urls]
 Homepage = "https://github.com/opera-adt/dist-s1"
@@ -40,7 +40,7 @@ zip-safe = false
 
 [tool.setuptools.packages.find]
 where = ["src"]
-exclude = ["notebooks*", "tests*"]
+exclude = ["notebooks*", "tests*", "examples*", "assets*"]
 
 [tool.setuptools.dynamic]
 readme = { file = ['README.md'], content-type = 'text/markdown' }

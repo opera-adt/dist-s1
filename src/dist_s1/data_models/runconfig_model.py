@@ -4,6 +4,7 @@ from pathlib import Path, PosixPath
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+import rasterio
 import yaml
 from dist_s1_enumerator.asf import append_pass_data, extract_pass_id
 from dist_s1_enumerator.data_models import dist_s1_loc_input_schema
@@ -13,6 +14,7 @@ from pydantic import BaseModel, Field, ValidationError, ValidationInfo, field_va
 from yaml import Dumper
 
 from dist_s1.data_models.output_models import ProductDirectoryData, ProductNameData
+from dist_s1.rio_tools import get_mgrs_profile
 from dist_s1.water_mask import get_water_mask
 
 
@@ -118,14 +120,17 @@ class RunConfigData(BaseModel):
     mgrs_tile_id: str
     dst_dir: Path | str | None = None
     water_mask_path: Path | str | None = None
-    apply_water_mask: bool = Field(default=False)
+    apply_water_mask: bool = Field(default=True)
     check_input_paths: bool = True
     memory_strategy: str | None = Field(
         default='high',
         pattern='^(high|low)$',
     )
     tqdm_enabled: bool = Field(default=True)
-    n_lookbacks: int = Field(default=3, ge=1, le=10)
+    n_lookbacks: int = Field(default=3, ge=1, le=3)
+    # This is where default thresholds are set!
+    moderate_confidence_threshold: float = Field(default=3.5, ge=0.0, le=15.0)
+    high_confidence_threshold: float = Field(default=5.5, ge=0.0, le=15.0)
     product_dst_dir: Path | str | None = None
 
     # Private attributes that are associated to properties
@@ -170,11 +175,13 @@ class RunConfigData(BaseModel):
 
     @field_validator('product_dst_dir', mode='before')
     def validate_product_dst_dir(cls, product_dst_dir: Path | str | None, info: ValidationInfo) -> Path | None:
-        if product_dst_dir is None:
-            product_dst_dir = info.data.get('dst_dir', Path.cwd())
         if isinstance(product_dst_dir, str):
             product_dst_dir = Path(product_dst_dir)
-        return product_dst_dir
+
+    def __setattr__(self, name: str, value: Path | str | None) -> None:
+        if name == 'product_dst_dir' and value is None:
+            value = Path(self.dst_dir)
+        super().__setattr__(name, value)
 
     @field_validator('pre_rtc_crosspol', 'post_rtc_crosspol')
     def check_matching_lengths_copol_and_crosspol(
@@ -212,6 +219,17 @@ class RunConfigData(BaseModel):
         dst_dir.mkdir(parents=True, exist_ok=True)
         return dst_dir
 
+    @field_validator('moderate_confidence_threshold')
+    def validate_moderate_threshold(cls, moderate_threshold: float, info: ValidationInfo) -> float:
+        """Validate that moderate_confidence_threshold is less than high_confidence_threshold."""
+        high_threshold = info.data.get('high_confidence_threshold')
+        if high_threshold is not None and moderate_threshold >= high_threshold:
+            raise ValueError(
+                f'moderate_confidence_threshold ({moderate_threshold}) must be less than '
+                f'high_confidence_threshold ({high_threshold})'
+            )
+        return moderate_threshold
+
     @property
     def processing_datetime(self) -> datetime:
         if self._processing_datetime is None:
@@ -246,11 +264,15 @@ class RunConfigData(BaseModel):
             )
         return self._product_data_model
 
+    def get_public_attributes(self) -> dict:
+        config_dict = {k: v for k, v in self.model_dump().items() if not k.startswith('_')}
+        config_dict.pop('check_input_paths', None)
+        return config_dict
+
     def to_yaml(self, yaml_file: str | Path) -> None:
         """Save configuration to a YAML file."""
         # Get only the non-private attributes (those that don't start with _)
-        config_dict = {k: v for k, v in self.model_dump().items() if not k.startswith('_')}
-        config_dict.pop('check_input_paths', None)
+        config_dict = self.get_public_attributes()
         yml_dict = {'run_config': config_dict}
 
         # Write to YAML file
@@ -264,8 +286,13 @@ class RunConfigData(BaseModel):
         cls,
         product_df: gpd.GeoDataFrame,
         dst_dir: Path | str | None = Path('out'),
-        water_mask: Path | str | None = None,
+        apply_water_mask: bool = True,
+        water_mask_path: Path | str | None = None,
     ) -> 'RunConfigData':
+        """Transform input table from dist-s1-enumerator into RunConfigData object.
+
+        Additional runconfig parameters should be assigned via attributes.
+        """
         df_pre = product_df[product_df.input_category == 'pre'].reset_index(drop=True)
         df_post = product_df[product_df.input_category == 'post'].reset_index(drop=True)
         runconfig_data = RunConfigData(
@@ -275,7 +302,8 @@ class RunConfigData(BaseModel):
             post_rtc_crosspol=df_post.loc_path_crosspol.tolist(),
             mgrs_tile_id=df_pre.mgrs_tile_id.iloc[0],
             dst_dir=dst_dir,
-            water_mask_path=water_mask,
+            apply_water_mask=apply_water_mask,
+            water_mask_path=water_mask_path,
         )
         return runconfig_data
 
@@ -426,10 +454,20 @@ class RunConfigData(BaseModel):
             water_mask_path = self.dst_dir / 'water_mask.tif'
             self.water_mask_path = get_water_mask(self.mgrs_tile_id, water_mask_path, overwrite=False)
         elif isinstance(self.water_mask_path, str | Path) and self.apply_water_mask:
-            raise NotImplementedError(
-                'A merged water mask path will likely need additional pre-processing '
-                '(windowed reading, resampling etc.)'
-            )
+            with rasterio.open(self.water_mask_path) as src:
+                wm_profile = src.profile
+            mgrs_profile = get_mgrs_profile(self.mgrs_tile_id)
+            if (
+                (wm_profile['crs'] != mgrs_profile['crs'])
+                or (wm_profile['transform'] != mgrs_profile['transform'])
+                or (wm_profile['height'] != 3660)
+                or (wm_profile['width'] != 3660)
+            ):
+                raise NotImplementedError(
+                    f'We assume the watermask is properly formatted in MGRS tile {self.mgrs_tile_id}; '
+                    'additional preprocessing required'
+                )
 
         if self.product_dst_dir is None:
-            self.product_dst_dir = self.dst_dir
+            # Ensures value not pointer is assigned to attribute
+            self.product_dst_dir = Path(self.dst_dir)

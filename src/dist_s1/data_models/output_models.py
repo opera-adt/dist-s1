@@ -180,11 +180,15 @@ class ProductDirectoryData(BaseModel):
             path_self = self.layer_path_dict[layer]
             path_other = other.layer_path_dict[layer]
 
+            unequal_layers = []
             with rasterio.open(path_self) as src_self, rasterio.open(path_other) as src_other:
                 data_self = src_self.read()
                 data_other = src_other.read()
                 if not np.allclose(data_self, data_other, rtol=rtol, atol=atol, equal_nan=equal_nan):
-                    return False
+                    unequal_layers.append(layer)
+        if unequal_layers:
+            warn(f'Layer {unequal_layers} have unequal data', UserWarning)
+            return False
 
         return True
 

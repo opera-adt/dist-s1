@@ -3,27 +3,18 @@ from pathlib import Path
 import numpy as np
 import rasterio
 from rasterio.enums import Resampling
+from rasterio.env import Env
 
+import dist_s1
 from dist_s1.constants import DIST_CMAP
 from dist_s1.data_models.runconfig_model import RunConfigData
 from dist_s1.rio_tools import open_one_ds, serialize_one_2d_ds
-
-
-def check_water_mask(water_mask_profile: dict, disturbance_profile: dict) -> None:
-    if water_mask_profile['crs'] != disturbance_profile['crs']:
-        raise ValueError('Water mask and disturbance array CRS do not match')
-    if water_mask_profile['transform'] != disturbance_profile['transform']:
-        raise ValueError('Water mask and disturbance array transform do not match')
-    if water_mask_profile['height'] != disturbance_profile['height']:
-        raise ValueError('Water mask and disturbance array height do not match')
-    if water_mask_profile['width'] != disturbance_profile['width']:
-        raise ValueError('Water mask and disturbance array width do not match')
-    return True
+from dist_s1.water_mask import check_water_mask_profile
 
 
 def apply_water_mask(band_src: np.ndarray, profile_src: dict, water_mask_path: Path | str | None = None) -> np.ndarray:
     X_wm, p_wm = open_one_ds(water_mask_path)
-    check_water_mask(p_wm, profile_src)
+    check_water_mask_profile(p_wm, profile_src)
     band_src[X_wm == 1] = profile_src['nodata']
     return band_src
 
@@ -61,10 +52,39 @@ def convert_geotiff_to_png(
         serialize_one_2d_ds(band, profile, out_png_path, colormap=colormap)
 
 
+def update_tags_with_opera_ids(tags: dict) -> dict:
+    input_keys = ['pre_rtc_copol', 'post_rtc_copol', 'post_rtc_crosspol', 'pre_rtc_crosspol']
+    for key in input_keys:
+        value = tags.pop(key)
+        if 'crosspol' in key:
+            continue
+        else:
+            opera_ids = [path.name for path in value]
+            opera_ids = [opera_id.replace('_VV.tif', '') for opera_id in opera_ids]
+            # pre_rtc_copol -> pre_opera_ids, etc.
+            new_key = key.replace('_copol', '_opera_ids')
+            tags[new_key] = opera_ids
+    return tags
+
+
+def update_tag_types(tags: dict) -> dict:
+    for key, value in tags.items():
+        if isinstance(value, Path):
+            tags[key] = str(value)
+        elif isinstance(value, list | tuple):
+            tags[key] = ','.join(list(map(str, value)))
+    return tags
+
+
 def package_disturbance_tifs(run_config: RunConfigData) -> None:
     X_dist, p_dist = open_one_ds(run_config.final_unformatted_tif_paths['alert_status_path'])
     X_dist_delta0, p_dist_delta0 = open_one_ds(run_config.final_unformatted_tif_paths['alert_delta0_path'])
     X_metric, p_metric = open_one_ds(run_config.final_unformatted_tif_paths['metric_status_path'])
+
+    tags = run_config.get_public_attributes()
+    tags['version'] = dist_s1.__version__
+    tags = update_tags_with_opera_ids(tags)
+    tags = update_tag_types(tags)
 
     if run_config.apply_water_mask:
         X_dist = apply_water_mask(X_dist, p_dist, run_config.water_mask_path)
@@ -73,18 +93,23 @@ def package_disturbance_tifs(run_config: RunConfigData) -> None:
 
     product_data = run_config.product_data_model
 
-    serialize_one_2d_ds(X_dist, p_dist, product_data.layer_path_dict['DIST-GEN-STATUS'], colormap=DIST_CMAP)
+    serialize_one_2d_ds(X_dist, p_dist, product_data.layer_path_dict['DIST-GEN-STATUS'], colormap=DIST_CMAP, tags=tags)
     serialize_one_2d_ds(
-        X_dist_delta0, p_dist_delta0, product_data.layer_path_dict['DIST-GEN-STATUS-ACQ'], colormap=DIST_CMAP
+        X_dist_delta0,
+        p_dist_delta0,
+        product_data.layer_path_dict['DIST-GEN-STATUS-ACQ'],
+        colormap=DIST_CMAP,
+        tags=tags,
     )
-    serialize_one_2d_ds(X_metric, p_metric, product_data.layer_path_dict['GEN-METRIC'])
+    serialize_one_2d_ds(X_metric, p_metric, product_data.layer_path_dict['GEN-METRIC'], colormap=DIST_CMAP, tags=tags)
 
 
 def generate_browse_image(run_config: RunConfigData) -> None:
     product_data = run_config.product_data_model
-    convert_geotiff_to_png(
-        run_config.final_unformatted_tif_paths['alert_status_path'],
-        product_data.layer_path_dict['browse'],
-        colormap=DIST_CMAP,
-        water_mask_path=run_config.water_mask_path,
-    )
+    with Env(GDAL_PAM_ENABLED='NO'):
+        convert_geotiff_to_png(
+            run_config.final_unformatted_tif_paths['alert_status_path'],
+            product_data.layer_path_dict['browse'],
+            colormap=DIST_CMAP,
+            water_mask_path=run_config.water_mask_path,
+        )
