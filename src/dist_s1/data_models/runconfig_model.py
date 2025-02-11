@@ -286,6 +286,8 @@ class RunConfigData(BaseModel):
         cls,
         product_df: gpd.GeoDataFrame,
         dst_dir: Path | str | None = Path('out'),
+        apply_water_mask: bool = True,
+        water_mask_path: Path | str | None = None,
     ) -> 'RunConfigData':
         """Transform input table from dist-s1-enumerator into RunConfigData object.
 
@@ -300,6 +302,8 @@ class RunConfigData(BaseModel):
             post_rtc_crosspol=df_post.loc_path_crosspol.tolist(),
             mgrs_tile_id=df_pre.mgrs_tile_id.iloc[0],
             dst_dir=dst_dir,
+            apply_water_mask=apply_water_mask,
+            water_mask_path=water_mask_path,
         )
         return runconfig_data
 
