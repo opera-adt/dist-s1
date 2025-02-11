@@ -1,5 +1,5 @@
 # Use Miniforge with CUDA support
-FROM rapidsai/miniforge-cuda:11.8-runtime-ubuntu22.04 
+FROM rapidsai/miniforge-cuda:latest
 
 # Set environment variables for CUDA (optional, but helps with compatibility)
 ENV CUDA_HOME=/usr/local/cuda
