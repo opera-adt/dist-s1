@@ -5,19 +5,20 @@ from pathlib import Path
 import geopandas as gpd
 import pytest
 
+from dist_s1.data_models.output_models import ProductDirectoryData
 from dist_s1.data_models.runconfig_model import RunConfigData
 from dist_s1.rio_tools import check_profiles_match, open_one_profile
 from dist_s1.workflows import (
-    # run_dist_s1_workflow,
     curate_input_burst_rtc_input_for_dist,
     curate_input_burst_rtc_s1_paths_for_normal_param_est,
     run_burst_disturbance_workflow,
     run_despeckle_workflow,
+    run_dist_s1_sas_workflow,
     run_normal_param_estimation_workflow,
 )
 
 
-GENERATE_TEST_DATA = True
+ERASE_WORKFLOW_OUTPUTS = True
 
 
 def test_despeckle_workflow(test_dir: Path, test_data_dir: Path, change_local_dir: Callable) -> None:
@@ -46,7 +47,7 @@ def test_despeckle_workflow(test_dir: Path, test_data_dir: Path, change_local_di
         profiles = [open_one_profile(path) for path in dst_path_by_burst_id]
         assert all(check_profiles_match(profiles[0], profile) for profile in profiles[1:])
 
-    if GENERATE_TEST_DATA:
+    if ERASE_WORKFLOW_OUTPUTS:
         shutil.rmtree(tmp_dir)
 
 
@@ -70,7 +71,7 @@ def test_normal_params_workflow(test_dir: Path, test_data_dir: Path, change_loca
 
     run_normal_param_estimation_workflow(config)
 
-    if GENERATE_TEST_DATA:
+    if ERASE_WORKFLOW_OUTPUTS:
         shutil.rmtree(tmp_dir)
 
 
@@ -143,16 +144,25 @@ def test_curate_input_burst_rtc_input_for_dist(lookback: int) -> None:
     assert copol_paths_post == copol_paths[-lookback - 1 :]
 
 
-# def test_dist_s1_workflow(test_dir: Path, test_data_dir: Path, change_local_dir: Callable) -> None:
-#     change_local_dir(test_dir)
-#     tmp_dir = test_dir / 'tmp'
-#     tmp_dir.mkdir(parents=True, exist_ok=True)
+def test_dist_s1_sas_workflow(
+    test_dir: Path, test_data_dir: Path, change_local_dir: Callable, test_opera_golden_dummy_dataset: Path
+) -> None:
+    # Ensure that validation is relative to the test directory
+    change_local_dir(test_dir)
+    tmp_dir = test_dir / 'tmp'
+    tmp_dir.mkdir(parents=True, exist_ok=True)
 
-#     mgrs_tile_id = '10SGD'
-#     post_date = '2025-01-02'
-#     track_number = 137
-#     input_data_dir = 'test_data'
-#     dst_dir = 'out'
-#     _ = run_dist_s1_workflow(
-#         mgrs_tile_id, post_date, track_number, post_date_buffer_days=1, dst_dir=dst_dir, input_data_dir=input_data_dir
-#     )
+    df_product = gpd.read_parquet(test_data_dir / '10SGD_cropped' / '10SGD__137__2024-01-08_dist_s1_inputs.parquet')
+    assert tmp_dir.exists() and tmp_dir.is_dir()
+
+    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir)
+    config.apply_water_mask = False
+
+    run_dist_s1_sas_workflow(config)
+
+    product_data = config.product_data_model
+    product_data_golden = ProductDirectoryData.from_product_path(test_opera_golden_dummy_dataset)
+    assert product_data == product_data_golden
+
+    if ERASE_WORKFLOW_OUTPUTS:
+        shutil.rmtree(tmp_dir)
