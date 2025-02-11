@@ -9,6 +9,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [0.0.4]
 
 ### Added 
+- GPU docker file
 - Minimum working example of generation fo the product via `dist-s1 run`
 - Integration of `dist-s1-enumerator` to identify/localize the inputs from MGRS tile ID, post-date, and track number
 - Notebooks and examples to run end-to-end workflows as well as Science Application Software (SAS) workflows
