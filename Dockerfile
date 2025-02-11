@@ -2,14 +2,14 @@ FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
 
 LABEL description="DIST-S1 Container"
 
-ENV DEBIAN_FRONTEND=noninteractive \
-    CONDA_DIR=/opt/conda \
-    LANG=C.UTF-8 \
-    LC_ALL=C.UTF-8 \
-    PATH=${CONDA_DIR}/bin:${PATH} \
-    PYTHONDONTWRITEBYTECODE=true \
-    PROC_HOME=/srg \
-    MYHOME=/home/conda
+ENV DEBIAN_FRONTEND=noninteractive 
+ENV CONDA_DIR=/opt/conda 
+ENV LANG=C.UTF-8 
+ENV LC_ALL=C.UTF-8 
+ENV PATH=${CONDA_DIR}/bin:${PATH} 
+ENV PYTHONDONTWRITEBYTECODE=true 
+ENV PROC_HOME=/srg 
+ENV MYHOME=/home/conda
 
 ARG CONDA_UID=1000
 ARG CONDA_GID=1000
