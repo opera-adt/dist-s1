@@ -152,7 +152,7 @@ Notes:
 Make sure you have Docker installed for [Mac](https://docs.docker.com/desktop/setup/install/mac-install/) or [Windows](https://docs.docker.com/desktop/setup/install/windows-install/). We call the docker image `dist_s1_img` for the remainder of this README.
 
 ```
-docker build -f Dockerfile -t dist-s1 .
+docker build -f Dockerfile.cpu -t dist-s1 .
 ```
 
 ### Running the Container Interactively
