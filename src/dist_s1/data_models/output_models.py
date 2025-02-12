@@ -18,12 +18,13 @@ EXPECTED_FORMAT_STRING = (
     'OPERA_L3_DIST-ALERT-S1_T{mgrs_tile_id}_{acq_datetime}_{proc_datetime}_S1_30_v{PRODUCT_VERSION}'
 )
 
-TAGS_FOR_EQUALITY = [
+PRODUCT_TAGS_FOR_EQUALITY = [
     'pre_rtc_opera_ids',
     'post_rtc_opera_ids',
     'high_confidence_threshold',
     'moderate_confidence_threshold',
 ]
+REQUIRED_PRODUCT_TAGS = PRODUCT_TAGS_FOR_EQUALITY + ['version']
 
 
 class ProductNameData(BaseModel):
@@ -203,10 +204,21 @@ class ProductDirectoryData(BaseModel):
                 tags_other = src_other.tags()
                 keys_self = tags_self.keys()
                 keys_other = tags_other.keys()
-                if set(keys_self) != set(keys_other):
-                    warn(f'Layer {layer} metadata keys for gdal tags do not match', UserWarning)
+                missing_tag_keys_self = [key for key in REQUIRED_PRODUCT_TAGS if key not in keys_self]
+                if [key for key in REQUIRED_PRODUCT_TAGS if key in keys_self]:
+                    warn(
+                        f'Layer {layer} is missing required tags in left product: {",".join(missing_tag_keys_self)}',
+                        UserWarning,
+                    )
                     equality = False
-                for key in TAGS_FOR_EQUALITY:
+                missing_tag_keys_other = [key for key in REQUIRED_PRODUCT_TAGS if key not in keys_other]
+                if missing_tag_keys_other:
+                    warn(
+                        f'Layer {layer} is missing required tags in right product: {",".join(missing_tag_keys_other)}',
+                        UserWarning,
+                    )
+                    equality = False
+                for key in PRODUCT_TAGS_FOR_EQUALITY:
                     if tags_self[key] != tags_other[key]:
                         warn(f'Layer {layer} metadata value for key {key} do not match', UserWarning)
                         equality = False
