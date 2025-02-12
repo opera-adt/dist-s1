@@ -92,6 +92,20 @@ def common_options(func: Callable) -> Callable:
         required=False,
         help='Path to save the final products. If not specified, uses `dst_dir`.',
     )
+    @click.option(
+        '--bucket',
+        type=str,
+        default=None,
+        required=False,
+        help='S3 bucket to upload the final products to.',
+    )
+    @click.option(
+        '--bucket_prefix',
+        type=str,
+        default='',
+        required=False,
+        help='S3 bucket prefix to upload the final products to.',
+    )
     @functools.wraps(func)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         return func(*args, **kwargs)

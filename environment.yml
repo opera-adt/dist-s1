@@ -6,6 +6,7 @@ dependencies:
  - pip
  - asf_search
  - backoff
+ - boto3
  - click
  - dem_stitcher
  - dist_s1_enumerator

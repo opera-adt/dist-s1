@@ -16,6 +16,8 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Using the water mask.
 - Extensive instructions in the README for various use-case scenarios.
 - Golden dataset test for SAS workflow
+- Allow user to specify bucket/prefix for S3 upload - makes library compatible with Hyp3.
+- Ensure Earthdata credentials are provided in ~/.netrc and allow for them to be passed as suitable evnironment variables.
 
 ## Changed
 - Pyproject.toml file to handle ruff
