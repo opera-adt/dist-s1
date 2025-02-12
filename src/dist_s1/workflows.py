@@ -4,6 +4,7 @@ from pathlib import Path
 import pandas as pd
 from tqdm.auto import tqdm
 
+from dist_s1.aws import upload_product_to_s3
 from dist_s1.constants import MODEL_CONTEXT_LENGTH
 from dist_s1.data_models.runconfig_model import RunConfigData
 from dist_s1.localize_rtc_s1 import localize_rtc_s1
@@ -332,6 +333,10 @@ def run_dist_s1_sas_prep_workflow(
 def run_dist_s1_sas_workflow(run_config: RunConfigData) -> Path:
     _ = run_dist_s1_processing_workflow(run_config)
     _ = run_dist_s1_packaging_workflow(run_config)
+
+    # Upload to S3 if bucket is provided
+    if run_config.bucket is not None:
+        upload_product_to_s3(run_config.product_directory, run_config.bucket, run_config.bucket_prefix)
     return run_config
 
 
@@ -350,6 +355,8 @@ def run_dist_s1_workflow(
     apply_water_mask: bool = True,
     n_lookbacks: int = 3,
     product_dst_dir: str | Path | None = None,
+    bucket: str | None = None,
+    bucket_prefix: str = '',
 ) -> Path:
     run_config = run_dist_s1_sas_prep_workflow(
         mgrs_tile_id,
@@ -366,6 +373,8 @@ def run_dist_s1_workflow(
         n_lookbacks=n_lookbacks,
         water_mask_path=water_mask_path,
         product_dst_dir=product_dst_dir,
+        bucket=bucket,
+        bucket_prefix=bucket_prefix,
     )
     _ = run_dist_s1_sas_workflow(run_config)
 

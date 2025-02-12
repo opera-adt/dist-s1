@@ -132,6 +132,8 @@ class RunConfigData(BaseModel):
     moderate_confidence_threshold: float = Field(default=3.5, ge=0.0, le=15.0)
     high_confidence_threshold: float = Field(default=5.5, ge=0.0, le=15.0)
     product_dst_dir: Path | str | None = None
+    bucket: str | None = None
+    bucket_prefix: str = ''
 
     # Private attributes that are associated to properties
     _burst_ids: list[str] | None = None
@@ -316,6 +318,10 @@ class RunConfigData(BaseModel):
                 }
             )
         return self._df_tile_dist
+
+    @property
+    def product_directory(self) -> Path:
+        return Path(self.product_data_model.product_dir_path)
 
     @property
     def final_unformatted_tif_paths(self) -> dict:
