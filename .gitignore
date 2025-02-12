@@ -97,3 +97,12 @@ tests/*.ipynb
 
 # Runner in nb directory
 notebooks/runner.py
+
+# Deprecated
+deprecated/
+
+# tests out (for test data generation)
+tests/out/
+
+# Generation Notebook
+!tests/Generate_Test_Data.ipynb
