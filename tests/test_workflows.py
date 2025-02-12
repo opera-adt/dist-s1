@@ -158,6 +158,7 @@ def test_dist_s1_sas_workflow(
 
     product_data = config.product_data_model
     product_data_golden = ProductDirectoryData.from_product_path(test_opera_golden_dummy_dataset)
+
     assert product_data == product_data_golden
 
     if ERASE_WORKFLOW_OUTPUTS:

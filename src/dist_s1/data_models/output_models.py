@@ -18,6 +18,13 @@ EXPECTED_FORMAT_STRING = (
     'OPERA_L3_DIST-ALERT-S1_T{mgrs_tile_id}_{acq_datetime}_{proc_datetime}_S1_30_v{PRODUCT_VERSION}'
 )
 
+TAGS_FOR_EQUALITY = [
+    'pre_rtc_opera_ids',
+    'post_rtc_opera_ids',
+    'high_confidence_threshold',
+    'moderate_confidence_threshold',
+]
+
 
 class ProductNameData(BaseModel):
     mgrs_tile_id: str
@@ -199,7 +206,7 @@ class ProductDirectoryData(BaseModel):
                 if set(keys_self) != set(keys_other):
                     warn(f'Layer {layer} metadata keys for gdal tags do not match', UserWarning)
                     equality = False
-                for key in keys_self:
+                for key in TAGS_FOR_EQUALITY:
                     if tags_self[key] != tags_other[key]:
                         warn(f'Layer {layer} metadata value for key {key} do not match', UserWarning)
                         equality = False
