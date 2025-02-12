@@ -210,11 +210,14 @@ The command will pull the latest released version of the Docker image. To run th
 docker run ghcr.io/opera-adt/dist-s1 bash -l -c 'cd dist-s1 && pytest tests'
 ``` 
 
-# Checking if DIST-S1 Products are Consistent
+# Checking if DIST-S1 Products are Equal
 
 The final DIST-S1 product consists of a directory with GeoTiff and a png browse image.
-We can investigate if two products generated are the same using tools within this library.
-
+Here, here we define equality of products if the generated products contain the same numerical arrays (within the GeoTiff layers), are georeferenced consistently, and utilized the same inputs.
+It's worth noting that even if the arrays within the GeoTiff layers are the same, the product directories will have different names due to the differences in processing time (which is a token in the product name).
+Similarly, there are some gdal tags that reference local file systems and so will be different between identical products depending on where they were generated.
+All that said, the notion of equality may evolve as the product becomes more structured.
+Below is an example of how to check if two products are equal within python.
 ```
 from dist_s1.data_models.output_models import ProductDirectoryData
 
@@ -223,7 +226,6 @@ product_2 = ProductDirectoryData.from_product_path('path/to/product_2')
 
 product_1 == product_2
 ```
-
 Warnings will be raised regarding what data is not consistent between the two products.
 
 
