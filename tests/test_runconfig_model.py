@@ -1,3 +1,4 @@
+import shutil
 from collections.abc import Callable
 from pathlib import Path
 
@@ -10,9 +11,12 @@ from dist_s1.data_models.runconfig_model import RunConfigData
 def test_input_data_model_from_cropped_dataset(test_dir: Path, test_data_dir: Path, change_local_dir: Callable) -> None:
     change_local_dir(test_dir)
 
-    df_product = gpd.read_parquet(test_data_dir / '10SGD_cropped' / '10SGD__137__2024-01-08_dist_s1_inputs.parquet')
+    tmp_dir = test_dir / 'tmp'
+    tmp_dir.mkdir(parents=True, exist_ok=True)
 
-    config = RunConfigData.from_product_df(df_product)
+    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
+
+    config = RunConfigData.from_product_df(df_product, apply_water_mask=False, dst_dir=tmp_dir)
 
     df = config.df_inputs
 
@@ -35,6 +39,7 @@ def test_input_data_model_from_cropped_dataset(test_dir: Path, test_data_dir: Pa
         'T137-292324-IW2',
         'T137-292325-IW1',
     ]
+
     assert burst_ids_actual == burst_ids_expected
 
     ind_burst = df.jpl_burst_id == 'T137-292319-IW2'
@@ -54,29 +59,29 @@ def test_input_data_model_from_cropped_dataset(test_dir: Path, test_data_dir: Pa
     post_rtc_copol_tif_filenames_actual = [Path(p).name for p in post_rtc_copol_paths]
 
     pre_rtc_copol_tif_filenames_expected = [
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240108T015906Z_20240109T091413Z_S1A_30_v1.0_VV.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240120T015905Z_20240120T143322Z_S1A_30_v1.0_VV.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240201T015905Z_20240201T114629Z_S1A_30_v1.0_VV.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240213T015905Z_20240213T091319Z_S1A_30_v1.0_VV.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240225T015905Z_20240225T100928Z_S1A_30_v1.0_VV.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240308T015905Z_20240409T075111Z_S1A_30_v1.0_VV.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240320T015905Z_20240321T155238Z_S1A_30_v1.0_VV.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240401T015906Z_20240418T135305Z_S1A_30_v1.0_VV.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240413T015904Z_20240419T082133Z_S1A_30_v1.0_VV.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240425T015906Z_20240427T061145Z_S1A_30_v1.0_VV.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20240904T015904Z_20240904T150822Z_S1A_30_v1.0_VV.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20240916T015905Z_20240916T114330Z_S1A_30_v1.0_VV.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20240928T015905Z_20240929T005548Z_S1A_30_v1.0_VV.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20241010T015906Z_20241010T101259Z_S1A_30_v1.0_VV.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20241022T015905Z_20241022T180854Z_S1A_30_v1.0_VV.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20241103T015905Z_20241103T071409Z_S1A_30_v1.0_VV.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20241115T015905Z_20241115T104237Z_S1A_30_v1.0_VV.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20241127T015904Z_20241205T232915Z_S1A_30_v1.0_VV.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20241209T015903Z_20241212T032725Z_S1A_30_v1.0_VV.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20241221T015902Z_20241221T080422Z_S1A_30_v1.0_VV.tif',
     ]
 
     pre_rtc_crosspol_tif_filenames_expected = [
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240108T015906Z_20240109T091413Z_S1A_30_v1.0_VH.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240120T015905Z_20240120T143322Z_S1A_30_v1.0_VH.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240201T015905Z_20240201T114629Z_S1A_30_v1.0_VH.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240213T015905Z_20240213T091319Z_S1A_30_v1.0_VH.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240225T015905Z_20240225T100928Z_S1A_30_v1.0_VH.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240308T015905Z_20240409T075111Z_S1A_30_v1.0_VH.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240320T015905Z_20240321T155238Z_S1A_30_v1.0_VH.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240401T015906Z_20240418T135305Z_S1A_30_v1.0_VH.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240413T015904Z_20240419T082133Z_S1A_30_v1.0_VH.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240425T015906Z_20240427T061145Z_S1A_30_v1.0_VH.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20240904T015904Z_20240904T150822Z_S1A_30_v1.0_VH.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20240916T015905Z_20240916T114330Z_S1A_30_v1.0_VH.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20240928T015905Z_20240929T005548Z_S1A_30_v1.0_VH.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20241010T015906Z_20241010T101259Z_S1A_30_v1.0_VH.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20241022T015905Z_20241022T180854Z_S1A_30_v1.0_VH.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20241103T015905Z_20241103T071409Z_S1A_30_v1.0_VH.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20241115T015905Z_20241115T104237Z_S1A_30_v1.0_VH.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20241127T015904Z_20241205T232915Z_S1A_30_v1.0_VH.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20241209T015903Z_20241212T032725Z_S1A_30_v1.0_VH.tif',
+        'OPERA_L2_RTC-S1_T137-292319-IW2_20241221T015902Z_20241221T080422Z_S1A_30_v1.0_VH.tif',
     ]
 
     post_rtc_copol_tif_filenames_expected = [
@@ -100,19 +105,21 @@ def test_input_data_model_from_cropped_dataset(test_dir: Path, test_data_dir: Pa
     post_acq_dts_str_actual = [dt.strftime('%Y%m%dT%H%M%S') for dt in post_acq_dts]
 
     pre_acq_dts_str_expected = [
-        '20240108T015906',
-        '20240120T015905',
-        '20240201T015905',
-        '20240213T015905',
-        '20240225T015905',
-        '20240308T015905',
-        '20240320T015905',
-        '20240401T015906',
-        '20240413T015904',
-        '20240425T015906',
+        '20240904T015904',
+        '20240916T015905',
+        '20240928T015905',
+        '20241010T015906',
+        '20241022T015905',
+        '20241103T015905',
+        '20241115T015905',
+        '20241127T015904',
+        '20241209T015903',
+        '20241221T015902',
     ]
 
     post_acq_dts_str_expected = ['20250102T015901']
 
     assert pre_acq_dts_str_actual == pre_acq_dts_str_expected
     assert post_acq_dts_str_actual == post_acq_dts_str_expected
+
+    shutil.rmtree(tmp_dir)
