@@ -163,17 +163,21 @@ class ProductDirectoryData(BaseModel):
         tokens_self = self.product_name.split('_')
         tokens_other = other.product_name.split('_')
 
+        equality = True
+
         # Compare MGRS tile IDs
         mgrs_self = tokens_self[3][1:]  # Remove 'T' prefix
         mgrs_other = tokens_other[3][1:]
         if mgrs_self != mgrs_other:
-            return False
+            warn(f'MGRS tile IDs do not match: {mgrs_self} != {mgrs_other}', UserWarning)
+            equality = False
 
         # Compare acquisition datetimes
         acq_dt_self = datetime.strptime(tokens_self[4], '%Y%m%dT%H%M%SZ')
         acq_dt_other = datetime.strptime(tokens_other[4], '%Y%m%dT%H%M%SZ')
         if acq_dt_self != acq_dt_other:
-            return False
+            warn(f'Acquisition datetimes do not match: {acq_dt_self} != {acq_dt_other}', UserWarning)
+            equality = False
 
         # Compare TIF layer data
         for layer in self.layers:
@@ -185,12 +189,26 @@ class ProductDirectoryData(BaseModel):
                 data_self = src_self.read()
                 data_other = src_other.read()
                 if not np.allclose(data_self, data_other, rtol=rtol, atol=atol, equal_nan=equal_nan):
+                    warn(f'Layer {layer} tags do not match', UserWarning)
                     unequal_layers.append(layer)
+
+                tags_self = src_self.tags()
+                tags_other = src_other.tags()
+                keys_self = tags_self.keys()
+                keys_other = tags_other.keys()
+                if keys_self != keys_other:
+                    warn(f'Layer {layer} metadata keys for gdal tags do not match', UserWarning)
+                    equality = False
+                for key in keys_self:
+                    if tags_self[key] != tags_other[key]:
+                        warn(f'Layer {layer} metadata value for key {key} do not match', UserWarning)
+                        equality = False
+
         if unequal_layers:
             warn(f'Layer {unequal_layers} have unequal data', UserWarning)
-            return False
+            equality = False
 
-        return True
+        return equality
 
     @classmethod
     def from_product_path(cls, product_dir_path: Path | str) -> 'ProductDirectoryData':
