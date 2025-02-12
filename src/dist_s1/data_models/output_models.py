@@ -196,7 +196,7 @@ class ProductDirectoryData(BaseModel):
                 tags_other = src_other.tags()
                 keys_self = tags_self.keys()
                 keys_other = tags_other.keys()
-                if keys_self != keys_other:
+                if set(keys_self) != set(keys_other):
                     warn(f'Layer {layer} metadata keys for gdal tags do not match', UserWarning)
                     equality = False
                 for key in keys_self:
