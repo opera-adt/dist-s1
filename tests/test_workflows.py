@@ -18,7 +18,7 @@ from dist_s1.workflows import (
 )
 
 
-ERASE_WORKFLOW_OUTPUTS = False
+ERASE_WORKFLOW_OUTPUTS = True
 
 
 def test_despeckle_workflow(test_dir: Path, test_data_dir: Path, change_local_dir: Callable) -> None:
