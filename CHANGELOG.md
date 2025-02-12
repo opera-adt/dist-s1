@@ -15,6 +15,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Docker image with nvidia compatibility (fixes the cuda version at 11.8)
 - Using the water mask.
 - Extensive instructions in the README for various use-case scenarios.
+- Golden dataset test for SAS workflow
 
 ## Changed
 - Pyproject.toml file to handle ruff
