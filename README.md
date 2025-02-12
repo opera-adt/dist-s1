@@ -75,7 +75,7 @@ We recommend using the mamba/conda package manager and `conda-forge` distributio
 ```
 mamba update -f environment.yml
 conda activate dist-s1-env
-pip install dist-s1  # update to conda when it is ready on conda-forge
+mamba install -c conda-forge dist-s1
 python -m ipykernel install --user --name dist-s1-env
 ```
 
