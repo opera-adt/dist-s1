@@ -205,11 +205,12 @@ class ProductDirectoryData(BaseModel):
                 keys_self = tags_self.keys()
                 keys_other = tags_other.keys()
                 missing_tag_keys_self = [key for key in REQUIRED_PRODUCT_TAGS if key not in keys_self]
-                if [key for key in REQUIRED_PRODUCT_TAGS if key in keys_self]:
+                if missing_tag_keys_self:
                     warn(
                         f'Layer {layer} is missing required tags in left product: {",".join(missing_tag_keys_self)}',
                         UserWarning,
                     )
+                    breakpoint()
                     equality = False
                 missing_tag_keys_other = [key for key in REQUIRED_PRODUCT_TAGS if key not in keys_other]
                 if missing_tag_keys_other:
