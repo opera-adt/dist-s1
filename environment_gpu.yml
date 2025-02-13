@@ -1,39 +1,35 @@
 name: dist-s1-env
 channels:
-  - nvidia
-  - conda-forge
-  - pytorch
+ - conda-forge
 dependencies:
- - python=3.12
- - pip
+ - python>=3.12
  - asf_search
  - backoff
- - boto3
  - click
- - dem_stitcher
- - distmetrics
  - flake8
  - flake8-blind-except
- - dist_s1_enumerator
  - flake8-builtins
  - flake8-import-order
  - geopandas
  - jupyterlab
  - matplotlib
- - multiprocess 
  - numpy
  - pandas
  - pydantic
  - pytest
+ - multiprocess # TODO: Remove once distmetrics on conda - need to add this to conda recipe
  - pytest-cov
  - pytorch
- - pytorch-cuda=11.8
  - rasterio
- - ruff
- - scipy
+ - tqdm
  - setuptools
  - setuptools_scm
- - shapely
- - tqdm
- - cuda-toolkit=11.8
  - tile_mate>=0.0.12
+ - ruff
+ - pip
+ - scipy
+ - shapely
+ - dist_s1_enumerator
+ - distmetrics
+ - dem_stitcher
+ - cudatoolkit>=11.8

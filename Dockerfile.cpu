@@ -1,4 +1,6 @@
-FROM condaforge/mambaforge:latest
+ARG TARGETPLATFORM=linux/amd64
+
+FROM --platform=${TARGETPLATFORM} condaforge/miniforge3:latest
 
 LABEL description="DIST-S1 Container"
 
@@ -26,8 +28,7 @@ WORKDIR /home/ops
 
 # Ensures we cached mamba install per
 # https://docs.docker.com/develop/develop-images/dockerfile_best-practices/#leverage-build-cache
-COPY --chown=dist_user:dist_user environment_gpu.yml /home/ops/dist-s1/environment_gpu.yml
-COPY --chown=dist_user:dist_user . /home/ops/dist-s1
+COPY --chown=dist_user:dist_user . /home/ops/dist-s1/
 
 # Ensure all files are read/write by the user
 # RUN chmod -R 777 /home/ops
@@ -43,3 +44,6 @@ RUN echo "conda activate dist-s1-env" >> ~/.bashrc
 
 # Install repository with pip
 RUN python -m pip install --no-cache-dir /home/ops/dist-s1
+
+ENTRYPOINT ["/bin/bash", "-l", "-c"]
+CMD ["echo Greetings from OPERA DIST-S1 team"]

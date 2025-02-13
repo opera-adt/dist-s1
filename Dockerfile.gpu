@@ -1,55 +1,48 @@
-# Start with NVIDIA CUDA 11.8 base image
-FROM nvidia/cuda:11.8.0-base-ubuntu22.04
+FROM nvidia/cuda:11.8.0-devel-ubuntu22.04
 
-LABEL name='DIST-S1'
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Set environment variables
-ENV CONDA_DIR=/opt/conda
-ENV PATH=$CONDA_DIR/bin:$PATH
-ENV WORKDIR=/home/ops
-
-ARG MINIFORGE_NAME=Miniforge3
-ARG MINIFORGE_VERSION=24.3.0-0
-
-# Install system dependencies
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+RUN apt-get update && apt-get install -y \
     wget \
-    bzip2 \
-    ca-certificates \
     git \
+    curl \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Create ops user and directory
-RUN useradd -m -d $WORKDIR ops && \
-    chown ops:ops $WORKDIR
+ENV MINIFORGE_VERSION=23.3.1-0
+ENV MINIFORGE_HOME=/opt/miniforge
+ENV PATH="$MINIFORGE_HOME/bin:$PATH"
 
-# Set working directory
-WORKDIR $WORKDIR
-
-# Conda setup
-RUN apt-get update && apt-get install --no-install-recommends --yes wget bzip2 ca-certificates git > /dev/null && \
-    wget --no-hsts --quiet https://github.com/conda-forge/miniforge/releases/download/${MINIFORGE_VERSION}/${MINIFORGE_NAME}-${MINIFORGE_VERSION}-Linux-$(uname -m).sh -O /tmp/miniforge.sh && \
-    /bin/bash /tmp/miniforge.sh -b -p ${CONDA_DIR} && \
+RUN wget https://github.com/conda-forge/miniforge/releases/download/${MINIFORGE_VERSION}/Miniforge3-Linux-x86_64.sh -O /tmp/miniforge.sh && \
+    bash /tmp/miniforge.sh -b -p $MINIFORGE_HOME && \
     rm /tmp/miniforge.sh && \
-    conda clean --tarballs --index-cache --packages --yes && \
-    find ${CONDA_DIR} -follow -type f -name '*.a' -delete && \
-    find ${CONDA_DIR} -follow -type f -name '*.pyc' -delete && \
-    conda clean --force-pkgs-dirs --all --yes  && \
-    echo ". ${CONDA_DIR}/etc/profile.d/conda.sh && conda activate base" >> /etc/skel/.bashrc && \
-    echo ". ${CONDA_DIR}/etc/profile.d/conda.sh && conda activate base" >> ~/.bashrc
-
-# Copy the repository contents
-COPY --chown=ops:ops . $WORKDIR/dist-s1/
-
-# Create conda environment from environment.yml
-RUN mamba env create -f $WORKDIR/dist-s1/environment_gpu.yml && \
-    mamba clean -afy
+    conda init bash
 
 SHELL ["/bin/bash", "-l", "-c"]
 
-RUN conda activate dist-s1-env && pip install -e $WORKDIR/dist-s1/
+# Create non-root user/group with default inputs
+ARG UID=1000
+ARG GID=1000
 
-# Switch to ops user
-USER ops
+RUN groupadd -g "${GID}" --system dist_user && \
+    useradd -l -u "${UID}" -g "${GID}" --system -d /home/ops -m  -s /bin/bash dist_user && \
+    chown -R dist_user:dist_user /opt
 
-CMD ["/bin/bash", "-l", "-c"]
+# Switch to non-root user
+USER dist_user
+WORKDIR /home/ops
+
+COPY --chown=dist_user:dist_user . /home/ops/dist-s1/
+
+# Create the environment with mamba
+RUN mamba env create -f /home/ops/dist-s1/environment_gpu.yml && \
+    conda clean -afy
+
+# Ensure that environment is activated on startup and interactive shell
+RUN echo ". /opt/miniforge/etc/profile.d/conda.sh" >> ~/.profile && \
+    echo "conda activate dist-s1-env" >> ~/.profile
+RUN echo ". /opt/miniforge/etc/profile.d/conda.sh" >> ~/.bashrc && \
+    echo "conda activate dist-s1-env" >> ~/.bashrc
+
+# Install repository with pip
+RUN python -m pip install --no-cache-dir /home/ops/dist-s1

@@ -16,7 +16,6 @@ assets/
 .vscode
 
 # Git
-.git
 .github
 
 # Environment
