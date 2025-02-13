@@ -46,3 +46,6 @@ RUN echo ". /opt/miniforge/etc/profile.d/conda.sh" >> ~/.bashrc && \
 
 # Install repository with pip
 RUN python -m pip install --no-cache-dir /home/ops/dist-s1
+
+ENTRYPOINT ["/bin/bash", "-l", "-c"]
+CMD ["echo Greetings from OPERA DIST-S1 team"]
