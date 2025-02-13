@@ -186,6 +186,8 @@ def run(
     apply_water_mask: bool,
     n_lookbacks: int,
     product_dst_dir: str | Path | None,
+    bucket: str | None,
+    bucket_prefix: str,
 ) -> str:
     """Localize data and run dist_s1_workflow."""
     # Localize data
@@ -204,6 +206,8 @@ def run(
         water_mask_path=water_mask_path,
         n_lookbacks=n_lookbacks,
         product_dst_dir=product_dst_dir,
+        bucket=bucket,
+        bucket_prefix=bucket_prefix,
     )
     return run_config
 

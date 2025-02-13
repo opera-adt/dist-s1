@@ -310,6 +310,8 @@ def run_dist_s1_sas_prep_workflow(
     n_lookbacks: int = 3,
     water_mask_path: str | Path | None = None,
     product_dst_dir: str | Path | None = None,
+    bucket: str | None = None,
+    bucket_prefix: str = '',
 ) -> RunConfigData:
     run_config = run_dist_s1_localization_workflow(
         mgrs_tile_id,
@@ -327,6 +329,8 @@ def run_dist_s1_sas_prep_workflow(
     run_config.n_lookbacks = n_lookbacks
     run_config.water_mask_path = water_mask_path
     run_config.product_dst_dir = product_dst_dir
+    run_config.bucket = bucket
+    run_config.bucket_prefix = bucket_prefix
     return run_config
 
 
