@@ -45,9 +45,11 @@ COPY --chown=ops:ops . $WORKDIR/dist-s1/
 RUN mamba env create -f $WORKDIR/dist-s1/environment_gpu.yml && \
     mamba clean -afy
 
-# RUN conda activate dist-s1-env && pip install -e .
+SHELL ["/bin/bash", "-l", "-c"]
+
+RUN conda activate dist-s1-env && pip install -e $WORKDIR/dist-s1/
 
 # Switch to ops user
 USER ops
 
-SHELL ["/bin/bash", "-l", "-c"]
+CMD ["/bin/bash", "-l", "-c"]
