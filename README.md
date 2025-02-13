@@ -145,15 +145,28 @@ docker pull ghcr.io/asf-hyp3/dist-s1:<tag>
 Where `<tag>` is the semantic version of the release you want to download.
 
 Notes: 
-- our image does not currently support the `arm64` (i.e. Mac M1) architecture. Therefore, you will need to build the image from the Dockerfile yourself.
-- Currently, the image is still under development and we will likely update it to ensure compatibility with GPU processing.
+- The containers are meant for `x86_64` architecture and may not work as expected on Mac ARM64 (i.e. M1) architecture.
+- There is still more work to be done in order to support GPU processing utilizing the docker image.
 
 ### Building the Docker Image Locally
 
 Make sure you have Docker installed for [Mac](https://docs.docker.com/desktop/setup/install/mac-install/) or [Windows](https://docs.docker.com/desktop/setup/install/windows-install/). We call the docker image `dist_s1_img` for the remainder of this README.
+We have two dockerfiles: `Dockerfile.cpu` and `Dockerfile.gpu`.
+They both utilize `miniforge`, but the former has a base from `conda-forge` and the latter has a base from `nvidia`.
+To build the image on Linux, run:
 
 ```
-docker build -f Dockerfile.cpu -t dist-s1 .
+docker build -f Dockerfile.cpu -t dist-s1-img .
+```
+or
+```
+docker build -f Dockerfile.gpu -t dist-s1-img .
+```
+
+On Mac, you can specify the target platform via:
+
+```
+docker buildx build --platform linux/amd64 -f Dockerfile.gpu -t dist-s1 .
 ```
 
 ### Running the Container Interactively

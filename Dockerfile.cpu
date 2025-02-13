@@ -1,6 +1,4 @@
-ARG TARGETPLATFORM=linux/amd64
-
-FROM --platform=${TARGETPLATFORM} condaforge/miniforge3:latest
+FROM condaforge/miniforge3:latest
 
 LABEL description="DIST-S1 Container"
 
