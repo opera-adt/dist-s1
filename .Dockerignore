@@ -30,5 +30,4 @@ build/
 .ipynb_checkpoints/
 
 # notebook data
-notebooks/los-angeles/
-notebooks/out/
+notebooks/
