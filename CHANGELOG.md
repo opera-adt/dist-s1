@@ -19,7 +19,10 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Allow user to specify bucket/prefix for S3 upload - makes library compatible with Hyp3.
 - Ensure Earthdata credentials are provided in ~/.netrc and allow for them to be passed as suitable evnironment variables.
 
-## Changed
+### Fixed
+* CLI issues with hyp3 
+
+### Changed
 - Pyproject.toml file to handle ruff
 
 ## [0.0.3]
