@@ -20,6 +20,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Ensure Earthdata credentials are provided in ~/.netrc and allow for them to be passed as suitable evnironment variables.
 - Create a GPU compatible docker image.
 - Ensures pyyaml is in the environment (used for serialization of runconfig).
+- Update equality testing for DIST-S1 product comparison.
 
 ### Fixed
 * CLI issues with hyp3 
