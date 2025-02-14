@@ -1,0 +1,38 @@
+name: dist-s1-env
+channels:
+ - conda-forge
+dependencies:
+ - python>=3.12
+ - pip
+ - asf_search
+ - backoff
+ - click
+ - dem_stitcher
+ - distmetrics
+ - flake8
+ - flake8-blind-except
+ - flake8-builtins
+ - flake8-import-order
+ - geopandas
+ - jupyterlab
+ - matplotlib
+ - multiprocess # TODO: Remove once distmetrics on conda - need to add this to conda recipe
+ - numpy
+ - pandas
+ - pydantic
+ - pytest
+ - pytest-cov
+ - pytorch
+ - pyyaml
+ - rasterio
+ - ruff
+ - scipy
+ - setuptools
+ - setuptools_scm
+ - shapely
+ - tqdm
+ - cudatoolkit>=11.8
+ - pip:
+   - dist_s1_enumerator
+   - pyarrow
+   - tile-mate>=0.0.12

@@ -83,3 +83,26 @@ __pycache__/
 
 # pre-commit
 .pre-commit-config.yaml
+
+# Test Output
+tests/tmp/
+
+# Ignore Out of notebooks
+notebooks/out/
+notebooks/los-angeles/
+
+
+# Notebooks in tests
+tests/*.ipynb
+
+# Runner in nb directory
+notebooks/runner.py
+
+# Deprecated
+deprecated/
+
+# tests out (for test data generation)
+tests/out/
+
+# Generation Notebook
+!tests/Generate_Test_Data.ipynb

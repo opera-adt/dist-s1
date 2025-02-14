@@ -23,7 +23,7 @@ classifiers = [
 license = { text = 'Apache-2.0' }
 dynamic = ['version']
 
-dependencies = ['numpy', 'asf_search', 'geopandas', 'rasterio']
+dependencies = ['numpy', 'asf_search', 'geopandas', 'rasterio', 'distmetrics', 'dist-s1-enumerator', 'torch', 'geopandas', 'pandas', 'scipy', 'tile-mate', 'pydantic']
 
 [project.urls]
 Homepage = "https://github.com/opera-adt/dist-s1"
@@ -40,7 +40,7 @@ zip-safe = false
 
 [tool.setuptools.packages.find]
 where = ["src"]
-exclude = ["notebooks*", "tests*"]
+exclude = ["notebooks*", "tests*", "examples*", "assets*"]
 
 [tool.setuptools.dynamic]
 readme = { file = ['README.md'], content-type = 'text/markdown' }
@@ -66,20 +66,37 @@ exclude = [
     "build",
     "dist",
     "site-packages",
-    "notebooks/"
+    "notebooks/*",
+    "tests/data/*",
 ]
 indent-width = 4
 
 [tool.ruff.format]
 quote-style = "single"
+indent-style = "space"
 
 [tool.ruff.lint]
-extend-select = [
+select = [
+    "F",   # flake8: https://docs.astral.sh/ruff/rules/#flake8-f
+    "E",   # flake8: https://docs.astral.sh/ruff/rules/#flake8-e
     "I",   # isort: https://docs.astral.sh/ruff/rules/#isort-i
     "UP",  # pyupgrade: https://docs.astral.sh/ruff/rules/#pyupgrade-up
-    # "D",   # pydocstyle: https://docs.astral.sh/ruff/rules/#pydocstyle-d
-    # "ANN", # annotations: https://docs.astral.sh/ruff/rules/#flake8-annotations-ann
+    "D",   # pydocstyle: https://docs.astral.sh/ruff/rules/#pydocstyle-d
+    "ANN", # annotations: https://docs.astral.sh/ruff/rules/#flake8-annotations-ann
     "PTH", # use-pathlib-pth: https://docs.astral.sh/ruff/rules/#flake8-use-pathlib-pth
+    "TRY", # tryceratops
+]
+
+ignore = [
+  "D100",   # Missing docstring in public module
+  "D101",   # Missing docstring in public class
+  "D102",   # Missing docstring in public method
+  "D103",   # Missing docstring in public function
+  "D104",   # Missing docstring in public package
+  "D105",   # Missing docstring in magic method
+  "D203",   # 1 blank line required before class docstring
+  "D213",   # Multi-line docstring summary should start at the second line
+  "TRY003", # Avoid specifying long messages outside the exception
 ]
 
 [tool.ruff.lint.pydocstyle]

@@ -2,6 +2,12 @@
 .mypy_cache
 .pytest_cache
 
+# build
+build/
+
+# assets
+assets/
+
 # MacOS
 .DS_Store
 .DS_Store?
@@ -10,7 +16,6 @@
 .vscode
 
 # Git
-.git
 .github
 
 # Environment
@@ -22,3 +27,6 @@ build/
 
 # Ignore Jupyter checkpoints
 .ipynb_checkpoints/
+
+# notebook data
+notebooks/
