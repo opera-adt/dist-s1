@@ -23,7 +23,7 @@ dependencies:
  - pydantic
  - pytest
  - pytest-cov
- - pytorch
+ - pytorch>=2.5.1
  - rasterio
  - ruff
  - scipy
