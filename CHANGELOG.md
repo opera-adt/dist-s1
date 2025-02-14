@@ -20,7 +20,10 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Ensure Earthdata credentials are provided in ~/.netrc and allow for them to be passed as suitable evnironment variables.
 - Create a GPU compatible docker image.
 
-## Changed
+### Fixed
+* CLI issues with hyp3 
+
+### Changed
 - Pyproject.toml file to handle ruff
 
 ## [0.0.3]
