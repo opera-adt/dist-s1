@@ -94,11 +94,10 @@ machine urs.earthdata.nasa.gov
 ### GPU Installation
 
 We have tried to make the environment as open, flexible, and transparent as possible. 
-In particular, we are using the `conda-forge` distribution of the libraries, including relevant GPU-drivers.
-We have provided an `environment_gpu.yml` which simply adds a minimum version of conda-forge's `cudatoolkit` to the environment to ensure on our systems that GPU is accessible.
-This will *not* be installable on non-Linux systems (and maybe even non-Linux systems without GPUs).
+In particular, we are using the `conda-forge` distribution of the libraries, including relevant python packages for CUDA compatibility.
+We have provided an `environment_gpu.yml` which adds a minimum version for the `cudatoolkit` to ensure on our GPU systems that GPU is accessible.
+This will *not* be installable on non-Linux systems.
 The library `cudatoolkit` is the `conda-forge` distribution of NVIDIA's cuda tool kit (see [here](https://anaconda.org/conda-forge/cudatoolkit)).
-That said, there could be instances when a new library will introduce a CPU-only version and will break the ability to use GPU on Linux.
 
 To resolve environment issues related to having access to the GPU, we successfully used `conda-tree` to identify CPU bound dependencies.
 For example,
@@ -151,31 +150,46 @@ Notes:
 ### Building the Docker Image Locally
 
 Make sure you have Docker installed for [Mac](https://docs.docker.com/desktop/setup/install/mac-install/) or [Windows](https://docs.docker.com/desktop/setup/install/windows-install/). We call the docker image `dist_s1_img` for the remainder of this README.
-We have two dockerfiles: `Dockerfile.cpu` and `Dockerfile.gpu`.
+We have two dockerfiles: `Dockerfile` and `Dockerfile.nvidia`.
 They both utilize `miniforge`, but the former has a base from `conda-forge` and the latter has a base from `nvidia`.
 To build the image on Linux, run:
-
 ```
-docker build -f Dockerfile.cpu -t dist-s1-img .
+docker build -f Dockerfile -t dist-s1-img .
 ```
-or
+On Mac ARM, you can specify the target platform via:
 ```
-docker build -f Dockerfile.gpu -t dist-s1-img .
-```
-
-On Mac, you can specify the target platform via:
-
-```
-docker buildx build --platform linux/amd64 -f Dockerfile.gpu -t dist-s1 .
+docker buildx build --platform linux/amd64 -f Dockerfile -t dist-s1 .
 ```
 
 ### Running the Container Interactively
 
 To run the container interactively:
 ```
-docker run -ti dist-s1
+docker run -ti --rm dist-s1 bash
 ```
 Within the container, you can run the CLI commands and the test suite.
+The `--rm` ensures that the container is removed after we exit the shell.
+The bash shell should automatically activate the `dist-s1-env` associated with the `environment_gpu.yml` file.
+
+
+### Running the Container for Delivery
+
+There are certain releases associated with OPERA project deliveries. Here we provide instructions for how to run and verify the DIST-S1 workflow.
+
+We have included sample input data, associated a Docker image via the Github registry, and run tests via github actions all within this repository.
+
+```
+docker pull ghcr.io/opera-adt/dist-s1
+```
+If a specific version is required (or assumed for a delivery), then you use `docker pull ghcr.io/opera-adt/dist-s1:<version>` e.g.
+```
+docker pull ghcr.io/opera-adt/dist-s1:0.0.4
+```
+The command will pull the latest released version of the Docker image. To run the test suite, run:
+
+```
+docker run --rm ghcr.io/opera-adt/dist-s1 'cd dist-s1 && pytest tests'
+``` 
 
 
 # Contribution Instructions
@@ -204,24 +218,6 @@ There are also important libraries used to do the core of the disturbance detect
 
 These are all available via `conda-forge` and maintained by the DIST-S1 team.
 
-
-# Delivery Instructions
-
-There are certain releases associated with OPERA project deliveries. Here we provide instructions for how to run and verify the DIST-S1 workflow.
-
-We have included sample input data, associated a Docker image via the Github registry, and run tests via github actions all within this repository.
-
-```
-docker pull ghcr.io/opera-adt/dist-s1
-```
-If a specific version is required (or assumed for a delivery), then you use `docker pull ghcr.io/opera-adt/dist-s1:<version>` e.g.
-```
-docker pull ghcr.io/opera-adt/dist-s1:0.0.4
-```
-The command will pull the latest released version of the Docker image. To run the test suite, run:
-```
-docker run ghcr.io/opera-adt/dist-s1 bash -l -c 'cd dist-s1 && pytest tests'
-``` 
 
 # Checking if DIST-S1 Products are Equal
 
