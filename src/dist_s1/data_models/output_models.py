@@ -140,7 +140,7 @@ class ProductDirectoryData(BaseModel):
         return len(failed_layers) == 0
 
     def __eq__(
-        self, other: 'ProductDirectoryData', *, rtol: float = 1e-05, atol: float = 1e-06, equal_nan: bool = True
+        self, other: 'ProductDirectoryData', *, rtol: float = 1e-05, atol: float = 1e-05, equal_nan: bool = True
     ) -> bool:
         """Compare two ProductDirectoryData instances for equality.
 
@@ -188,17 +188,18 @@ class ProductDirectoryData(BaseModel):
             equality = False
 
         # Compare TIF layer data
+        unequal_layers = []
         for layer in self.layers:
             path_self = self.layer_path_dict[layer]
             path_other = other.layer_path_dict[layer]
 
-            unequal_layers = []
             with rasterio.open(path_self) as src_self, rasterio.open(path_other) as src_other:
                 data_self = src_self.read()
                 data_other = src_other.read()
                 if not np.allclose(data_self, data_other, rtol=rtol, atol=atol, equal_nan=equal_nan):
-                    warn(f'Layer {layer} tags do not match', UserWarning)
+                    warn(f'Layer {layer} arrays do not match', UserWarning)
                     unequal_layers.append(layer)
+                    equality = False
 
                 tags_self = src_self.tags()
                 tags_other = src_other.tags()
@@ -222,10 +223,6 @@ class ProductDirectoryData(BaseModel):
                     if tags_self[key] != tags_other[key]:
                         warn(f'Layer {layer} metadata value for key {key} do not match', UserWarning)
                         equality = False
-
-        if unequal_layers:
-            warn(f'Layer {unequal_layers} have unequal data', UserWarning)
-            equality = False
 
         return equality
 

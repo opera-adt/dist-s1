@@ -13,12 +13,14 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Integration of `dist-s1-enumerator` to identify/localize the inputs from MGRS tile ID, post-date, and track number
 - Notebooks and examples to run end-to-end workflows as well as Science Application Software (SAS) workflows
 - Docker image with nvidia compatibility (fixes the cuda version at 11.8)
-- Using the water mask.
+- Download and application of the water mask (can specify a path or request it to generate from UMD GLAD LCLUC data).
 - Extensive instructions in the README for various use-case scenarios.
 - Golden dataset test for SAS workflow
 - Allow user to specify bucket/prefix for S3 upload - makes library compatible with Hyp3.
 - Ensure Earthdata credentials are provided in ~/.netrc and allow for them to be passed as suitable evnironment variables.
 - Create a GPU compatible docker image.
+- Ensures pyyaml is in the environment (used for serialization of runconfig).
+- Update equality testing for DIST-S1 product comparison.
 
 ### Fixed
 * CLI issues with hyp3 
