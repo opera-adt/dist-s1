@@ -6,7 +6,6 @@ dependencies:
  - pip
  - asf_search
  - backoff
- - boto3
  - click
  - dem_stitcher
  - dist_s1_enumerator
@@ -15,7 +14,6 @@ dependencies:
  - flake8-blind-except
  - flake8-builtins
  - flake8-import-order
- - git # older versions of git on servers
  - geopandas
  - jupyterlab
  - matplotlib
@@ -34,5 +32,4 @@ dependencies:
  - shapely
  - tqdm
  - pip:
-   - tile-mate>=0.0.12
-
+   - tile-mate>=0.0.12  # Move back to conda-forge after numpy cap is fixed in recipe

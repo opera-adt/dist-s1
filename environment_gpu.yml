@@ -1,14 +1,11 @@
 name: dist-s1-env
 channels:
-  - conda-forge
-  - pytorch
-  - nvidia
+ - conda-forge
 dependencies:
  - python>=3.12
  - pip
  - asf_search
  - backoff
- - boto3
  - click
  - dem_stitcher
  - dist_s1_enumerator
@@ -20,14 +17,13 @@ dependencies:
  - geopandas
  - jupyterlab
  - matplotlib
- - multiprocess 
+ - multiprocess # TODO: Remove once distmetrics on conda - need to add this to conda recipe
  - numpy
  - pandas
  - pydantic
  - pytest
  - pytest-cov
- - pytorch::pytorch
- - pytorch-cuda>=11.8
+ - pytorch
  - rasterio
  - ruff
  - scipy
@@ -35,6 +31,6 @@ dependencies:
  - setuptools_scm
  - shapely
  - tqdm
- - cuda-toolkit>=11.8
+ - cudatoolkit>=11.8
  - pip:
-   - tile-mate>=0.0.12 # TODO: unclear why this is downgraded when in conda-forge
+   - tile-mate>=0.0.12

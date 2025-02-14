@@ -24,6 +24,6 @@ jobs:
       user: ${{ github.actor }}
       release_branch: main     
       develop_branch: dev  
-      file: Dockerfile.cpu
+      file: Dockerfile
     secrets:
       USER_TOKEN: ${{ secrets.GITHUB_TOKEN }}

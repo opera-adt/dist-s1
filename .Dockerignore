@@ -16,7 +16,6 @@ assets/
 .vscode
 
 # Git
-.git
 .github
 
 # Environment
@@ -30,5 +29,4 @@ build/
 .ipynb_checkpoints/
 
 # notebook data
-notebooks/los-angeles/
-notebooks/out/
+notebooks/

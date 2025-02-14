@@ -18,6 +18,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Golden dataset test for SAS workflow
 - Allow user to specify bucket/prefix for S3 upload - makes library compatible with Hyp3.
 - Ensure Earthdata credentials are provided in ~/.netrc and allow for them to be passed as suitable evnironment variables.
+- Create a GPU compatible docker image.
 
 ### Fixed
 * CLI issues with hyp3 
