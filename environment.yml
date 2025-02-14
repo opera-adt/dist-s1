@@ -30,5 +30,6 @@ dependencies:
  - setuptools
  - setuptools_scm
  - shapely
- - tile_mate>=0.0.12
  - tqdm
+ - pip:
+   - tile-mate>=0.0.12  # Move back to conda-forge after numpy cap is fixed in recipe
