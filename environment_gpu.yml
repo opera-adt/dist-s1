@@ -25,7 +25,6 @@ dependencies:
  - pytest
  - pytest-cov
  - pytorch-gpu
- - pytorch>=2
  - pyyaml
  - rasterio
  - ruff
