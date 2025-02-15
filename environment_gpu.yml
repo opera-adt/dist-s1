@@ -21,7 +21,6 @@ dependencies:
  - pydantic
  - pytest
  - pytest-cov
- - pytorch>=2,<2.6
  - pyyaml
  - pytorch>=2
  - rasterio
@@ -31,7 +30,7 @@ dependencies:
  - setuptools_scm
  - shapely
  - tqdm
- - cudatoolkit>=11.8
+ - cudatoolkit=11.8
  - tile_mate>=0.0.12
  - pip:
    - dist_s1_enumerator
