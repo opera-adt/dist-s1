@@ -22,8 +22,12 @@ dependencies:
  - pydantic
  - pytest
  - pytest-cov
+<<<<<<< HEAD
  - pytorch>=2,<2.6
  - pyyaml
+=======
+ - pytorch>=2
+>>>>>>> 5f13b7f (distmetrics via pypi)
  - rasterio
  - ruff
  - scipy
@@ -32,7 +36,15 @@ dependencies:
  - shapely
  - tqdm
  - cudatoolkit>=11.8
+ - tile_mate>=0.0.12
  - pip:
+<<<<<<< HEAD
    - dist_s1_enumerator
    - pyarrow
    - tile-mate>=0.0.12
+=======
+   - dist-s1-enumerator
+   - distmetrics
+   - einops
+   - pyarrow
+>>>>>>> 5f13b7f (distmetrics via pypi)
