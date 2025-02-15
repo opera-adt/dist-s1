@@ -7,7 +7,10 @@ dependencies:
  - asf_search
  - backoff
  - click
+ - cudatoolkit>=11.8
  - dem_stitcher
+ - dist_s1_enumerator
+ - distmetrics
  - flake8
  - flake8-blind-except
  - flake8-builtins
@@ -16,24 +19,19 @@ dependencies:
  - jupyterlab
  - matplotlib
  - multiprocess # TODO: Remove once distmetrics on conda - need to add this to conda recipe
- - numpy*=*openblas
+ - numpy
  - pandas
  - pydantic
  - pytest
  - pytest-cov
- - pyyaml
+ - pytorch-gpu
  - pytorch>=2
+ - pyyaml
  - rasterio
  - ruff
  - scipy
  - setuptools
  - setuptools_scm
  - shapely
- - tqdm
- - cudatoolkit=11.8
  - tile_mate>=0.0.12
- - pip:
-   - dist_s1_enumerator
-   - pyarrow
-   - distmetrics
-   - einops
+ - tqdm
