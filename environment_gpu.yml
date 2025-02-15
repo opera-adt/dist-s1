@@ -17,7 +17,7 @@ dependencies:
  - jupyterlab
  - matplotlib
  - multiprocess # TODO: Remove once distmetrics on conda - need to add this to conda recipe
- - numpy
+ - numpy*=*openblas
  - pandas
  - pydantic
  - pytest
