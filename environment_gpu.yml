@@ -1,6 +1,5 @@
 name: dist-s1-env
 channels:
- - pytorch
  - conda-forge
 dependencies:
  - python>=3.12
@@ -25,7 +24,6 @@ dependencies:
  - pydantic
  - pytest
  - pytest-cov
- - cuda-version>=11.8
  - pytorch>=2.1.0=cuda118*
  - pyyaml
  - rasterio
