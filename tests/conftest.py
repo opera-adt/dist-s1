@@ -50,6 +50,7 @@ def test_opera_golden_dummy_dataset() -> Path:
     )
     return golden_dummy_dataset
 
+
 @pytest.fixture
 def cropped_10SGD_dataset_runconfig() -> Path:
     """Fixture to provide the path to the test_out directory."""
