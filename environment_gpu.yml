@@ -5,6 +5,7 @@ channels:
 dependencies:
  - python>=3.12
  - pip
+ - __cuda=11.8
  - asf_search
  - backoff
  - click
