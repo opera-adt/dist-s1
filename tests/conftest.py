@@ -50,6 +50,13 @@ def test_opera_golden_dummy_dataset() -> Path:
     )
     return golden_dummy_dataset
 
+@pytest.fixture
+def cropped_10SGD_dataset_runconfig() -> Path:
+    """Fixture to provide the path to the test_out directory."""
+    test_dir = Path(__file__)
+    runconfig_path = test_dir.parent / 'test_data' / 'cropped' / 'sample_runconfig_10SGD_cropped.yml'
+    return runconfig_path
+
 
 @pytest.fixture
 def cli_runner() -> CliRunner:

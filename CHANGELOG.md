@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.5] - 2025-02-19
+
+### Fixed
+- CLI issues with bucket/prefix for S3 upload.
+- Included `__main__.py` testing for the CLI.
+- Includes `dist-s1 run_sas` testing and golden dataset comparision.
+
 ## [0.0.4]
 
 ### Added 
