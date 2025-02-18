@@ -334,7 +334,7 @@ run_config:
     - test_data/cropped/10SGD/137/2025-01-02/OPERA_L2_RTC-S1_T137-292324-IW2_20250102T015914Z_20250102T100414Z_S1A_30_v1.0_VH.tif
     - test_data/cropped/10SGD/137/2025-01-02/OPERA_L2_RTC-S1_T137-292325-IW1_20250102T015916Z_20250102T100414Z_S1A_30_v1.0_VH.tif
     mgrs_tile_id: 10SGD
-    dst_dir: /Users/cmarshak/bekaert-team/dist-s1/tests/tmp
+    dst_dir: tmp
     water_mask_path:
     apply_water_mask: false
     memory_strategy: high
@@ -342,6 +342,6 @@ run_config:
     n_lookbacks: 3
     moderate_confidence_threshold: 3.5
     high_confidence_threshold: 5.5
-    product_dst_dir: /Users/cmarshak/bekaert-team/dist-s1/tests/tmp
+    product_dst_dir: tmp
     bucket:
     bucket_prefix: ''

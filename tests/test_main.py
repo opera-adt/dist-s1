@@ -16,6 +16,14 @@ def test_dist_s1_sas_main(
     cropped_10SGD_dataset_runconfig: Path,
     test_opera_golden_dummy_dataset: Path,
 ) -> None:
+    """Test the dist-s1 sas main function.
+
+    This is identical to running from the test_directory:
+
+    `dist-s1 run_sas --runconfig_yml_path test_data/cropped/sample_runconfig_10SGD_cropped.yml`
+
+    And comparing the output product directory to the golden dummy dataset.
+    """
     change_local_dir(test_dir)
 
     change_local_dir(test_dir)
@@ -28,9 +36,11 @@ def test_dist_s1_sas_main(
     runconfig_data.to_yaml(tmp_runconfig_yml_path)
 
     # Run the command using the updated runconfig file (the tmp files are cleaned up after the test)
+    command = ['run_sas', '--runconfig_yml_path', str(tmp_runconfig_yml_path)]
+
     result = cli_runner.invoke(
         dist_s1,
-        ['run_sas', '--runconfig_yml_path', tmp_runconfig_yml_path],
+        command,
     )
     assert result.exit_code == 0
 
