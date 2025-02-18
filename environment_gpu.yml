@@ -1,15 +1,14 @@
 name: dist-s1-env
 channels:
  - conda-forge
- - nvidia
+ # - nvidia
 dependencies:
  - python>=3.12
  - pip
- - __cuda=11.8
  - asf_search
  - backoff
  - click
- - nvidia::cuda=11.8
+ # - nvidia::cuda=11.8
  - cudatoolkit=11.8
  - dem_stitcher
  - dist_s1_enumerator

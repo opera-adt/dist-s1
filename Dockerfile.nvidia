@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y \
 ENV MINIFORGE_VERSION=23.3.1-0
 ENV MINIFORGE_HOME=/opt/miniforge
 ENV PATH="$MINIFORGE_HOME/bin:$PATH"
+# https://docs.conda.io/projects/conda/en/stable/user-guide/tasks/manage-virtual.html
 ENV CONDA_OVERRIDE_CUDA=11.8
 
 RUN wget https://github.com/conda-forge/miniforge/releases/download/${MINIFORGE_VERSION}/Miniforge3-Linux-x86_64.sh -O /tmp/miniforge.sh && \
