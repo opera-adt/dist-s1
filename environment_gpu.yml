@@ -7,7 +7,7 @@ dependencies:
  - asf_search
  - backoff
  - click
- - cudatoolkit>=11.8
+ - cudatoolkit
  - dem_stitcher
  - dist_s1_enumerator
  - distmetrics
@@ -24,7 +24,8 @@ dependencies:
  - pydantic
  - pytest
  - pytest-cov
- - pytorch-gpu
+ - cuda-version>=12.0
+ - pytorch>=2.1.0=cuda120*
  - pyyaml
  - rasterio
  - ruff
