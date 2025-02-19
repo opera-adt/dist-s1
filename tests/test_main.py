@@ -25,8 +25,6 @@ def test_dist_s1_sas_main(
     And comparing the output product directory to the golden dummy dataset.
     """
     change_local_dir(test_dir)
-
-    change_local_dir(test_dir)
     tmp_dir = Path('tmp')
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
