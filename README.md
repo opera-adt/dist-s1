@@ -95,9 +95,15 @@ machine urs.earthdata.nasa.gov
 
 We have tried to make the environment as open, flexible, and transparent as possible. 
 In particular, we are using the `conda-forge` distribution of the libraries, including relevant python packages for CUDA compatibility.
-We have provided an `environment_gpu.yml` which adds a minimum version for the `cudatoolkit` to ensure on our GPU systems that GPU is accessible.
-This will *not* be installable on non-Linux systems.
+We have provided an `environment_gpu.yml` which is suitable for CUDA 11.8, the version used on the OPERA project servers.
+This environment is also meant to be compatible with our docker setup (whose base image also specifies CUDA 11.8).
+This GPU environment will *not* be installable on non-Linux systems.
 The library `cudatoolkit` is the `conda-forge` distribution of NVIDIA's cuda tool kit (see [here](https://anaconda.org/conda-forge/cudatoolkit)).
+Although pytorch is no long supported officially on conda-forge, we have elected to use the distribution there because our library relies heavily on gdal, which is most easily installed via conda-forge.
+There are likely many ways to accomplish GPU compatibility.
+We can force cuda builds of pytorch via the environment file using regex versions: `- pytorch>=*=cuda118*`.
+There are other ways to accomplish this including `pytorch-gpu`.
+Our approach is motivated by the requirement to have this environment be compatible with our docker setup.
 
 To resolve environment issues related to having access to the GPU, we successfully used `conda-tree` to identify CPU bound dependencies.
 For example,
@@ -151,7 +157,7 @@ Notes:
 
 Make sure you have Docker installed for [Mac](https://docs.docker.com/desktop/setup/install/mac-install/) or [Windows](https://docs.docker.com/desktop/setup/install/windows-install/). We call the docker image `dist_s1_img` for the remainder of this README.
 We have two dockerfiles: `Dockerfile` and `Dockerfile.nvidia`.
-They both utilize `miniforge`, but the former has a base from `conda-forge` and the latter has a base from `nvidia`.
+They both utilize `miniforge`, but the former has a base from `conda-forge` and the latter has a base from `nvidia` that includes a nvidia cuda base image.
 To build the image on Linux, run:
 ```
 docker build -f Dockerfile -t dist-s1-img .
@@ -160,6 +166,12 @@ On Mac ARM, you can specify the target platform via:
 ```
 docker buildx build --platform linux/amd64 -f Dockerfile -t dist-s1 .
 ```
+
+### GPU Docker Image
+
+Getting docker to work with a GPU enabled container is a work in progress, i.e. `docker run --gpus all ...`.
+The image utilizes the `Dockerfile.nvidia` file to ensure a specific CUDA version is utilized.
+See issue [#22](https://github.com/opera-adt/dist-s1/issues/22) for more details and discussion.
 
 ### Running the Container Interactively
 
