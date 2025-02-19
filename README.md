@@ -94,8 +94,9 @@ machine urs.earthdata.nasa.gov
 ### GPU Installation
 
 We have tried to make the environment as open, flexible, and transparent as possible. 
-In particular, we are using the `conda-forge` distribution of the libraries, including relevant python packages for CUDA compatibility.
-We have provided an `environment_gpu.yml` which adds a minimum version for the `cudatoolkit` to ensure on our GPU systems that GPU is accessible.
+However, GPU compatibility requires us to fix the CUDA version.
+We are abke to use the `conda-forge` distribution of the libraries, including relevant CUDA libraries.
+We have provided an `environment_gpu.yml` which fixes the `cudatoolkit` version to ensure on our GPU systems that GPU is accessible.
 This will *not* be installable on non-Linux systems.
 The library `cudatoolkit` is the `conda-forge` distribution of NVIDIA's cuda tool kit (see [here](https://anaconda.org/conda-forge/cudatoolkit)).
 
@@ -206,15 +207,15 @@ There are two main components to the DIST-S1 workflow:
 1. Curation and localization of the OPERA RTC-S1 products. This is captured in the `run_dist_s1_sas_prep_workflow` function within the [`workflows.py` file](src/dist_s1/workflows.py).
 2. Application of the DIST-S1 algorithm to the localized RTC-S1 products. This is captured in the `run_dist_s1_sas_workflow` function within the [`workflows.py` file](src/dist_s1/workflows.py).
 
-These two steps can be run serially as a single workflow via `run_dist_s1_sas_workflow` in the [`workflows.py` file](src/dist_s1/workflows.py). There are associated CLI entrypoints to the functions via the `dist-s1` main command (see [SAS usage](#as-a-sds-science-application-software-sas) or the [run_sas.sh](examples/run_sas.sh) script).
+These two steps can be run serially as a single workflow via `run_dist_s1_workflow` in the [`workflows.py` file](src/dist_s1/workflows.py). There are associated CLI entrypoints to the functions via the `dist-s1` main command (see [SAS usage](#as-a-sds-science-application-software-sas) or the [run_sas.sh](examples/run_sas.sh) script).
 
-In terms of design, each step of the workflow relies heavily on writing its outputs to disk. This allows for testing of each step via staging of inputs on disk. It also provides a means to visually inspect the outputs of a given step (e.g. via QGIS) without additional boilerplate code to load/serialize in-memory data. There is a Class `RunConfigData` (that can be serialized as a `run_config.yml`) that functions to validate the inputs provided by the user and store the necessary paths for intermediate and output products (including those required for each of the workflow's steps). Storing these paths is quite tedious and each run config instance stores these paths via tables or dictionaries for easier lookup (e.g. by `jpl_burst_id` and acquisition timestamp).
+In terms of design, each step of the workflow relies heavily on writing its outputs to disk. This allows for testing of each step by staging the relevant inputs on disk. It also provides a means to visually inspect the outputs of a given step (e.g. via QGIS) without additional boilerplate code to load/serialize in-memory data. There is a class `RunConfigData` (that can be serialized as a `run_config.yml`) that functions to validate the inputs provided by the user and store the necessary paths for intermediate and output products (including those required for each of the workflow's steps). Storing these paths is quite tedious and each run config instance stores these paths via tables or dictionaries to allow for efficient lookup (e.g. find all the paths of for RTC-S1 despeckled inputs by `jpl_burst_id`).
 
 There are also important libraries used to do the core of the disturbance detections including:
 
 1. [`distmetrics`](https://github.com/opera-adt/distmetrics) which provides an easy interface to compute the disturbance metrics as they relate to a baseline of RTC-S1 inputs and a recent set of acquisition data.
-2. [`dist-s1-enumerator`](https://github.com/opera-adt/dist-s1-enumerator) which provides the functionality to localize the necessary RTC-S1 inputs.
-3. [`tile-mate`](https://github.com/opera-calval/tile-mate) which provides the functionality to localize static tiles including the water mask.
+2. [`dist-s1-enumerator`](https://github.com/opera-adt/dist-s1-enumerator) which provides the functionality to query the OPERA RTC-S1 catalog and localize the necessary RTC-S1 inputs.
+3. [`tile-mate`](https://github.com/opera-calval/tile-mate) which provides the functionality to localize static tiles including the UMD GLAD data used for the water mask.
 
 These are all available via `conda-forge` and maintained by the DIST-S1 team.
 
