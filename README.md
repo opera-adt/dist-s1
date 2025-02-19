@@ -94,16 +94,16 @@ machine urs.earthdata.nasa.gov
 ### GPU Installation
 
 We have tried to make the environment as open, flexible, and transparent as possible. 
-However, GPU compatibility requires us to fix the CUDA version.
-We are abke to use the `conda-forge` distribution of the libraries, including relevant CUDA libraries.
-We have provided an `environment_gpu.yml` which fixes the `cudatoolkit` version to ensure on our GPU systems that GPU is accessible.
+However, ensuring that the GPU is accessible within a Docker container and is consistent with our OPERA GPU server requires us to fix the CUDA version.
+We are able to use the `conda-forge` distribution of the required libraries, including pytorch (even though pytorch is no long supported officially on conda-forge).
+We have provided such an environment file as `environment_gpu.yml` which fixes the `cudatoolkit` version to ensure on our GPU systems that GPU is accessible.
 This will *not* be installable on non-Linux systems.
 The library `cudatoolkit` is the `conda-forge` distribution of NVIDIA's cuda tool kit (see [here](https://anaconda.org/conda-forge/cudatoolkit)).
-Although pytorch is no long supported officially on conda-forge, we have elected to use the distribution there because our library relies heavily on gdal, which is most easily installed via conda-forge.
-There are likely many ways to accomplish GPU compatibility.
-We can force cuda builds of pytorch via the environment file using regex versions: `- pytorch>=*=cuda118*`.
-There are other ways to accomplish this including `pytorch-gpu`.
-Our approach is motivated by the requirement to have this environment be compatible with our docker setup.
+We have elected to use the distribution there because we use conda to manage our virtual environments andour library relies heavily on gdal, which has in our experience been most easily installed via conda-forge.
+There are likely many ways to accomplish GPU pass through to the container, but this approach has worked for us.
+Our approach is also motivated to ensure our local server environment is compatible with our docker setup (so we can confidently run the test within a workstation rather than a docker container).
+Regarding the environment, we highlight that we can force cuda builds of pytorch using regex versions: `pytorch>=*=cuda118*`.
+There are other conda-forge packages such as [`pytorch-gpu`](https://anaconda.org/conda-forge/pytorch-gpu) that may also be effectively utilizing the same libaries, but we have not compared or looked into the exact differences.
 
 To resolve environment issues related to having access to the GPU, we successfully used `conda-tree` to identify CPU bound dependencies.
 For example,

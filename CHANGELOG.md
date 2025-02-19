@@ -12,6 +12,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - CLI issues with bucket/prefix for S3 upload (resolves [#32](https://github.com/opera-adt/dist-s1/issues/32)).
 - Included `__main__.py` testing for the SAS entrypoint of the CLI; uses the cropped dataset to test the workflow.
 - Includes `dist-s1 run_sas` testing and golden dataset comparision.
+- Updates to README regarding GPU environment setup.
 
 ## [0.0.4]
 
