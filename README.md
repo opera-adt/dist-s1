@@ -73,7 +73,7 @@ There sample `run_config.yml` file is provided in the [examples](examples) direc
 We recommend using the mamba/conda package manager and `conda-forge` distributions to install the DIST-S1 workflow, manage the environment, and install the dependencies.
 
 ```
-mamba update -f environment.yml
+mamba env create -f environment.yml  # or use mamba env create -f environment_gpu.yml for GPU installation with CUDA 11.8
 conda activate dist-s1-env
 mamba install -c conda-forge dist-s1
 python -m ipykernel install --user --name dist-s1-env
@@ -132,7 +132,7 @@ mamba install jupyterlab ipywidgets black isort jupyterlab_code_formatter
 As above, we recommend using the mamba/conda package manager to install the DIST-S1 workflow, manage the environment, and install the dependencies.
 
 ```
-mamba update -f environment.yml
+mamba env create -f environment_gpu.yml
 conda activate dist-s1-env
 pip install -e .
 # Optional for Jupyter notebook development
