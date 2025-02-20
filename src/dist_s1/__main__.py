@@ -139,6 +139,8 @@ def run_sas_prep(
     dst_dir: str | Path,
     water_mask_path: str | Path | None,
     product_dst_dir: str | Path | None,
+    bucket: str | None,
+    bucket_prefix: str,
 ) -> str:
     """Run SAS prep workflow."""
     run_config = run_dist_s1_sas_prep_workflow(
@@ -156,6 +158,8 @@ def run_sas_prep(
         water_mask_path=water_mask_path,
         n_lookbacks=n_lookbacks,
         product_dst_dir=product_dst_dir,
+        bucket=bucket,
+        bucket_prefix=bucket_prefix,
     )
     run_config.to_yaml(runconfig_path)
 

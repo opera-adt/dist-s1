@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.5] - 2025-02-19
+
+### Fixed
+- CLI issues with bucket/prefix for S3 upload (resolves [#32](https://github.com/opera-adt/dist-s1/issues/32)).
+- Included `__main__.py` testing for the SAS entrypoint of the CLI; uses the cropped dataset to test the workflow.
+- Includes `dist-s1 run_sas` testing and golden dataset comparision.
+- Updates to README regarding GPU environment setup.
+
 ## [0.0.4]
 
 ### Added 
@@ -18,7 +26,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Golden dataset test for SAS workflow
 - Allow user to specify bucket/prefix for S3 upload - makes library compatible with Hyp3.
 - Ensure Earthdata credentials are provided in ~/.netrc and allow for them to be passed as suitable evnironment variables.
-- Create a GPU compatible docker image.
+- Create a GPU compatible docker image (ongoing) - use nvidia docker image.
 - Ensures pyyaml is in the environment (used for serialization of runconfig).
 - Update equality testing for DIST-S1 product comparison.
 

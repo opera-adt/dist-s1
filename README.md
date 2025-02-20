@@ -73,7 +73,7 @@ There sample `run_config.yml` file is provided in the [examples](examples) direc
 We recommend using the mamba/conda package manager and `conda-forge` distributions to install the DIST-S1 workflow, manage the environment, and install the dependencies.
 
 ```
-mamba update -f environment.yml
+mamba env create -f environment.yml  # or use mamba env create -f environment_gpu.yml for GPU installation with CUDA 11.8
 conda activate dist-s1-env
 mamba install -c conda-forge dist-s1
 python -m ipykernel install --user --name dist-s1-env
@@ -94,10 +94,16 @@ machine urs.earthdata.nasa.gov
 ### GPU Installation
 
 We have tried to make the environment as open, flexible, and transparent as possible. 
-In particular, we are using the `conda-forge` distribution of the libraries, including relevant python packages for CUDA compatibility.
-We have provided an `environment_gpu.yml` which adds a minimum version for the `cudatoolkit` to ensure on our GPU systems that GPU is accessible.
+However, ensuring that the GPU is accessible within a Docker container and is consistent with our OPERA GPU server requires us to fix the CUDA version.
+We are able to use the `conda-forge` distribution of the required libraries, including pytorch (even though pytorch is no long supported officially on conda-forge).
+We have provided such an environment file as `environment_gpu.yml` which fixes the `cudatoolkit` version to ensure on our GPU systems that GPU is accessible.
 This will *not* be installable on non-Linux systems.
 The library `cudatoolkit` is the `conda-forge` distribution of NVIDIA's cuda tool kit (see [here](https://anaconda.org/conda-forge/cudatoolkit)).
+We have elected to use the distribution there because we use conda to manage our virtual environments andour library relies heavily on gdal, which has in our experience been most easily installed via conda-forge.
+There are likely many ways to accomplish GPU pass through to the container, but this approach has worked for us.
+Our approach is also motivated to ensure our local server environment is compatible with our docker setup (so we can confidently run the test within a workstation rather than a docker container).
+Regarding the environment, we highlight that we can force cuda builds of pytorch using regex versions: `pytorch>=*=cuda118*`.
+There are other conda-forge packages such as [`pytorch-gpu`](https://anaconda.org/conda-forge/pytorch-gpu) that may also be effectively utilizing the same libaries, but we have not compared or looked into the exact differences.
 
 To resolve environment issues related to having access to the GPU, we successfully used `conda-tree` to identify CPU bound dependencies.
 For example,
@@ -126,7 +132,7 @@ mamba install jupyterlab ipywidgets black isort jupyterlab_code_formatter
 As above, we recommend using the mamba/conda package manager to install the DIST-S1 workflow, manage the environment, and install the dependencies.
 
 ```
-mamba update -f environment.yml
+mamba env create -f environment_gpu.yml
 conda activate dist-s1-env
 pip install -e .
 # Optional for Jupyter notebook development
@@ -151,7 +157,7 @@ Notes:
 
 Make sure you have Docker installed for [Mac](https://docs.docker.com/desktop/setup/install/mac-install/) or [Windows](https://docs.docker.com/desktop/setup/install/windows-install/). We call the docker image `dist_s1_img` for the remainder of this README.
 We have two dockerfiles: `Dockerfile` and `Dockerfile.nvidia`.
-They both utilize `miniforge`, but the former has a base from `conda-forge` and the latter has a base from `nvidia`.
+They both utilize `miniforge`, but the former has a base from `conda-forge` and the latter has a base from `nvidia` that includes a nvidia cuda base image.
 To build the image on Linux, run:
 ```
 docker build -f Dockerfile -t dist-s1-img .
@@ -160,6 +166,12 @@ On Mac ARM, you can specify the target platform via:
 ```
 docker buildx build --platform linux/amd64 -f Dockerfile -t dist-s1 .
 ```
+
+### GPU Docker Image
+
+Getting docker to work with a GPU enabled container is a work in progress, i.e. `docker run --gpus all ...`.
+The image utilizes the `Dockerfile.nvidia` file to ensure a specific CUDA version is utilized.
+See issue [#22](https://github.com/opera-adt/dist-s1/issues/22) for more details and discussion.
 
 ### Running the Container Interactively
 
@@ -206,15 +218,15 @@ There are two main components to the DIST-S1 workflow:
 1. Curation and localization of the OPERA RTC-S1 products. This is captured in the `run_dist_s1_sas_prep_workflow` function within the [`workflows.py` file](src/dist_s1/workflows.py).
 2. Application of the DIST-S1 algorithm to the localized RTC-S1 products. This is captured in the `run_dist_s1_sas_workflow` function within the [`workflows.py` file](src/dist_s1/workflows.py).
 
-These two steps can be run serially as a single workflow via `run_dist_s1_sas_workflow` in the [`workflows.py` file](src/dist_s1/workflows.py). There are associated CLI entrypoints to the functions via the `dist-s1` main command (see [SAS usage](#as-a-sds-science-application-software-sas) or the [run_sas.sh](examples/run_sas.sh) script).
+These two steps can be run serially as a single workflow via `run_dist_s1_workflow` in the [`workflows.py` file](src/dist_s1/workflows.py). There are associated CLI entrypoints to the functions via the `dist-s1` main command (see [SAS usage](#as-a-sds-science-application-software-sas) or the [run_sas.sh](examples/run_sas.sh) script).
 
-In terms of design, each step of the workflow relies heavily on writing its outputs to disk. This allows for testing of each step via staging of inputs on disk. It also provides a means to visually inspect the outputs of a given step (e.g. via QGIS) without additional boilerplate code to load/serialize in-memory data. There is a Class `RunConfigData` (that can be serialized as a `run_config.yml`) that functions to validate the inputs provided by the user and store the necessary paths for intermediate and output products (including those required for each of the workflow's steps). Storing these paths is quite tedious and each run config instance stores these paths via tables or dictionaries for easier lookup (e.g. by `jpl_burst_id` and acquisition timestamp).
+In terms of design, each step of the workflow relies heavily on writing its outputs to disk. This allows for testing of each step by staging the relevant inputs on disk. It also provides a means to visually inspect the outputs of a given step (e.g. via QGIS) without additional boilerplate code to load/serialize in-memory data. There is a class `RunConfigData` (that can be serialized as a `run_config.yml`) that functions to validate the inputs provided by the user and store the necessary paths for intermediate and output products (including those required for each of the workflow's steps). Storing these paths is quite tedious and each run config instance stores these paths via tables or dictionaries to allow for efficient lookup (e.g. find all the paths of for RTC-S1 despeckled inputs by `jpl_burst_id`).
 
 There are also important libraries used to do the core of the disturbance detections including:
 
 1. [`distmetrics`](https://github.com/opera-adt/distmetrics) which provides an easy interface to compute the disturbance metrics as they relate to a baseline of RTC-S1 inputs and a recent set of acquisition data.
-2. [`dist-s1-enumerator`](https://github.com/opera-adt/dist-s1-enumerator) which provides the functionality to localize the necessary RTC-S1 inputs.
-3. [`tile-mate`](https://github.com/opera-calval/tile-mate) which provides the functionality to localize static tiles including the water mask.
+2. [`dist-s1-enumerator`](https://github.com/opera-adt/dist-s1-enumerator) which provides the functionality to query the OPERA RTC-S1 catalog and localize the necessary RTC-S1 inputs.
+3. [`tile-mate`](https://github.com/opera-calval/tile-mate) which provides the functionality to localize static tiles including the UMD GLAD data used for the water mask.
 
 These are all available via `conda-forge` and maintained by the DIST-S1 team.
 

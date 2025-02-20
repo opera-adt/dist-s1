@@ -7,7 +7,9 @@ dependencies:
  - asf_search
  - backoff
  - click
+ - cudatoolkit=11.8
  - dem_stitcher
+ - dist_s1_enumerator
  - distmetrics
  - flake8
  - flake8-blind-except
@@ -22,7 +24,7 @@ dependencies:
  - pydantic
  - pytest
  - pytest-cov
- - pytorch
+ - pytorch>=*=cuda118*
  - pyyaml
  - rasterio
  - ruff
@@ -30,9 +32,5 @@ dependencies:
  - setuptools
  - setuptools_scm
  - shapely
+ - tile_mate>=0.0.12
  - tqdm
- - cudatoolkit>=11.8
- - pip:
-   - dist_s1_enumerator
-   - pyarrow
-   - tile-mate>=0.0.12
