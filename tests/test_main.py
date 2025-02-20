@@ -29,9 +29,13 @@ def test_dist_s1_sas_main(
     # Issues in CI/CD
     tmp_dir = test_dir / Path('tmp')
     tmp_dir.mkdir(parents=True, exist_ok=True)
+    # Check the runconfig.yml and see it is tmp2 - want to make sure this is correctly being set
+    product_dst_dir = test_dir / Path('tmp2')
 
     runconfig_data = RunConfigData.from_yaml(cropped_10SGD_dataset_runconfig)
     runconfig_data.dst_dir = tmp_dir
+    assert runconfig_data.product_dst_dir.resolve() == product_dst_dir.resolve()
+
     tmp_runconfig_yml_path = tmp_dir / 'runconfig.yml'
     runconfig_data.to_yaml(tmp_runconfig_yml_path)
 
@@ -42,6 +46,9 @@ def test_dist_s1_sas_main(
         dist_s1,
         command,
     )
+    # Check the product_dst_dir exists
+    assert product_dst_dir.exists()
+
     assert result.exit_code == 0
 
     product_data_golden = ProductDirectoryData.from_product_path(test_opera_golden_dummy_dataset)
@@ -50,3 +57,4 @@ def test_dist_s1_sas_main(
     assert out_product_data == product_data_golden
 
     shutil.rmtree(tmp_dir)
+    shutil.rmtree(product_dst_dir)
