@@ -12,8 +12,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Issues with test_main.py related to where tmp directory was being created (solution, ensure tmp is made explicitly relative to the test directory as in `test_workflows.py`).
 - All dependencies within virtual environment are back to conda-forge from PyPI.
 - Product directory parameter is now correctly writing to the specified directory (fixes [#37](https://github.com/opera-adt/dist-s1/issues/37)).
-- Update CLI test with isolated filesystem to ensure the working directory is correct.
-- Fixed the CLI test bug the runconfig instance will have different product paths than the one created via the CLI.
+- Fixed the CLI test (bug). The runconfig instance will have different product paths than the one created via the CLI because the product paths have the *processing time* in them, and that is different depending on when the runconfig object is created in the test and within the CLI-run test.
 
 ### Added
 - Added a `n_workers_for_despeckling` argument to the `RunConfigData` model, CLI, and relevant processing functions.
