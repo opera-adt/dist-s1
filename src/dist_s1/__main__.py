@@ -149,7 +149,7 @@ def run_sas_prep(
     bucket: str | None,
     bucket_prefix: str,
     n_workers_for_despeckling: int,
-) -> str:
+) -> None:
     """Run SAS prep workflow."""
     run_config = run_dist_s1_sas_prep_workflow(
         mgrs_tile_id,
@@ -176,9 +176,9 @@ def run_sas_prep(
 # SAS Workflow (No Internet Access)
 @cli.command(name='run_sas')
 @click.option('--runconfig_yml_path', required=True, help='Path to YAML runconfig file', type=click.Path(exists=True))
-def run_sas(runconfig_yml_path: str | Path) -> str:
-    runconfig_data = RunConfigData.from_yaml(runconfig_yml_path)
-    run_dist_s1_sas_workflow(runconfig_data)
+def run_sas(runconfig_yml_path: str | Path) -> None:
+    run_config = RunConfigData.from_yaml(runconfig_yml_path)
+    run_dist_s1_sas_workflow(run_config)
 
 
 # Effectively runs the two workflows above in sequence
