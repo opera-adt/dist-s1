@@ -1,9 +1,8 @@
+import os
 import shutil
-from collections.abc import Callable
 from pathlib import Path
 
 from click.testing import CliRunner
-from pytest import MonkeyPatch
 
 from dist_s1.__main__ import cli as dist_s1
 from dist_s1.data_models.output_models import ProductDirectoryData
@@ -12,11 +11,9 @@ from dist_s1.data_models.runconfig_model import RunConfigData
 
 def test_dist_s1_sas_main(
     cli_runner: CliRunner,
-    change_local_dir: Callable,
     test_dir: Path,
     cropped_10SGD_dataset_runconfig: Path,
     test_opera_golden_dummy_dataset: Path,
-    monkeypatch: MonkeyPatch,
 ) -> None:
     """Test the dist-s1 sas main function.
 
@@ -26,7 +23,9 @@ def test_dist_s1_sas_main(
 
     And comparing the output product directory to the golden dummy dataset.
     """
-    change_local_dir(test_dir)
+    cwd = Path.cwd()
+    os.chdir(test_dir)
+
     # Even though we change our local directory, this path needs to be made relative to the relevant test dir to avoid
     # Issues in CI/CD
     tmp_dir = test_dir / Path('tmp')
@@ -42,23 +41,28 @@ def test_dist_s1_sas_main(
     runconfig_data.to_yaml(tmp_runconfig_yml_path)
 
     # Run the command using the updated runconfig file (the tmp files are cleaned up after the test)
-    change_dir_command = ['cd', str(test_dir)]
     dist_s1_command = ['run_sas', '--runconfig_yml_path', str(tmp_runconfig_yml_path)]
-    command = change_dir_command + ['&&'] + dist_s1_command
 
-    result = cli_runner.invoke(
-        dist_s1,
-        command,
-    )
-    # Check the product_dst_dir exists
-    assert product_dst_dir.exists()
+    with cli_runner.isolated_filesystem():
+        os.chdir(test_dir)
+        print(Path.cwd())
+        result = cli_runner.invoke(
+            dist_s1,
+            dist_s1_command,
+        )
 
-    assert result.exit_code == 0
+        # Check the product_dst_dir exists
+        assert product_dst_dir.exists()
 
-    product_data_golden = ProductDirectoryData.from_product_path(test_opera_golden_dummy_dataset)
-    out_product_data = runconfig_data.product_data_model
+        assert result.exit_code == 0
 
-    assert out_product_data == product_data_golden
+        product_data_golden = ProductDirectoryData.from_product_path(test_opera_golden_dummy_dataset)
+        out_product_data = runconfig_data.product_data_model
 
-    shutil.rmtree(tmp_dir)
-    shutil.rmtree(product_dst_dir)
+        assert out_product_data == product_data_golden
+
+        shutil.rmtree(tmp_dir)
+        shutil.rmtree(product_dst_dir)
+
+    # return back to the original directory
+    os.chdir(cwd)
