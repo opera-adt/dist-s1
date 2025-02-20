@@ -127,6 +127,7 @@ class RunConfigData(BaseModel):
         pattern='^(high|low)$',
     )
     tqdm_enabled: bool = Field(default=True)
+    n_workers_for_despeckling: int = Field(default=5, ge=1)
     n_lookbacks: int = Field(default=3, ge=1, le=3)
     # This is where default thresholds are set!
     moderate_confidence_threshold: float = Field(default=3.5, ge=0.0, le=15.0)

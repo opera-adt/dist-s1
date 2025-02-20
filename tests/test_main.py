@@ -25,7 +25,9 @@ def test_dist_s1_sas_main(
     And comparing the output product directory to the golden dummy dataset.
     """
     change_local_dir(test_dir)
-    tmp_dir = Path('tmp')
+    # Even though we change our local directory, this path needs to be made relative to the relevant test dir to avoid
+    # Issues in CI/CD
+    tmp_dir = test_dir / Path('tmp')
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
     runconfig_data = RunConfigData.from_yaml(cropped_10SGD_dataset_runconfig)

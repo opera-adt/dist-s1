@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.6] - 2025-02-21
+
+### Fixed
+- Issues with test_main.py related to where tmp directory was being created (solution, ensure tmp is made explicitly relative to the test directory as in `test_workflows.py`).
+
+
+### Added
+- Added a `n_workers_for_despeckling` argument to the `RunConfigData` model, CLI, and relevant processing functions.
+
+
 ## [0.0.5] - 2025-02-19
 
 ### Fixed
