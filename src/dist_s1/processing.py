@@ -13,7 +13,11 @@ from dist_s1.rio_tools import check_profiles_match, get_mgrs_profile, open_one_d
 
 
 def despeckle_and_serialize_rtc_s1(
-    rtc_s1_paths: list[Path], dst_paths: list[Path], batch_size: int = 100, tqdm_enabled: bool = True
+    rtc_s1_paths: list[Path],
+    dst_paths: list[Path],
+    batch_size: int = 100,
+    tqdm_enabled: bool = True,
+    n_workers: int = 5,
 ) -> list[Path]:
     # Cast to Path
     dst_paths = list(map(Path, dst_paths))
@@ -34,7 +38,7 @@ def despeckle_and_serialize_rtc_s1(
             data = list(map(open_one_ds, paths_subset_to_create))
             arrs, ps = zip(*data)
             # despeckle
-            arrs_d = despeckle_rtc_arrs_with_tv(arrs, tqdm_enabled=tqdm_enabled)
+            arrs_d = despeckle_rtc_arrs_with_tv(arrs, tqdm_enabled=tqdm_enabled, n_jobs=n_workers)
             # serialize
             [serialize_one_2d_ds(arr, prof, dst_path) for (arr, prof, dst_path) in zip(arrs_d, ps, dst_paths_subset)]
 
