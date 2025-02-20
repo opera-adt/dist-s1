@@ -8,7 +8,7 @@ dependencies:
  - backoff
  - click
  - dem_stitcher
- - dist-s1-enumerator
+ - dist_s1_enumerator
  - distmetrics
  - flake8
  - flake8-blind-except
@@ -31,5 +31,5 @@ dependencies:
  - setuptools
  - setuptools_scm
  - shapely
- - tile-mate>=0.0.12  # Move back to conda-forge after numpy cap is fixed in recipe
+ - tile_mate>=0.0.12  # Move back to conda-forge after numpy cap is fixed in recipe
  - tqdm
