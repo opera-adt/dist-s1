@@ -16,6 +16,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 - Added a `n_workers_for_despeckling` argument to the `RunConfigData` model, CLI, and relevant processing functions.
+- A test to ensure that the product directory is being correctly created and used within runconfig (added to test_main.py).
 
 
 ## [0.0.5] - 2025-02-19
