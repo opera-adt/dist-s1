@@ -1,14 +1,13 @@
-name: dist-s1-env
+name: dist-s1-env-test
 channels:
  - conda-forge
 dependencies:
- - python>=3.12
+ - python=3.13
  - pip
  - asf_search
  - backoff
  - click
  - dem_stitcher
- - dist-s1-enumerator
  - distmetrics
  - flake8
  - flake8-blind-except
@@ -31,5 +30,8 @@ dependencies:
  - setuptools
  - setuptools_scm
  - shapely
- - tile-mate>=0.0.12  # Move back to conda-forge after numpy cap is fixed in recipe
  - tqdm
+ - pip:
+   - tile-mate>=0.0.12  # Move back to conda-forge after numpy cap is fixed in recipe
+   - pyarrow  # this library (coming from dist-s1-enumerator) forces pytorch to use mkl rather than cuda
+   - dist-s1-enumerator
