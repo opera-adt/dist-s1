@@ -3,6 +3,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from click.testing import CliRunner
+from pytest import MonkeyPatch
 
 from dist_s1.__main__ import cli as dist_s1
 from dist_s1.data_models.output_models import ProductDirectoryData
@@ -15,6 +16,7 @@ def test_dist_s1_sas_main(
     test_dir: Path,
     cropped_10SGD_dataset_runconfig: Path,
     test_opera_golden_dummy_dataset: Path,
+    monkeypatch: MonkeyPatch,
 ) -> None:
     """Test the dist-s1 sas main function.
 
@@ -40,7 +42,9 @@ def test_dist_s1_sas_main(
     runconfig_data.to_yaml(tmp_runconfig_yml_path)
 
     # Run the command using the updated runconfig file (the tmp files are cleaned up after the test)
-    command = ['run_sas', '--runconfig_yml_path', str(tmp_runconfig_yml_path)]
+    change_dir_command = ['cd', str(test_dir)]
+    dist_s1_command = ['run_sas', '--runconfig_yml_path', str(tmp_runconfig_yml_path)]
+    command = change_dir_command + ['&&'] + dist_s1_command
 
     result = cli_runner.invoke(
         dist_s1,
