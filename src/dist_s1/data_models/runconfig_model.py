@@ -127,6 +127,7 @@ class RunConfigData(BaseModel):
         pattern='^(high|low)$',
     )
     tqdm_enabled: bool = Field(default=True)
+    n_workers_for_despeckling: int = Field(default=5, ge=1)
     n_lookbacks: int = Field(default=3, ge=1, le=3)
     # This is where default thresholds are set!
     moderate_confidence_threshold: float = Field(default=3.5, ge=0.0, le=15.0)
@@ -153,7 +154,8 @@ class RunConfigData(BaseModel):
             runconfig_data = data['run_config']
         if fields_to_overwrite is not None:
             runconfig_data.update(fields_to_overwrite)
-        return cls(**runconfig_data)
+        obj = cls(**runconfig_data)
+        return obj
 
     @field_validator('memory_strategy')
     def validate_memory_strategy(cls, memory_strategy: str) -> str:
@@ -179,6 +181,7 @@ class RunConfigData(BaseModel):
     def validate_product_dst_dir(cls, product_dst_dir: Path | str | None, info: ValidationInfo) -> Path | None:
         if isinstance(product_dst_dir, str):
             product_dst_dir = Path(product_dst_dir)
+        return product_dst_dir
 
     def __setattr__(self, name: str, value: Path | str | None) -> None:
         if name == 'product_dst_dir' and value is None:

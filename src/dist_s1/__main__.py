@@ -100,6 +100,13 @@ def common_options(func: Callable) -> Callable:
         help='S3 bucket to upload the final products to.',
     )
     @click.option(
+        '--n_workers_for_despeckling',
+        type=int,
+        default=5,
+        required=False,
+        help='N CPUs to use for despeckling the bursts',
+    )
+    @click.option(
         '--bucket_prefix',
         type=str,
         default='',
@@ -141,6 +148,7 @@ def run_sas_prep(
     product_dst_dir: str | Path | None,
     bucket: str | None,
     bucket_prefix: str,
+    n_workers_for_despeckling: int,
 ) -> str:
     """Run SAS prep workflow."""
     run_config = run_dist_s1_sas_prep_workflow(
@@ -160,6 +168,7 @@ def run_sas_prep(
         product_dst_dir=product_dst_dir,
         bucket=bucket,
         bucket_prefix=bucket_prefix,
+        n_workers_for_despeckling=n_workers_for_despeckling,
     )
     run_config.to_yaml(runconfig_path)
 
@@ -192,6 +201,7 @@ def run(
     product_dst_dir: str | Path | None,
     bucket: str | None,
     bucket_prefix: str,
+    n_workers_for_despeckling: int,
 ) -> str:
     """Localize data and run dist_s1_workflow."""
     # Localize data
@@ -212,6 +222,7 @@ def run(
         product_dst_dir=product_dst_dir,
         bucket=bucket,
         bucket_prefix=bucket_prefix,
+        n_workers_for_despeckling=n_workers_for_despeckling,
     )
     return run_config
 

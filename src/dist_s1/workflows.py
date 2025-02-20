@@ -116,7 +116,7 @@ def run_despeckle_workflow(run_config: RunConfigData) -> None:
     rtc_paths = copol_paths + crosspol_paths
     dst_paths = dspkl_copol_paths + dspkl_crosspol_paths
 
-    despeckle_and_serialize_rtc_s1(rtc_paths, dst_paths)
+    despeckle_and_serialize_rtc_s1(rtc_paths, dst_paths, n_workers=run_config.n_workers_for_despeckling)
 
 
 def run_normal_param_estimation_workflow(run_config: RunConfigData) -> None:
@@ -361,6 +361,7 @@ def run_dist_s1_workflow(
     product_dst_dir: str | Path | None = None,
     bucket: str | None = None,
     bucket_prefix: str = '',
+    n_workers_for_despeckling: int = 5,
 ) -> Path:
     run_config = run_dist_s1_sas_prep_workflow(
         mgrs_tile_id,
@@ -379,6 +380,7 @@ def run_dist_s1_workflow(
         product_dst_dir=product_dst_dir,
         bucket=bucket,
         bucket_prefix=bucket_prefix,
+        n_workers_for_despeckling=n_workers_for_despeckling,
     )
     _ = run_dist_s1_sas_workflow(run_config)
 
