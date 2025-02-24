@@ -23,6 +23,7 @@ dependencies:
  - pydantic
  - pytest
  - pytest-cov
+ - pytest-mock
  - pytorch
  - pyyaml
  - rasterio
