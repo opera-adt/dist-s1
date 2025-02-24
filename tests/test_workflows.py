@@ -4,6 +4,7 @@ from pathlib import Path
 
 import geopandas as gpd
 import pytest
+from pytest_mock import MockerFixture
 
 from dist_s1.data_models.output_models import ProductDirectoryData
 from dist_s1.data_models.runconfig_model import RunConfigData
@@ -14,6 +15,7 @@ from dist_s1.workflows import (
     run_burst_disturbance_workflow,
     run_despeckle_workflow,
     run_dist_s1_sas_workflow,
+    run_dist_s1_workflow,
     run_normal_param_estimation_workflow,
 )
 
@@ -160,6 +162,33 @@ def test_dist_s1_sas_workflow(
     product_data_golden = ProductDirectoryData.from_product_path(test_opera_golden_dummy_dataset)
 
     assert product_data == product_data_golden
+
+    if ERASE_WORKFLOW_OUTPUTS:
+        shutil.rmtree(tmp_dir)
+
+
+def test_dist_s1_workflow_interface(
+    test_dir: Path,
+    test_data_dir: Path,
+    change_local_dir: Callable,
+    mocker: MockerFixture,
+    test_opera_golden_dummy_dataset: Path,
+) -> None:
+    """Tests the s1 workflow interface, not the outputs."""
+    change_local_dir(test_dir)
+    tmp_dir = test_dir / 'tmp'
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
+    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, apply_water_mask=False)
+
+    mocker.patch('dist_s1.localize_rtc_s1.enumerate_one_dist_s1_product', return_value=df_product)
+    mocker.patch('dist_s1.localize_rtc_s1.localize_rtc_s1_ts', return_value=df_product)
+    mocker.patch('dist_s1.workflows.run_dist_s1_sas_workflow', return_value=config)
+
+    run_dist_s1_workflow(
+        mgrs_tile_id='10SGD', post_date='2025-01-02', track_number=137, dst_dir=tmp_dir, apply_water_mask=False
+    )
 
     if ERASE_WORKFLOW_OUTPUTS:
         shutil.rmtree(tmp_dir)

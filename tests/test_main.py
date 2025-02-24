@@ -1,7 +1,10 @@
+import shutil
 from collections.abc import Callable
 from pathlib import Path
 
+import geopandas as gpd
 from click.testing import CliRunner
+from pytest_mock import MockerFixture
 
 from dist_s1.__main__ import cli as dist_s1
 from dist_s1.data_models.output_models import ProductDirectoryData
@@ -62,3 +65,58 @@ def test_dist_s1_sas_main(
     assert result.exit_code == 0
 
     assert out_product_data == product_data_golden
+
+    shutil.rmtree(tmp_dir)
+    shutil.rmtree(product_dst_dir)
+
+
+def test_dist_s1_main_interface(
+    cli_runner: CliRunner,
+    test_dir: Path,
+    test_data_dir: Path,
+    change_local_dir: Callable[[Path], None],
+    mocker: MockerFixture,
+) -> None:
+    """Tests the main dist-s1 CLI interface (not the outputs)."""
+    # Store original working directory
+    change_local_dir(test_dir)
+    tmp_dir = test_dir / 'tmp'
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
+    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, apply_water_mask=False)
+
+    mocker.patch('dist_s1.localize_rtc_s1.enumerate_one_dist_s1_product', return_value=df_product)
+    mocker.patch('dist_s1.localize_rtc_s1.localize_rtc_s1_ts', return_value=df_product)
+    mocker.patch('dist_s1.workflows.run_dist_s1_sas_workflow', return_value=config)
+
+    # Run the command
+    result = cli_runner.invoke(
+        dist_s1,
+        [
+            'run',
+            '--mgrs_tile_id',
+            '10SGD',
+            '--post_date',
+            '2025-01-02',
+            '--track_number',
+            '137',
+            '--dst_dir',
+            str(tmp_dir),
+            '--apply_water_mask',
+            'false',
+            '--memory_strategy',
+            'high',
+            '--moderate_confidence_threshold',
+            '3.5',
+            '--high_confidence_threshold',
+            '5.5',
+            '--n_lookbacks',
+            '3',
+            '--product_dst_dir',
+            str(tmp_dir),
+        ],
+    )
+    assert result.exit_code == 0
+
+    shutil.rmtree(tmp_dir)

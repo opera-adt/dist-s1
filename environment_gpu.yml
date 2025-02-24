@@ -24,6 +24,7 @@ dependencies:
  - pydantic
  - pytest
  - pytest-cov
+ - pytest-mock
  - pytorch>=*=cuda118*
  - pyyaml
  - rasterio

@@ -473,7 +473,7 @@ class RunConfigData(BaseModel):
                 or (wm_profile['width'] != 3660)
             ):
                 raise NotImplementedError(
-                    f'We assume the watermask is properly formatted in MGRS tile {self.mgrs_tile_id}; '
+                    f'We assume the watermask is properly in the MGRS tile {self.mgrs_tile_id} reference system; '
                     'additional preprocessing required'
                 )
 
