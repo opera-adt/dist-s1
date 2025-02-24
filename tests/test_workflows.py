@@ -189,3 +189,6 @@ def test_dist_s1_workflow_interface(
     run_dist_s1_workflow(
         mgrs_tile_id='10SGD', post_date='2025-01-02', track_number=137, dst_dir=tmp_dir, apply_water_mask=False
     )
+
+    if ERASE_WORKFLOW_OUTPUTS:
+        shutil.rmtree(tmp_dir)

@@ -1,3 +1,4 @@
+import shutil
 from collections.abc import Callable
 from pathlib import Path
 
@@ -65,6 +66,9 @@ def test_dist_s1_sas_main(
 
     assert out_product_data == product_data_golden
 
+    shutil.rmtree(tmp_dir)
+    shutil.rmtree(product_dst_dir)
+
 
 def test_dist_s1_main_interface(
     cli_runner: CliRunner,
@@ -112,3 +116,5 @@ def test_dist_s1_main_interface(
         ],
     )
     assert result.exit_code == 0
+
+    shutil.rmtree(tmp_dir)

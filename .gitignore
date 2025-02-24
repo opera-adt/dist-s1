@@ -106,3 +106,7 @@ tests/out/
 
 # Generation Notebook
 !tests/Generate_Test_Data.ipynb
+
+# Temporary directories for tests
+tests/tmp/
+tests/tmp2/
