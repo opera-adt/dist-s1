@@ -101,6 +101,8 @@ def test_dist_s1_main_interface(
             '2025-01-02',
             '--track_number',
             '137',
+            '--dst_dir',
+            str(tmp_dir),
             '--apply_water_mask',
             'false',
             '--memory_strategy',
