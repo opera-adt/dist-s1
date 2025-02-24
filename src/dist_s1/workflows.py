@@ -74,6 +74,8 @@ def run_dist_s1_localization_workflow(
     post_date_buffer_days: int = 1,
     dst_dir: str | Path = 'out',
     input_data_dir: str | Path | None = None,
+    apply_water_mask: bool = True,
+    water_mask_path: str | Path | None = None,
 ) -> RunConfigData:
     # Localize inputs
     run_config = localize_rtc_s1(
@@ -83,6 +85,8 @@ def run_dist_s1_localization_workflow(
         post_date_buffer_days=post_date_buffer_days,
         dst_dir=dst_dir,
         input_data_dir=input_data_dir,
+        apply_water_mask=apply_water_mask,
+        water_mask_path=water_mask_path,
     )
 
     return run_config
@@ -321,6 +325,8 @@ def run_dist_s1_sas_prep_workflow(
         post_date_buffer_days,
         dst_dir=dst_dir,
         input_data_dir=input_data_dir,
+        apply_water_mask=apply_water_mask,
+        water_mask_path=water_mask_path,
     )
     run_config.memory_strategy = memory_strategy
     run_config.tqdm_enabled = tqdm_enabled
