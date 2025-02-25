@@ -8,6 +8,9 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.0.7] - 2025-02-25
 
+### Added
+- Water mask ability to read from large water mask.
+
 ### Fixed
 * Ensures CLI correctly populates `apply_water_mask` and `water_mask_path` arguments.
 
