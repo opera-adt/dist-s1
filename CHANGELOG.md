@@ -10,9 +10,10 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 - Water mask ability to read from large water mask.
+- Github issue templates (thanks to Scott Staniewicz)
 
 ### Fixed
-* Ensures CLI correctly populates `apply_water_mask` and `water_mask_path` arguments.
+- Ensures CLI correctly populates `apply_water_mask` and `water_mask_path` arguments.
 
 ### Added
 - Tests for the CLI and main python interace tests.
