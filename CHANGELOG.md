@@ -9,13 +9,13 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [0.0.7] - 2025-02-25
 
 ### Added
-* Github issue templates (thanks to Scott Staniewicz)
+- Github issue templates (thanks to Scott Staniewicz)
+- Tests for the CLI and main python interace tests.
+- Minimum for distmetrics to ensure proper target crs is utilized when merging.
 
 ### Fixed
-* Ensures CLI correctly populates `apply_water_mask` and `water_mask_path` arguments.
+- Ensures CLI correctly populates `apply_water_mask` and `water_mask_path` arguments.
 
-### Added
-- Tests for the CLI and main python interace tests.
 
 ## [0.0.6] - 2025-02-21
 
