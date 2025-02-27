@@ -1,52 +1,34 @@
-FROM nvidia/cuda:11.8.0-devel-ubuntu22.04
+FROM nvidia/cuda:11.8.0-runtime-ubuntu22.04 AS builder
 
-ENV DEBIAN_FRONTEND=noninteractive
-
-RUN apt-get update && apt-get install -y \
-    wget \
-    git \
-    curl \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
-ENV MINIFORGE_VERSION=23.3.1-0
 ENV MINIFORGE_HOME=/opt/miniforge
 ENV PATH="$MINIFORGE_HOME/bin:$PATH"
 # https://docs.conda.io/projects/conda/en/stable/user-guide/tasks/manage-virtual.html
 ENV CONDA_OVERRIDE_CUDA=11.8
 
-RUN wget https://github.com/conda-forge/miniforge/releases/download/${MINIFORGE_VERSION}/Miniforge3-Linux-x86_64.sh -O /tmp/miniforge.sh && \
+RUN apt-get update && apt-get install -y wget git && \
+    wget https://github.com/conda-forge/miniforge/releases/download/23.3.1-0/Miniforge3-Linux-x86_64.sh -O /tmp/miniforge.sh && \
     bash /tmp/miniforge.sh -b -p $MINIFORGE_HOME && \
-    rm /tmp/miniforge.sh && \
-    conda init bash
+    rm /tmp/miniforge.sh
 
-SHELL ["/bin/bash", "-l", "-c"]
+COPY environment_gpu.yml /home/ops/environment_gpu.yml
+RUN mamba env create -f /home/ops/environment_gpu.yml && \
+    conda clean --all --yes && rm -rf /opt/miniforge/pkgs/*
 
-# Create non-root user/group with default inputs
-ARG UID=1000
-ARG GID=1000
+# Final container
+FROM nvidia/cuda:11.8.0-runtime-ubuntu22.04
+COPY --from=builder /opt/miniforge /opt/miniforge
+ENV PATH="/opt/miniforge/bin:$PATH"
+ENV CONDA_OVERRIDE_CUDA=11.8
 
-RUN groupadd -g "${GID}" --system dist_user && \
-    useradd -l -u "${UID}" -g "${GID}" --system -d /home/ops -m  -s /bin/bash dist_user && \
+RUN groupadd -g 1000 --system dist_user && \
+    useradd -l -u 1000 -g 1000 --system -d /home/ops -m -s /bin/bash dist_user && \
     chown -R dist_user:dist_user /opt
 
-# Switch to non-root user
 USER dist_user
 WORKDIR /home/ops
 
+# Copy application
 COPY --chown=dist_user:dist_user . /home/ops/dist-s1/
-
-# Create the environment with mamba
-RUN mamba env create -f /home/ops/dist-s1/environment_gpu.yml && \
-    conda clean -afy
-
-# Ensure that environment is activated on startup and interactive shell
-RUN echo ". /opt/miniforge/etc/profile.d/conda.sh" >> ~/.profile && \
-    echo "conda activate dist-s1-env" >> ~/.profile
-RUN echo ". /opt/miniforge/etc/profile.d/conda.sh" >> ~/.bashrc && \
-    echo "conda activate dist-s1-env" >> ~/.bashrc
-
-# Install repository with pip
 RUN python -m pip install --no-cache-dir /home/ops/dist-s1
 
 ENTRYPOINT ["/bin/bash", "-l", "-c"]
