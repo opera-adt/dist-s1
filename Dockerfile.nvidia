@@ -53,4 +53,4 @@ RUN python -m pip install --no-cache-dir /home/ops/dist-s1
 ## If interactively jump into the container is desired, 
 ## overwrite the entrypoint with --entrypoint /bin/bash ...
 ENTRYPOINT ["/home/ops/dist-s1/src/dist_s1/etc/entrypoint.sh"]
-CMD ["-h"]
+CMD ["--help"]
