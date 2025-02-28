@@ -164,8 +164,18 @@ docker build -f Dockerfile -t dist-s1-img .
 ```
 On Mac ARM, you can specify the target platform via:
 ```
-docker buildx build --platform linux/amd64 -f Dockerfile -t dist-s1 .
+docker buildx build --platform linux/amd64 -f Dockerfile -t dist-s1-img .
 ```
+The docker image will be tagged with `dist-s1-img` in the above examples.
+
+### Generating a Sample Product via a Docker Container
+
+To generate a sample product via a docker container (e.g. the one built above), run:
+```
+docker run -ti --rm dist-s1-img --mgrs_tile_id '11SLT' --post_date '2025-01-21' --track_number 71
+```
+See the `src/dist_s1/etc/entrypoint.sh` file for the entrypoint of the container. It runs `dist-s1 run...`.
+
 
 ### GPU Docker Image
 
@@ -177,7 +187,7 @@ See issue [#22](https://github.com/opera-adt/dist-s1/issues/22) for more details
 
 To run the container interactively:
 ```
-docker run -ti --rm dist-s1 bash
+docker run -ti --rm --entrypoint "/bin/bash" dist-s1-img  # assuming the image is tagged as dist-s1-img
 ```
 Within the container, you can run the CLI commands and the test suite.
 The `--rm` ensures that the container is removed after we exit the shell.
@@ -200,8 +210,9 @@ docker pull ghcr.io/opera-adt/dist-s1:0.0.4
 The command will pull the latest released version of the Docker image. To run the test suite, run:
 
 ```
-docker run --rm ghcr.io/opera-adt/dist-s1 'cd dist-s1 && pytest tests'
+docker run --rm --entrypoint '/bin/bash' ghcr.io/opera-adt/dist-s1 -c -l 'cd dist-s1 && pytest tests'
 ``` 
+Note we have to use the `--entrypoint` flag to overwrite the entrypoint of the container which is `python -um dist_s1 run` by default.
 
 
 # Contribution Instructions

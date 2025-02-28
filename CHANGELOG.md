@@ -12,6 +12,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Github issue templates (thanks to Scott Staniewicz)
 - Tests for the CLI and main python interace tests.
 - Minimum for distmetrics to ensure proper target crs is utilized when merging.
+- Updated entrypoint for the docker container to allow for CLI arguments to be passed directly to the container.
 
 ### Fixed
 - Ensures CLI correctly populates `apply_water_mask` and `water_mask_path` arguments.

@@ -43,5 +43,5 @@ RUN echo "conda activate dist-s1-env" >> ~/.bashrc
 # Install repository with pip
 RUN python -m pip install --no-cache-dir /home/ops/dist-s1
 
-ENTRYPOINT ["/bin/bash", "-l", "-c"]
-CMD ["echo Greetings from OPERA DIST-S1 team"]
+ENTRYPOINT ["/home/ops/dist-s1/src/dist_s1/etc/entrypoint.sh"]
+CMD ["--help"]
