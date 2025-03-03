@@ -16,6 +16,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 - Ensures CLI correctly populates `apply_water_mask` and `water_mask_path` arguments.
+- Updated the permissions of the `entrypoint.sh` file to be executable.
 
 
 ## [0.0.6] - 2025-02-21
