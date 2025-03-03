@@ -9,6 +9,7 @@ from dist_s1.water_mask import water_mask_control_flow
 
 
 def test_good_water_mask_path(test_dir: Path, good_water_mask_path_for_17SLR: Path) -> None:
+    """Apply the water mask control flow to a water mask that is buffered by .25 degrees around the MGRS tile."""
     tmp_dir = test_dir / 'tmp'
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
@@ -39,6 +40,7 @@ def test_good_water_mask_path(test_dir: Path, good_water_mask_path_for_17SLR: Pa
 
 
 def test_bad_water_mask_path(test_dir: Path, bad_water_mask_path_for_17SLR: Path) -> None:
+    """Apply the water mask control flow to a water mask that is eroded by -.25 degrees around the MGRS tile."""
     tmp_dir = test_dir / 'tmp'
 
     with pytest.raises(ValueError):
@@ -51,6 +53,7 @@ def test_bad_water_mask_path(test_dir: Path, bad_water_mask_path_for_17SLR: Path
 
 
 def test_bad_file_path(test_dir: Path) -> None:
+    """Apply the water mask control flow to a file that does not exist."""
     tmp_dir = test_dir / 'tmp'
 
     with pytest.raises(FileNotFoundError):
@@ -63,6 +66,7 @@ def test_bad_file_path(test_dir: Path) -> None:
 
 
 def test_antimeridian_water_mask(test_dir: Path, antimeridian_water_mask_path_for_01VCK: Path) -> None:
+    """Apply the water mask control flow to a water mask file that crosses the antimeridian."""
     tmp_dir = test_dir / 'tmp'
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
