@@ -1,5 +1,7 @@
+import shutil
 from pathlib import Path
 
+import pytest
 import rasterio
 
 from dist_s1.rio_tools import get_mgrs_profile
@@ -32,3 +34,17 @@ def test_good_water_mask_path(test_dir: Path, good_water_mask_path_for_17SLR: Pa
     assert water_mask_profile['transform'] == mgrs_profile['transform']
     assert water_mask_profile['width'] == mgrs_profile['width']
     assert water_mask_profile['height'] == mgrs_profile['height']
+
+    shutil.rmtree(tmp_dir)
+
+
+def test_bad_water_mask_path(test_dir: Path, bad_water_mask_path_for_17SLR: Path) -> None:
+    tmp_dir = test_dir / 'tmp'
+
+    with pytest.raises(ValueError):
+        water_mask_control_flow(
+            water_mask_path=bad_water_mask_path_for_17SLR,
+            mgrs_tile_id='17SLR',
+            apply_water_mask=True,
+            dst_dir=tmp_dir,
+        )
