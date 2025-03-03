@@ -1,6 +1,5 @@
 from pathlib import Path
 
-import numpy as np
 import rasterio
 
 from dist_s1.rio_tools import get_mgrs_profile
