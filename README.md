@@ -215,6 +215,23 @@ docker run --rm --entrypoint '/bin/bash' ghcr.io/opera-adt/dist-s1 -c -l 'cd dis
 Note we have to use the `--entrypoint` flag to overwrite the entrypoint of the container which is `python -um dist_s1 run` by default.
 
 
+# Testing
+
+We have a comprehensive test suite that is run via the CI/CD pipeline with each PR to `dev`/`main`.
+To run the test suite locally, run:
+```
+pytest tests
+```
+You can also run individual tests by specifying the test file:
+```
+pytest tests/test_workflows.py
+```
+or via a specific test name:
+```
+pytest tests/test_water_mask.py::test_antimeridian_water_mask
+```
+There is a lot of data used to test the workflows in expedient ways. This is described in the [generation_of_input_data_subset.md](tests/generation_of_input_data_subset.md) file.
+
 # Contribution Instructions
 
 This is an open-source plugin and we welcome contributions and issue tickets. 
