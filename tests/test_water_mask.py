@@ -1,0 +1,35 @@
+from pathlib import Path
+
+import numpy as np
+import rasterio
+
+from dist_s1.rio_tools import get_mgrs_profile
+from dist_s1.water_mask import water_mask_control_flow
+
+
+def test_good_water_mask_path(test_dir: Path, good_water_mask_path_for_17SLR: Path) -> None:
+    tmp_dir = test_dir / 'tmp'
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    water_mask_path = water_mask_control_flow(
+        water_mask_path=good_water_mask_path_for_17SLR,
+        mgrs_tile_id='17SLR',
+        apply_water_mask=True,
+        dst_dir=tmp_dir,
+    )
+    assert water_mask_path.exists()
+    assert water_mask_path.is_file()
+    assert water_mask_path.suffix == '.tif'
+    assert water_mask_path.name == '17SLR_water_mask.tif'
+
+    mgrs_profile = get_mgrs_profile('17SLR')
+
+    with rasterio.open(water_mask_path) as src:
+        water_mask_profile = src.profile
+
+    assert water_mask_profile['count'] == 1
+    assert str(water_mask_profile['dtype']) == 'uint8'
+    assert water_mask_profile['crs'] == mgrs_profile['crs']
+    assert water_mask_profile['transform'] == mgrs_profile['transform']
+    assert water_mask_profile['width'] == mgrs_profile['width']
+    assert water_mask_profile['height'] == mgrs_profile['height']

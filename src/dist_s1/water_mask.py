@@ -62,15 +62,49 @@ def water_mask_control_flow(
     *,
     water_mask_path: Path | str | None,
     mgrs_tile_id: str,
-    overwrite: bool,
     apply_water_mask: bool,
     dst_dir: Path,
-    buffer_size_pixel: int = 5,
-) -> Path:
+    overwrite: bool = True,
+    buffer_size_pixel: int = 10,
+) -> Path | None:
+    """Read and resample water mask for serialization to disk, outputing its path on filesystem.
+
+    Parameters
+    ----------
+    water_mask_path : Path | str | None
+        Path or url to water mask file. If none, will retrieve using `get_water_mask` which utilizes the Glad landcover
+        dataset.
+    mgrs_tile_id : str
+        MGRS tile id of the tile to process.
+    apply_water_mask : bool
+        If True, will read and resample the water mask to the MGRS tile id. If False, will not do any preprocessing and
+        return None.
+    dst_dir : Path
+        Directory to save the water mask.
+    overwrite : bool, optional
+        If True, will overwrite the water mask if it already exists. If False, will not overwrite the water mask if it
+        already exists.
+    buffer_size_pixel : int, optional
+        How many additional pixels to buffer around the MGRS tile, by default 5
+
+    Returns
+    -------
+    Path | None
+        Path to the water mask on filesystem if `apply_water_mask` is True, otherwise None.
+
+
+    Raises
+    ------
+    FileNotFoundError
+        When water mask doesn't begin with http or s3, and doesn't exist on filesystem.
+    ValueError
+        When water mask indicated by `water_mask_path` doesn't contain the MGRS tile.
+    """
+    # This path will be used if we don't have a local water mask path or url
     out_water_mask_path = dst_dir / f'{mgrs_tile_id}_water_mask.tif'
     if not apply_water_mask:
         out_water_mask_path = None
-    elif water_mask_path is None:
+    elif water_mask_path is None and apply_water_mask:
         if overwrite or not Path(out_water_mask_path).exists():
             _ = get_water_mask(mgrs_tile_id, out_water_mask_path, overwrite=False)
     elif isinstance(water_mask_path, str | Path) and apply_water_mask:
@@ -102,11 +136,11 @@ def water_mask_control_flow(
         )
         X_wm_window = X_wm_window[0, ...]
 
-        X_wm_mgrs = reproject_arr_to_match_profile(X_wm_window, p_wm_window, p_mgrs)
+        X_wm_mgrs, p_wm_mgrs = reproject_arr_to_match_profile(X_wm_window, p_wm_window, p_mgrs)
         X_wm_mgrs = X_wm_mgrs[0, ...]
 
-        p_mgrs['count'] = 1
-        p_mgrs['dtype'] = np.uint8
-        with rasterio.open(out_water_mask_path, 'w', **p_mgrs) as dst:
+        p_wm_mgrs['count'] = 1
+        p_wm_mgrs['dtype'] = np.uint8
+        with rasterio.open(out_water_mask_path, 'w', **p_wm_mgrs) as dst:
             dst.write(X_wm_mgrs, 1)
     return out_water_mask_path

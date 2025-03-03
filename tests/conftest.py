@@ -63,3 +63,17 @@ def cropped_10SGD_dataset_runconfig() -> Path:
 def cli_runner() -> CliRunner:
     """Fixture to provide a Click test runner."""
     return CliRunner()
+
+
+@pytest.fixture
+def good_water_mask_path_for_17SLR() -> Path:
+    test_dir = Path(__file__)
+    water_mask_path = test_dir.parent / 'test_data' / 'water_mask_samples' / '17SLR_good_water_mask.tif'
+    return water_mask_path
+
+
+@pytest.fixture
+def bad_water_mask_path_for_17SLR() -> Path:
+    test_dir = Path(__file__)
+    water_mask_path = test_dir.parent / 'test_data' / 'water_mask_samples' / '17SLR_bad_water_mask.tif'
+    return water_mask_path
