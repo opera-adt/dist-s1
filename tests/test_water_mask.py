@@ -48,3 +48,31 @@ def test_bad_water_mask_path(test_dir: Path, bad_water_mask_path_for_17SLR: Path
             apply_water_mask=True,
             dst_dir=tmp_dir,
         )
+
+
+def test_bad_file_path(test_dir: Path) -> None:
+    tmp_dir = test_dir / 'tmp'
+
+    with pytest.raises(FileNotFoundError):
+        water_mask_control_flow(
+            water_mask_path=tmp_dir / 'bad_file.tif',
+            mgrs_tile_id='17SLR',
+            apply_water_mask=True,
+            dst_dir=tmp_dir,
+        )
+
+
+def test_antimeridian_water_mask(test_dir: Path, antimeridian_water_mask_path_for_01VCK: Path) -> None:
+    tmp_dir = test_dir / 'tmp'
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    water_mask_path = water_mask_control_flow(
+        water_mask_path=antimeridian_water_mask_path_for_01VCK,
+        mgrs_tile_id='01VCK',
+        apply_water_mask=True,
+        dst_dir=tmp_dir,
+    )
+    assert water_mask_path.exists()
+    assert water_mask_path.is_file()
+    assert water_mask_path.suffix == '.tif'
+    assert water_mask_path.name == '01VCK_water_mask.tif'

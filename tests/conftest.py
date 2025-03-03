@@ -77,3 +77,10 @@ def bad_water_mask_path_for_17SLR() -> Path:
     test_dir = Path(__file__)
     water_mask_path = test_dir.parent / 'test_data' / 'water_mask_samples' / '17SLR_bad_water_mask.tif'
     return water_mask_path
+
+
+@pytest.fixture
+def antimeridian_water_mask_path_for_01VCK() -> Path:
+    test_dir = Path(__file__)
+    water_mask_path = test_dir.parent / 'test_data' / 'water_mask_samples' / '01VCK_water_mask_antimeridian.tif'
+    return water_mask_path
