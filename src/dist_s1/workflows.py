@@ -317,7 +317,7 @@ def run_dist_s1_sas_prep_workflow(
     bucket: str | None = None,
     bucket_prefix: str = '',
     n_workers_for_despeckling: int = 5,
-    device: str | None = None,
+    device: str = 'best',
     batch_size_for_despeckling: int = 25,
     n_workers_for_norm_param_estimation: int = 1,
 ) -> RunConfigData:
@@ -378,7 +378,7 @@ def run_dist_s1_workflow(
     n_workers_for_despeckling: int = 5,
     batch_size_for_despeckling: int = 25,
     n_workers_for_norm_param_estimation: int = 1,
-    device: str | None = None,
+    device: str = 'best',
 ) -> Path:
     run_config = run_dist_s1_sas_prep_workflow(
         mgrs_tile_id,

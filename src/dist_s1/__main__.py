@@ -115,9 +115,9 @@ def common_options(func: Callable) -> Callable:
     )
     @click.option(
         '--device',
-        type=click.Choice(['cpu', 'cuda', 'mps', 'none']),
+        type=click.Choice(['cpu', 'cuda', 'mps', 'best']),
         required=False,
-        default=None,
+        default='best',
         help='Device to use for transformer model inference of normal parameters.',
     )
     @click.option(
@@ -173,7 +173,7 @@ def run_sas_prep(
     n_workers_for_despeckling: int,
     batch_size_for_despeckling: int,
     n_workers_for_norm_param_estimation: int,
-    device: str | None,
+    device: str,
 ) -> None:
     """Run SAS prep workflow."""
     run_config = run_dist_s1_sas_prep_workflow(
@@ -232,7 +232,7 @@ def run(
     n_workers_for_despeckling: int,
     batch_size_for_despeckling: int,
     n_workers_for_norm_param_estimation: int,
-    device: str | None,
+    device: str,
 ) -> str:
     """Localize data and run dist_s1_workflow."""
     # Localize data

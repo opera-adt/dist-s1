@@ -123,7 +123,10 @@ class RunConfigData(BaseModel):
     water_mask_path: Path | str | None = None
     apply_water_mask: bool = Field(default=True)
     check_input_paths: bool = True
-    device: str | None = None
+    device: str | None = Field(
+        default='best',
+        pattern='^(best|cuda|mps|cpu)$',
+    )
     memory_strategy: str | None = Field(
         default='low',
         pattern='^(high|low)$',
@@ -179,14 +182,17 @@ class RunConfigData(BaseModel):
             raise ValueError("Memory strategy must be in ['high', 'low']")
         return memory_strategy
 
-    @field_validator('device')
-    def validate_device(cls, device: str | None) -> str | None:
-        if (device == 'none') or (device is None):
+    @field_validator('device', mode='before')
+    def validate_device(cls, device: str) -> str:
+        """Validate and set the device. None or 'none' will be converted to the default device."""
+        if device == 'best':
             device = get_device()
         if device == 'cuda' and not torch.cuda.is_available():
-            raise ValueError('CUDA is not available')
+            raise ValueError('CUDA is not available even though device is set to cuda')
         if device == 'mps' and not torch.backends.mps.is_available():
-            raise ValueError('MPS is not available')
+            raise ValueError('MPS is not available even though device is set to mps')
+        if device not in ['cpu', 'cuda', 'mps']:
+            raise ValueError(f"Device '{device}' must be one of: cpu, cuda, mps")
         return device
 
     @field_validator('pre_rtc_copol', 'pre_rtc_crosspol', 'post_rtc_copol', 'post_rtc_crosspol', mode='before')
@@ -498,6 +504,6 @@ class RunConfigData(BaseModel):
             # Ensures value not pointer is assigned to attribute
             self.product_dst_dir = Path(self.dst_dir)
 
-        if self.device in ['cuda', 'mps']:
-            if self.n_workers_for_norm_param_estimation > 1:
-                raise ValueError('CUDA and mps does not support multiprocessing')
+        # Device-specific validations
+        if self.device in ['cuda', 'mps'] and self.n_workers_for_norm_param_estimation > 1:
+            raise ValueError('CUDA and mps do not support multiprocessing')

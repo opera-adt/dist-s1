@@ -3,6 +3,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 import geopandas as gpd
+import pytest
 from click.testing import CliRunner
 from pytest_mock import MockerFixture
 
@@ -70,12 +71,14 @@ def test_dist_s1_sas_main(
     shutil.rmtree(product_dst_dir)
 
 
+@pytest.mark.parametrize('device', ['best', 'cpu'])
 def test_dist_s1_main_interface(
     cli_runner: CliRunner,
     test_dir: Path,
     test_data_dir: Path,
     change_local_dir: Callable[[Path], None],
     mocker: MockerFixture,
+    device: str,
 ) -> None:
     """Tests the main dist-s1 CLI interface (not the outputs)."""
     # Store original working directory
@@ -115,6 +118,8 @@ def test_dist_s1_main_interface(
             '3',
             '--product_dst_dir',
             str(tmp_dir),
+            '--device',
+            device,
         ],
     )
     assert result.exit_code == 0
