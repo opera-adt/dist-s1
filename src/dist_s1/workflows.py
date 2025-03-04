@@ -317,6 +317,9 @@ def run_dist_s1_sas_prep_workflow(
     bucket: str | None = None,
     bucket_prefix: str = '',
     n_workers_for_despeckling: int = 5,
+    device: str | None = None,
+    batch_size_for_despeckling: int = 25,
+    n_workers_for_norm_param_estimation: int = 1,
 ) -> RunConfigData:
     run_config = run_dist_s1_localization_workflow(
         mgrs_tile_id,
@@ -339,6 +342,9 @@ def run_dist_s1_sas_prep_workflow(
     run_config.bucket = bucket
     run_config.bucket_prefix = bucket_prefix
     run_config.n_workers_for_despeckling = n_workers_for_despeckling
+    run_config.batch_size_for_despeckling = batch_size_for_despeckling
+    run_config.n_workers_for_norm_param_estimation = n_workers_for_norm_param_estimation
+    run_config.device = device
     return run_config
 
 
@@ -370,6 +376,9 @@ def run_dist_s1_workflow(
     bucket: str | None = None,
     bucket_prefix: str = '',
     n_workers_for_despeckling: int = 5,
+    batch_size_for_despeckling: int = 25,
+    n_workers_for_norm_param_estimation: int = 1,
+    device: str | None = None,
 ) -> Path:
     run_config = run_dist_s1_sas_prep_workflow(
         mgrs_tile_id,
@@ -389,6 +398,9 @@ def run_dist_s1_workflow(
         bucket=bucket,
         bucket_prefix=bucket_prefix,
         n_workers_for_despeckling=n_workers_for_despeckling,
+        batch_size_for_despeckling=batch_size_for_despeckling,
+        n_workers_for_norm_param_estimation=n_workers_for_norm_param_estimation,
+        device=device,
     )
     _ = run_dist_s1_sas_workflow(run_config)
 

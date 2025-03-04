@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.8] - 2025-03-05
+
+### Added
+- Exposes runconfig parameter to force use of a device (CPU, GPU, MPS, or None). None will use the best available device.
+- Exposes runconfig to control batch size for despeckling (how many arrays are loaded into CPU memory at once).
+- Allows for CPU multi-CPU processing (if desired) and exposes runconfig parameter to control number of workers.
+   - Validates multiprocessing to use CPU device.
+- If GPU is used, ensure multiprocessing is not used.
+
+
 ## [0.0.7] - 2025-02-25
 
 ### Added

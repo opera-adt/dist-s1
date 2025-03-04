@@ -1,13 +1,16 @@
+import multiprocessing as mp
 from datetime import datetime
 from pathlib import Path, PosixPath
 
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+import torch
 import yaml
 from dist_s1_enumerator.asf import append_pass_data, extract_pass_id
 from dist_s1_enumerator.data_models import dist_s1_loc_input_schema
 from dist_s1_enumerator.mgrs_burst_data import get_lut_by_mgrs_tile_ids
+from distmetrics.transformer import get_device
 from pandera import check_input
 from pydantic import BaseModel, Field, ValidationError, ValidationInfo, field_validator
 from yaml import Dumper
@@ -120,12 +123,27 @@ class RunConfigData(BaseModel):
     water_mask_path: Path | str | None = None
     apply_water_mask: bool = Field(default=True)
     check_input_paths: bool = True
+    device: str | None = None
     memory_strategy: str | None = Field(
-        default='high',
+        default='low',
         pattern='^(high|low)$',
     )
     tqdm_enabled: bool = Field(default=True)
-    n_workers_for_despeckling: int = Field(default=5, ge=1)
+    batch_size_for_despeckling: int = Field(
+        default=25,
+        ge=1,
+        le=100,
+    )
+    n_workers_for_norm_param_estimation: int = Field(
+        default=1,
+        ge=1,
+        le=mp.cpu_count(),
+    )
+    n_workers_for_despeckling: int = Field(
+        default=5,
+        ge=1,
+        le=mp.cpu_count(),
+    )
     n_lookbacks: int = Field(default=3, ge=1, le=3)
     # This is where default thresholds are set!
     moderate_confidence_threshold: float = Field(default=3.5, ge=0.0, le=15.0)
@@ -160,6 +178,16 @@ class RunConfigData(BaseModel):
         if memory_strategy not in ['high', 'low']:
             raise ValueError("Memory strategy must be in ['high', 'low']")
         return memory_strategy
+
+    @field_validator('device')
+    def validate_device(cls, device: str | None) -> str | None:
+        if (device == 'none') or (device is None):
+            device = get_device()
+        if device == 'cuda' and not torch.cuda.is_available():
+            raise ValueError('CUDA is not available')
+        if device == 'mps' and not torch.backends.mps.is_available():
+            raise ValueError('MPS is not available')
+        return device
 
     @field_validator('pre_rtc_copol', 'pre_rtc_crosspol', 'post_rtc_copol', 'post_rtc_crosspol', mode='before')
     def convert_to_paths(cls, values: list[Path | str], info: ValidationInfo) -> list[Path]:
@@ -469,3 +497,7 @@ class RunConfigData(BaseModel):
         if self.product_dst_dir is None:
             # Ensures value not pointer is assigned to attribute
             self.product_dst_dir = Path(self.dst_dir)
+
+        if self.device in ['cuda', 'mps']:
+            if self.n_workers_for_norm_param_estimation > 1:
+                raise ValueError('CUDA and mps does not support multiprocessing')
