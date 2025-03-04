@@ -4,7 +4,6 @@ from pathlib import Path, PosixPath
 import geopandas as gpd
 import numpy as np
 import pandas as pd
-import rasterio
 import yaml
 from dist_s1_enumerator.asf import append_pass_data, extract_pass_id
 from dist_s1_enumerator.data_models import dist_s1_loc_input_schema
@@ -14,8 +13,7 @@ from pydantic import BaseModel, Field, ValidationError, ValidationInfo, field_va
 from yaml import Dumper
 
 from dist_s1.data_models.output_models import ProductDirectoryData, ProductNameData
-from dist_s1.rio_tools import get_mgrs_profile
-from dist_s1.water_mask import get_water_mask
+from dist_s1.water_mask import water_mask_control_flow
 
 
 def posix_path_encoder(dumper: Dumper, data: PosixPath) -> yaml.Node:
@@ -459,23 +457,14 @@ class RunConfigData(BaseModel):
         return self._df_inputs.copy()
 
     def model_post_init(self, __context: ValidationInfo) -> None:
-        if self.water_mask_path is None and self.apply_water_mask:
-            water_mask_path = self.dst_dir / 'water_mask.tif'
-            self.water_mask_path = get_water_mask(self.mgrs_tile_id, water_mask_path, overwrite=False)
-        elif isinstance(self.water_mask_path, str | Path) and self.apply_water_mask:
-            with rasterio.open(self.water_mask_path) as src:
-                wm_profile = src.profile
-            mgrs_profile = get_mgrs_profile(self.mgrs_tile_id)
-            if (
-                (wm_profile['crs'] != mgrs_profile['crs'])
-                or (wm_profile['transform'] != mgrs_profile['transform'])
-                or (wm_profile['height'] != 3660)
-                or (wm_profile['width'] != 3660)
-            ):
-                raise NotImplementedError(
-                    f'We assume the watermask is properly formatted in MGRS tile {self.mgrs_tile_id}; '
-                    'additional preprocessing required'
-                )
+        # Water mask control flow
+        self.water_mask_path = water_mask_control_flow(
+            water_mask_path=self.water_mask_path,
+            mgrs_tile_id=self.mgrs_tile_id,
+            apply_water_mask=self.apply_water_mask,
+            dst_dir=self.dst_dir,
+            overwrite=True,
+        )
 
         if self.product_dst_dir is None:
             # Ensures value not pointer is assigned to attribute

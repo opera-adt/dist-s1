@@ -9,7 +9,7 @@ dependencies:
  - click
  - dem_stitcher
  - dist_s1_enumerator
- - distmetrics
+ - distmetrics>=0.0.10
  - flake8
  - flake8-blind-except
  - flake8-builtins
@@ -17,12 +17,12 @@ dependencies:
  - geopandas
  - jupyterlab
  - matplotlib
- - multiprocess # TODO: Remove once distmetrics on conda - need to add this to conda recipe
  - numpy
  - pandas
  - pydantic
  - pytest
  - pytest-cov
+ - pytest-mock
  - pytorch
  - pyyaml
  - rasterio
@@ -31,5 +31,5 @@ dependencies:
  - setuptools
  - setuptools_scm
  - shapely
- - tile_mate>=0.0.12  # Move back to conda-forge after numpy cap is fixed in recipe
+ - tile_mate>=0.0.12 
  - tqdm
