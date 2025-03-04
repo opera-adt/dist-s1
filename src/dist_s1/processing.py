@@ -55,7 +55,7 @@ def compute_normal_params_per_burst_and_serialize(
     memory_strategy: str = 'high',
     device: str = 'best',
 ) -> Path:
-    model = load_transformer_model()
+    model = load_transformer_model(device=device)
 
     copol_data = [open_one_ds(path) for path in pre_copol_paths_dskpl_paths]
     crosspol_data = [open_one_ds(path) for path in pre_crosspol_paths_dskpl_paths]

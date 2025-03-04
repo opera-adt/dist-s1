@@ -1,4 +1,5 @@
 import concurrent.futures as cf
+import multiprocessing as mp
 from datetime import datetime
 from pathlib import Path
 
@@ -18,6 +19,10 @@ from dist_s1.processing import (
     merge_burst_disturbances_and_serialize,
     merge_burst_metrics_and_serialize,
 )
+
+
+# Use spawn for multiprocessing
+mp.set_start_method('spawn', force=True)
 
 
 def curate_input_burst_rtc_input_for_dist(
@@ -241,8 +246,7 @@ def run_normal_param_estimation_workflow(run_config: RunConfigData) -> None:
                 try:
                     future.result()  # Raises exception if the function failed
                 except Exception as e:
-                    task_id = futures[future]
-                    print(f'Task {task_id} failed with error: {e}')
+                    print(f'{e}')
                     raise
 
 
