@@ -41,6 +41,8 @@ def test_dist_s1_sas_main(
 
     # Load and modify runconfig - not the paths are relative to the test_dir
     runconfig_data = RunConfigData.from_yaml(cropped_10SGD_dataset_runconfig)
+    # Memory strategy was set to high to create the golden dataset
+    runconfig_data.memory_strategy = 'high'
     # We have a different product_dst_dir than the dst_dir called `tmp2`
     product_dst_dir = test_dir / 'tmp2'
     assert runconfig_data.product_dst_dir.resolve() == product_dst_dir.resolve()
