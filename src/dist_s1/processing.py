@@ -55,9 +55,9 @@ def compute_normal_params_per_burst_and_serialize(
     memory_strategy: str = 'high',
     device: str = 'best',
 ) -> Path:
-    # For distmetrics, None is how we choose the "best" available device
     if device not in ('cpu', 'cuda', 'mps', 'best'):
         raise ValueError(f'Invalid device: {device}')
+    # For distmetrics, None is how we choose the "best" available device
     if device == 'best':
         device = None
     model = load_transformer_model(device=device)
