@@ -53,6 +53,7 @@ def compute_normal_params_per_burst_and_serialize(
     out_path_sigma_copol: Path,
     out_path_sigma_crosspol: Path,
     memory_strategy: str = 'high',
+    device: str = 'best',
 ) -> Path:
     model = load_transformer_model()
 
@@ -68,8 +69,10 @@ def compute_normal_params_per_burst_and_serialize(
         check_profiles_match(p_ref, p_copol)
         check_profiles_match(p_ref, p_crosspol)
 
+    if device == 'best':
+        device = None
     logits_mu, logits_sigma = estimate_normal_params_of_logits(
-        model, arrs_copol, arrs_crosspol, memory_strategy=memory_strategy
+        model, arrs_copol, arrs_crosspol, memory_strategy=memory_strategy, device=device
     )
     logits_mu_copol, logits_mu_crosspol = logits_mu[0, ...], logits_mu[1, ...]
     logits_sigma_copol, logits_sigma_crosspol = logits_sigma[0, ...], logits_sigma[1, ...]
@@ -78,10 +81,6 @@ def compute_normal_params_per_burst_and_serialize(
     serialize_one_2d_ds(logits_mu_crosspol, p_ref, out_path_mu_crosspol)
     serialize_one_2d_ds(logits_sigma_copol, p_ref, out_path_sigma_copol)
     serialize_one_2d_ds(logits_sigma_crosspol, p_ref, out_path_sigma_crosspol)
-
-
-def compute_disturbance(metric_paths: list[Path], out_dir: Path) -> None:
-    pass
 
 
 def compute_logit_mdist(arr_logit: np.ndarray, mean_logit: np.ndarray, sigma_logit: np.ndarray) -> np.ndarray:

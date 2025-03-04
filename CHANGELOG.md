@@ -8,6 +8,9 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.0.8] - 2025-03-05
 
+### Changed
+- Defaults to "low" for memory strategy for CPU usage.
+
 ### Added
 - Exposes runconfig parameter to force use of a device (CPU, GPU, MPS, or None). None will use the best available device.
 - Exposes runconfig to control batch size for despeckling (how many arrays are loaded into CPU memory at once).
