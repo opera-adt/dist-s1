@@ -55,6 +55,11 @@ def compute_normal_params_per_burst_and_serialize(
     memory_strategy: str = 'high',
     device: str = 'best',
 ) -> Path:
+    # For distmetrics, None is how we choose the "best" available device
+    if device not in ('cpu', 'cuda', 'mps', 'best'):
+        raise ValueError(f'Invalid device: {device}')
+    if device == 'best':
+        device = None
     model = load_transformer_model(device=device)
 
     copol_data = [open_one_ds(path) for path in pre_copol_paths_dskpl_paths]
@@ -69,8 +74,6 @@ def compute_normal_params_per_burst_and_serialize(
         check_profiles_match(p_ref, p_copol)
         check_profiles_match(p_ref, p_crosspol)
 
-    if device == 'best':
-        device = None
     logits_mu, logits_sigma = estimate_normal_params_of_logits(
         model, arrs_copol, arrs_crosspol, memory_strategy=memory_strategy, device=device
     )
