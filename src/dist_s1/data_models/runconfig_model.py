@@ -215,6 +215,16 @@ class RunConfigData(BaseModel):
             product_dst_dir = Path(product_dst_dir)
         return product_dst_dir
 
+    @field_validator('dst_dir', mode='before')
+    def validate_dst_dir(cls, dst_dir: Path | str | None, info: ValidationInfo) -> Path:
+        if dst_dir is None:
+            dst_dir = Path.cwd()
+        dst_dir = Path(dst_dir) if isinstance(dst_dir, str) else dst_dir
+        if dst_dir.exists() and not dst_dir.is_dir():
+            raise ValidationError(f"Path '{dst_dir}' exists but is not a directory")
+        dst_dir.mkdir(parents=True, exist_ok=True)
+        return dst_dir
+
     @field_validator('product_dst_dir', mode='before')
     def set_default_product_dst_dir(cls, product_dst_dir: Path | str | None, info: ValidationInfo) -> Path:
         if product_dst_dir is None:
@@ -246,16 +256,6 @@ class RunConfigData(BaseModel):
         if df_mgrs_burst.empty:
             raise ValueError('The MGRS tile specified is not processed by DIST-S1')
         return mgrs_tile_id
-
-    @field_validator('dst_dir', mode='before')
-    def validate_dst_dir(cls, dst_dir: Path | str | None, info: ValidationInfo) -> Path:
-        if dst_dir is None:
-            dst_dir = Path.cwd()
-        dst_dir = Path(dst_dir) if isinstance(dst_dir, str) else dst_dir
-        if dst_dir.exists() and not dst_dir.is_dir():
-            raise ValidationError(f"Path '{dst_dir}' exists but is not a directory")
-        dst_dir.mkdir(parents=True, exist_ok=True)
-        return dst_dir
 
     @field_validator('moderate_confidence_threshold')
     def validate_moderate_threshold(cls, moderate_threshold: float, info: ValidationInfo) -> float:
@@ -501,6 +501,7 @@ class RunConfigData(BaseModel):
             overwrite=True,
         )
 
+        print(self.product_dst_dir)
         if self.product_dst_dir is None:
             # Ensures value not pointer is assigned to attribute
             self.product_dst_dir = Path(self.dst_dir)
