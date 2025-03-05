@@ -2,8 +2,8 @@ from datetime import datetime
 from pathlib import Path
 from warnings import warn
 
-import rasterio
 import numpy as np
+import rasterio
 from pydantic import BaseModel, field_validator, model_validator
 
 from dist_s1.constants import PRODUCT_VERSION
@@ -93,7 +93,9 @@ class ProductFileData(BaseModel):
         """Instantiate from a file path."""
         return cls(path=product_path) 
 
-    def compare(self, other: 'ProductFileData', rtol=1e-05, atol=1e-08, equal_nan=True):
+    def compare(
+        self, other: 'ProductFileData', rtol: float = 1e-05, atol: float = 1e-08, equal_nan: bool = True
+    ) -> tuple[bool, str]:
         """Compare two GeoTIFF files for equality.
 
         Parameters
