@@ -25,7 +25,7 @@ dependencies:
  - pytest-mock
  - pytorch
  - pyyaml
- - rasterio
+ - rasterio>=1.4.0
  - ruff
  - scipy
  - setuptools
