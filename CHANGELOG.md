@@ -16,11 +16,16 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Pydantic model updates to ensure `product_dst_dir` is set to `dst_dir` without using `setattr`.
 
 ### Added
-- Exposes runconfig parameter to force use of a device (`cpu`, 'cuda', 'mps', or 'best'). `best` will use the best available device.
+- Exposes runconfig parameter to force use of a device (`cpu`, `cuda`, `mps`, or `best`). `best` will use the best available device.
 - Exposes runconfig to control batch size for despeckling (how many arrays are loaded into CPU memory at once).
 - Allows for CPU multi-CPU processing (if desired) and exposes runconfig parameter to control number of workers.
    - Validates multiprocessing to use CPU device.
+   - Ensures that the number of workers is not greater than the number of vCPUs (via `mp.cpu_count()`).
 - If GPU is used, ensure multiprocessing is not used.
+- Added a `n_workers_for_norm_param_estimation` parameter to the runconfig to control the number of workers for normal parameter estimation.
+
+### Fixed
+- Ensures that the number of workers for despeckling is not greater than the number of vCPUs (via `mp.cpu_count()`).
 
 
 ## [0.0.7] - 2025-02-25
