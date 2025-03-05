@@ -56,6 +56,9 @@ def test_dist_s1_sas_main(
     tmp_runconfig_yml_path = tmp_dir / 'runconfig.yml'
     runconfig_data.to_yaml(tmp_runconfig_yml_path)
 
+    with Path(tmp_runconfig_yml_path).open('r') as f:
+        print(f.read())
+
     # Run the command
     result = cli_runner.invoke(
         dist_s1,
@@ -64,6 +67,7 @@ def test_dist_s1_sas_main(
     # The product_dst_dir is created - have to find it because it has a processing time
     # and will be different from the runconfig data object
     product_directories = list(product_dst_dir.glob('OPERA*'))
+    print(product_directories)
     # Should be one and only one product directory
     assert len(product_directories) == 1
     product_data_path = product_directories[0]

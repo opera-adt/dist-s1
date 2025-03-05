@@ -223,6 +223,9 @@ class RunConfigData(BaseModel):
             product_dst_dir = Path(info.data['dst_dir'])
         elif isinstance(product_dst_dir, str):
             product_dst_dir = Path(product_dst_dir)
+        if product_dst_dir.exists() and not product_dst_dir.is_dir():
+            raise ValidationError(f"Path '{product_dst_dir}' exists but is not a directory")
+        product_dst_dir.mkdir(parents=True, exist_ok=True)
         return product_dst_dir.resolve()
 
     @field_validator('pre_rtc_crosspol', 'post_rtc_crosspol')
