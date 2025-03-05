@@ -1,4 +1,5 @@
 import functools
+import traceback
 from collections.abc import Callable
 from pathlib import Path
 from typing import ParamSpec, TypeVar
@@ -205,18 +206,9 @@ def run_sas_prep(
 @cli.command(name='run_sas')
 @click.option('--runconfig_yml_path', required=True, help='Path to YAML runconfig file', type=click.Path(exists=True))
 def run_sas(runconfig_yml_path: str | Path) -> None:
-    try:
-        print(f'Loading runconfig from: {runconfig_yml_path}')
-        run_config = RunConfigData.from_yaml(runconfig_yml_path)
-        print(f'RunConfig loaded. Product destination dir: {run_config.product_dst_dir}')
-        print(f'Current working directory: {Path.cwd()}')
-        run_dist_s1_sas_workflow(run_config)
-    except Exception as e:
-        click.echo(f'Error running SAS workflow: {str(e)}', err=True)
-        import traceback
-
-        click.echo(traceback.format_exc(), err=True)
-        raise
+    """Run SAS workflow."""
+    run_config = RunConfigData.from_yaml(runconfig_yml_path)
+    run_dist_s1_sas_workflow(run_config)
 
 
 # Effectively runs the two workflows above in sequence
@@ -245,8 +237,7 @@ def run(
     device: str,
 ) -> str:
     """Localize data and run dist_s1_workflow."""
-    # Localize data
-    run_config = run_dist_s1_workflow(
+    return run_dist_s1_workflow(
         mgrs_tile_id,
         post_date,
         track_number,
@@ -268,7 +259,6 @@ def run(
         n_workers_for_norm_param_estimation=n_workers_for_norm_param_estimation,
         device=device,
     )
-    return run_config
 
 
 if __name__ == '__main__':

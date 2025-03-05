@@ -1,4 +1,5 @@
 import multiprocessing as mp
+import warnings
 from datetime import datetime
 from pathlib import Path, PosixPath
 
@@ -135,17 +136,14 @@ class RunConfigData(BaseModel):
     batch_size_for_despeckling: int = Field(
         default=25,
         ge=1,
-        le=100,
     )
     n_workers_for_norm_param_estimation: int = Field(
         default=1,
         ge=1,
-        le=mp.cpu_count(),
     )
     n_workers_for_despeckling: int = Field(
         default=5,
         ge=1,
-        le=mp.cpu_count(),
     )
     n_lookbacks: int = Field(default=3, ge=1, le=3)
     # This is where default thresholds are set!
@@ -228,6 +226,15 @@ class RunConfigData(BaseModel):
         product_dst_dir.mkdir(parents=True, exist_ok=True)
         return product_dst_dir.resolve()
 
+    @field_validator('n_workers_for_despeckling', 'n_workers_for_norm_param_estimation')
+    def validate_n_workers(cls, n_workers: int, info: ValidationInfo) -> int:
+        if n_workers > mp.cpu_count():
+            warnings.warn(
+                f'{info.field_name} ({n_workers}) is greater than the number of CPUs ({mp.cpu_count()}), using latter.'
+            )
+            n_workers = mp.cpu_count()
+        return n_workers
+
     @field_validator('pre_rtc_crosspol', 'post_rtc_crosspol')
     def check_matching_lengths_copol_and_crosspol(
         cls: type['RunConfigData'], rtc_crosspol: list[Path], info: ValidationInfo
@@ -299,7 +306,6 @@ class RunConfigData(BaseModel):
                 if self.product_dst_dir is not None
                 else Path(self.dst_dir).resolve()
             )
-            print(dst_dir, ' in product_data_model')
             self._product_data_model = ProductDirectoryData(
                 dst_dir=dst_dir,
                 product_name=product_name,

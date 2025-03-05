@@ -1,4 +1,3 @@
-import os
 import shutil
 from collections.abc import Callable
 from pathlib import Path
@@ -33,12 +32,6 @@ def test_dist_s1_sas_main(
     This is because the product paths have the *processing time* in them, and that is different depending on when the
     runconfig object is created.
     """
-    # Add at the start of the test
-    print('\nEnvironment variables:')
-    for key, value in os.environ.items():
-        if 'PATH' in key or 'DIR' in key or 'ROOT' in key:
-            print(f'{key}: {value}')
-
     # Store original working directory
     change_local_dir(test_dir)
     tmp_dir = test_dir / 'tmp'
@@ -52,48 +45,23 @@ def test_dist_s1_sas_main(
     runconfig_data.memory_strategy = 'high'
     # Force CPU device
     runconfig_data.device = 'cpu'
+    # Limit workers for CI environment
+    runconfig_data.n_workers_for_despeckling = 4
     # We have a different product_dst_dir than the dst_dir called `tmp2`
     product_dst_dir = (test_dir / 'tmp2').resolve()
-    runconfig_data.product_dst_dir = str(product_dst_dir)  # Convert to string to ensure consistent handling
-
-    print(f'Product destination directory: {product_dst_dir}')
-    print(f'Product destination directory (absolute): {product_dst_dir.absolute()}')
+    runconfig_data.product_dst_dir = str(product_dst_dir)
 
     tmp_runconfig_yml_path = tmp_dir / 'runconfig.yml'
     runconfig_data.to_yaml(tmp_runconfig_yml_path)
 
-    with Path(tmp_runconfig_yml_path).open('r') as f:
-        print(f.read())
-
-    # Run the command with more debugging info
+    # Run the command
     result = cli_runner.invoke(
         dist_s1,
         ['run_sas', '--runconfig_yml_path', str(tmp_runconfig_yml_path)],
         catch_exceptions=False,  # Let exceptions propagate for better debugging
     )
 
-    # Print CLI execution details
-    print('\nCLI Result:')
-    print(f'Exit code: {result.exit_code}')
-    print(f'Output: {result.output}')
-    print(f'Exception: {result.exception}' if result.exception else 'No exception')
-
-    # Print directory contents
-    print('\nProduct directory contents:')
-    print(f'Directory exists: {product_dst_dir.exists()}')
-    if product_dst_dir.exists():
-        print(f'Directory contents: {list(product_dst_dir.iterdir())}')
-
-    # Check tmp directory contents too
-    print('\nTemp directory contents:')
-    print(f'Directory exists: {tmp_dir.exists()}')
-    if tmp_dir.exists():
-        print(f'Directory contents: {list(tmp_dir.iterdir())}')
-
     product_directories = list(product_dst_dir.glob('OPERA*'))
-    print(f'\nOPERA directories found: {product_directories}')
-    print(f'{runconfig_data.dst_dir.glob("*/")}')
-
     # Should be one and only one product directory
     assert len(product_directories) == 1
 
