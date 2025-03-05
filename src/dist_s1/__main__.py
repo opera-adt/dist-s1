@@ -205,8 +205,12 @@ def run_sas_prep(
 @cli.command(name='run_sas')
 @click.option('--runconfig_yml_path', required=True, help='Path to YAML runconfig file', type=click.Path(exists=True))
 def run_sas(runconfig_yml_path: str | Path) -> None:
-    run_config = RunConfigData.from_yaml(runconfig_yml_path)
-    run_dist_s1_sas_workflow(run_config)
+    try:
+        run_config = RunConfigData.from_yaml(runconfig_yml_path)
+        run_dist_s1_sas_workflow(run_config)
+    except Exception as e:
+        click.echo(f'Error running SAS workflow: {str(e)}', err=True)
+        raise
 
 
 # Effectively runs the two workflows above in sequence

@@ -47,11 +47,10 @@ def test_dist_s1_sas_main(
     runconfig_data.device = 'cpu'
     # We have a different product_dst_dir than the dst_dir called `tmp2`
     product_dst_dir = (test_dir / 'tmp2').resolve()
-    # On CI/CD runners there appears to be weird path issues not seen on local runners
-    # So while we have the above, it is important that the runner specifies exactly the directory path
-    print(product_dst_dir)
-    print(product_dst_dir.parent)
-    print(runconfig_data.product_dst_dir)
+    runconfig_data.product_dst_dir = str(product_dst_dir)  # Convert to string to ensure consistent handling
+
+    print(f'Product destination directory: {product_dst_dir}')
+    print(f'Product destination directory (absolute): {product_dst_dir.absolute()}')
 
     tmp_runconfig_yml_path = tmp_dir / 'runconfig.yml'
     runconfig_data.to_yaml(tmp_runconfig_yml_path)
