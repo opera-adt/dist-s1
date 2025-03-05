@@ -82,6 +82,26 @@ def test_dist_s1_sas_main(
     shutil.rmtree(tmp_dir)
     shutil.rmtree(product_dst_dir)
 
+    # Add debugging prints
+    print('RunConfig contents:')
+    with Path(tmp_runconfig_yml_path).open('r') as f:
+        print(f.read())
+
+    print('\nCLI Result:')
+    print(f'Exit code: {result.exit_code}')
+    print(f'Output: {result.output}')
+    print(f'Exception: {result.exception}' if result.exception else 'No exception')
+
+    # Print directory contents
+    print('\nProduct directory contents:')
+    print(f'Directory exists: {product_dst_dir.exists()}')
+    print(f'Directory contents: {list(product_dst_dir.iterdir())}')
+
+    product_directories = list(product_dst_dir.glob('OPERA*'))
+    print(f'\nOPERA directories found: {product_directories}')
+    # Should be one and only one product directory
+    assert len(product_directories) == 1
+
 
 @pytest.mark.parametrize('device', ['best', 'cpu'])
 def test_dist_s1_main_interface(
