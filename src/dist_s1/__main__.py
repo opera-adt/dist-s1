@@ -206,10 +206,16 @@ def run_sas_prep(
 @click.option('--runconfig_yml_path', required=True, help='Path to YAML runconfig file', type=click.Path(exists=True))
 def run_sas(runconfig_yml_path: str | Path) -> None:
     try:
+        print(f'Loading runconfig from: {runconfig_yml_path}')
         run_config = RunConfigData.from_yaml(runconfig_yml_path)
+        print(f'RunConfig loaded. Product destination dir: {run_config.product_dst_dir}')
+        print(f'Current working directory: {Path.cwd()}')
         run_dist_s1_sas_workflow(run_config)
     except Exception as e:
         click.echo(f'Error running SAS workflow: {str(e)}', err=True)
+        import traceback
+
+        click.echo(traceback.format_exc(), err=True)
         raise
 
 

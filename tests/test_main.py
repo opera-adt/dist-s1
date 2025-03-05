@@ -1,3 +1,4 @@
+import os
 import shutil
 from collections.abc import Callable
 from pathlib import Path
@@ -32,6 +33,12 @@ def test_dist_s1_sas_main(
     This is because the product paths have the *processing time* in them, and that is different depending on when the
     runconfig object is created.
     """
+    # Add at the start of the test
+    print('\nEnvironment variables:')
+    for key, value in os.environ.items():
+        if 'PATH' in key or 'DIR' in key or 'ROOT' in key:
+            print(f'{key}: {value}')
+
     # Store original working directory
     change_local_dir(test_dir)
     tmp_dir = test_dir / 'tmp'
@@ -85,6 +92,7 @@ def test_dist_s1_sas_main(
 
     product_directories = list(product_dst_dir.glob('OPERA*'))
     print(f'\nOPERA directories found: {product_directories}')
+    print(f'{runconfig_data.dst_dir.glob("*/")}')
 
     # Should be one and only one product directory
     assert len(product_directories) == 1
