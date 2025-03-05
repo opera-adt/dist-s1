@@ -209,27 +209,23 @@ class RunConfigData(BaseModel):
                 raise ValueError(bad_paths_str)
         return paths
 
-    @field_validator('product_dst_dir', mode='before')
-    def validate_product_dst_dir(cls, product_dst_dir: Path | str | None, info: ValidationInfo) -> Path | None:
-        if isinstance(product_dst_dir, str):
-            product_dst_dir = Path(product_dst_dir)
-        return product_dst_dir
-
     @field_validator('dst_dir', mode='before')
     def validate_dst_dir(cls, dst_dir: Path | str | None, info: ValidationInfo) -> Path:
-        if dst_dir is None:
-            dst_dir = Path.cwd()
         dst_dir = Path(dst_dir) if isinstance(dst_dir, str) else dst_dir
         if dst_dir.exists() and not dst_dir.is_dir():
             raise ValidationError(f"Path '{dst_dir}' exists but is not a directory")
         dst_dir.mkdir(parents=True, exist_ok=True)
-        return dst_dir
+        return dst_dir.resolve()
+
 
     @field_validator('product_dst_dir', mode='before')
-    def set_default_product_dst_dir(cls, product_dst_dir: Path | str | None, info: ValidationInfo) -> Path:
+    def validate_product_dst_dir(cls, product_dst_dir: Path | str | None, info: ValidationInfo) -> Path | None:
+        if isinstance(product_dst_dir, str):
+            product_dst_dir = Path(product_dst_dir)
         if product_dst_dir is None:
-            return Path(info.data['dst_dir'])
-        return Path(product_dst_dir) if isinstance(product_dst_dir, str) else product_dst_dir
+            product_dst_dir = Path(info.data['dst_dir'])
+        return product_dst_dir.resolve()
+
 
     @field_validator('pre_rtc_crosspol', 'post_rtc_crosspol')
     def check_matching_lengths_copol_and_crosspol(
@@ -500,11 +496,6 @@ class RunConfigData(BaseModel):
             dst_dir=self.dst_dir,
             overwrite=True,
         )
-
-        print(self.product_dst_dir)
-        if self.product_dst_dir is None:
-            # Ensures value not pointer is assigned to attribute
-            self.product_dst_dir = Path(self.dst_dir)
 
         # Device-specific validations
         if self.device in ['cuda', 'mps'] and self.n_workers_for_norm_param_estimation > 1:

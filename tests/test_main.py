@@ -46,8 +46,11 @@ def test_dist_s1_sas_main(
     # Force CPU device
     runconfig_data.device = 'cpu'
     # We have a different product_dst_dir than the dst_dir called `tmp2`
-    product_dst_dir = test_dir / 'tmp2'
+    product_dst_dir = (test_dir / 'tmp2').resolve()
     assert runconfig_data.product_dst_dir.resolve() == product_dst_dir.resolve()
+    # On CI/CD runners there appears to be weird path issues not seen on local runners
+    # So while we have the above, it is important that the runner specifies exactly the directory path
+    runconfig_data.product_dst_dir = product_dst_dir.resolve()
 
     tmp_runconfig_yml_path = tmp_dir / 'runconfig.yml'
     runconfig_data.to_yaml(tmp_runconfig_yml_path)
@@ -61,10 +64,6 @@ def test_dist_s1_sas_main(
     # and will be different from the runconfig data object
     product_directories = list(product_dst_dir.glob('OPERA*'))
     # Should be one and only one product directory
-    print(product_dst_dir)
-    print(runconfig_data.model_dump())
-    print(product_directories)
-    print(list(product_dst_dir.glob('*')))
     assert len(product_directories) == 1
     product_data_path = product_directories[0]
     out_product_data = ProductDirectoryData.from_product_path(product_data_path)
