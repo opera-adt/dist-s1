@@ -61,6 +61,8 @@ def test_dist_s1_sas_main(
     # and will be different from the runconfig data object
     product_directories = list(product_dst_dir.glob('OPERA*'))
     # Should be one and only one product directory
+    print(product_directories)
+    print(list(product_dst_dir.glob('*')))
     assert len(product_directories) == 1
     product_data_path = product_directories[0]
     out_product_data = ProductDirectoryData.from_product_path(product_data_path)
