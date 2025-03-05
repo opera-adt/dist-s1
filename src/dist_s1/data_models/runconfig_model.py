@@ -217,7 +217,6 @@ class RunConfigData(BaseModel):
         dst_dir.mkdir(parents=True, exist_ok=True)
         return dst_dir.resolve()
 
-
     @field_validator('product_dst_dir', mode='before')
     def validate_product_dst_dir(cls, product_dst_dir: Path | str | None, info: ValidationInfo) -> Path | None:
         if isinstance(product_dst_dir, str):
@@ -225,7 +224,6 @@ class RunConfigData(BaseModel):
         if product_dst_dir is None:
             product_dst_dir = Path(info.data['dst_dir'])
         return product_dst_dir.resolve()
-
 
     @field_validator('pre_rtc_crosspol', 'post_rtc_crosspol')
     def check_matching_lengths_copol_and_crosspol(
