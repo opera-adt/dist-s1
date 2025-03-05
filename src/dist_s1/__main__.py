@@ -1,5 +1,4 @@
 import functools
-import traceback
 from collections.abc import Callable
 from pathlib import Path
 from typing import ParamSpec, TypeVar
