@@ -289,9 +289,17 @@ class RunConfigData(BaseModel):
     @property
     def product_data_model(self) -> ProductDirectoryData:
         if self._product_data_model is None:
+            product_name = self.product_name
+            # Use dst_dir if product_dst_dir is None
+            dst_dir = (
+                Path(self.product_dst_dir).resolve()
+                if self.product_dst_dir is not None
+                else Path(self.dst_dir).resolve()
+            )
+            print(dst_dir, ' in product_data_model')
             self._product_data_model = ProductDirectoryData(
-                dst_dir=self.product_dst_dir,
-                product_name=self.product_name,
+                dst_dir=dst_dir,
+                product_name=product_name,
             )
         return self._product_data_model
 
