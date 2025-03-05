@@ -1,3 +1,5 @@
+import concurrent.futures as cf
+import multiprocessing as mp
 from datetime import datetime
 from pathlib import Path
 
@@ -17,6 +19,10 @@ from dist_s1.processing import (
     merge_burst_disturbances_and_serialize,
     merge_burst_metrics_and_serialize,
 )
+
+
+# Use spawn for multiprocessing
+mp.set_start_method('spawn', force=True)
 
 
 def curate_input_burst_rtc_input_for_dist(
@@ -54,6 +60,51 @@ def curate_input_burst_rtc_s1_paths_for_normal_param_est(
     copol_paths_pre = copol_paths[start:stop]
     crosspol_paths_pre = crosspol_paths[start:stop]
     return copol_paths_pre, crosspol_paths_pre
+
+
+def curate_paths_for_normal_param_est_via_burst_id_and_lookback(
+    df_inputs: pd.DataFrame, df_burst_distmetrics: pd.DataFrame, burst_id: str, lookback: int
+) -> tuple[list[Path], list[Path]]:
+    """Curate the paths to the correct length for normal param estimation."""
+    indices_input = (df_inputs.jpl_burst_id == burst_id) & (df_inputs.input_category == 'pre')
+    df_burst_input_data = df_inputs[indices_input].reset_index(drop=True)
+    indices_input = (df_inputs.jpl_burst_id == burst_id) & (df_inputs.input_category == 'pre')
+    df_burst_input_data = df_inputs[indices_input].reset_index(drop=True)
+    df_metric = df_burst_distmetrics[df_burst_distmetrics.jpl_burst_id == burst_id].reset_index(drop=True)
+
+    copol_paths = df_burst_input_data.loc_path_copol_dspkl.tolist()
+    crosspol_paths = df_burst_input_data.loc_path_crosspol_dspkl.tolist()
+
+    # curate the paths to the correct length
+    copol_paths_pre, crosspol_paths_pre = curate_input_burst_rtc_s1_paths_for_normal_param_est(
+        copol_paths, crosspol_paths, lookback
+    )
+
+    output_mu_copol_l = df_metric[f'loc_path_normal_mean_delta{lookback}_copol'].tolist()
+    output_mu_crosspol_l = df_metric[f'loc_path_normal_mean_delta{lookback}_crosspol'].tolist()
+    output_sigma_copol_l = df_metric[f'loc_path_normal_std_delta{lookback}_copol'].tolist()
+    output_sigma_crosspol_l = df_metric[f'loc_path_normal_std_delta{lookback}_crosspol'].tolist()
+
+    assert (
+        len(output_mu_copol_l)
+        == len(output_mu_crosspol_l)
+        == len(output_sigma_copol_l)
+        == len(output_sigma_crosspol_l)
+        == 1
+    )
+
+    output_mu_copol_path = output_mu_copol_l[0]
+    output_mu_crosspol_path = output_mu_crosspol_l[0]
+    output_sigma_copol_path = output_sigma_copol_l[0]
+    output_sigma_crosspol_path = output_sigma_crosspol_l[0]
+    return dict(
+        copol_paths_pre=copol_paths_pre,
+        crosspol_paths_pre=crosspol_paths_pre,
+        output_mu_copol_path=output_mu_copol_path,
+        output_mu_crosspol_path=output_mu_crosspol_path,
+        output_sigma_copol_path=output_sigma_copol_path,
+        output_sigma_crosspol_path=output_sigma_crosspol_path,
+    )
 
 
 def check_dates_of_normal_param_files(pre_paths: list[str], normal_out_path: Path) -> bool:
@@ -120,7 +171,12 @@ def run_despeckle_workflow(run_config: RunConfigData) -> None:
     rtc_paths = copol_paths + crosspol_paths
     dst_paths = dspkl_copol_paths + dspkl_crosspol_paths
 
-    despeckle_and_serialize_rtc_s1(rtc_paths, dst_paths, n_workers=run_config.n_workers_for_despeckling)
+    despeckle_and_serialize_rtc_s1(
+        rtc_paths,
+        dst_paths,
+        n_workers=run_config.n_workers_for_despeckling,
+        batch_size=run_config.batch_size_for_despeckling,
+    )
 
 
 def run_normal_param_estimation_workflow(run_config: RunConfigData) -> None:
@@ -134,63 +190,64 @@ def run_normal_param_estimation_workflow(run_config: RunConfigData) -> None:
     df_burst_distmetrics = run_config.df_burst_distmetrics
 
     tqdm_disable = not run_config.tqdm_enabled
-    for burst_id in tqdm(
-        df_inputs.jpl_burst_id.unique(), disable=tqdm_disable, desc='Param Est. by Burst', dynamic_ncols=True
-    ):
-        for lookback in tqdm(
-            range(run_config.n_lookbacks),
+    burst_id_lookback_pairs = [
+        (burst_id, lookback)
+        for burst_id in df_inputs.jpl_burst_id.unique()
+        for lookback in range(run_config.n_lookbacks)
+    ]
+    norm_param_paths = [
+        curate_paths_for_normal_param_est_via_burst_id_and_lookback(df_inputs, df_burst_distmetrics, burst_id, lookback)
+        for burst_id, lookback in burst_id_lookback_pairs
+    ]
+
+    if run_config.n_workers_for_norm_param_estimation == 1:
+        for path_data in tqdm(
+            norm_param_paths,
             disable=tqdm_disable,
-            desc=f'Lookbacks for burst {burst_id}',
+            desc='Normal param estimation for burst/lookback pairs',
             dynamic_ncols=True,
             leave=False,
         ):
-            indices_input = (df_inputs.jpl_burst_id == burst_id) & (df_inputs.input_category == 'pre')
-            df_burst_input_data = df_inputs[indices_input].reset_index(drop=True)
-            df_metric = df_burst_distmetrics[df_burst_distmetrics.jpl_burst_id == burst_id].reset_index(drop=True)
-
-            copol_paths = df_burst_input_data.loc_path_copol_dspkl.tolist()
-            crosspol_paths = df_burst_input_data.loc_path_crosspol_dspkl.tolist()
-
-            # curate the paths to the correct length
-            copol_paths_pre, crosspol_paths_pre = curate_input_burst_rtc_s1_paths_for_normal_param_est(
-                copol_paths, crosspol_paths, lookback
-            )
-
-            output_mu_copol_l = df_metric[f'loc_path_normal_mean_delta{lookback}_copol'].tolist()
-            output_mu_crosspol_l = df_metric[f'loc_path_normal_mean_delta{lookback}_crosspol'].tolist()
-            output_sigma_copol_l = df_metric[f'loc_path_normal_std_delta{lookback}_copol'].tolist()
-            output_sigma_crosspol_l = df_metric[f'loc_path_normal_std_delta{lookback}_crosspol'].tolist()
-
-            assert (
-                len(output_mu_copol_l)
-                == len(output_mu_crosspol_l)
-                == len(output_sigma_copol_l)
-                == len(output_sigma_crosspol_l)
-                == 1
-            )
-
-            output_mu_copol_path = output_mu_copol_l[0]
-            output_mu_crosspol_path = output_mu_crosspol_l[0]
-            output_sigma_copol_path = output_sigma_copol_l[0]
-            output_sigma_crosspol_path = output_sigma_crosspol_l[0]
-
-            checks = [
-                check_dates_of_normal_param_files(copol_paths_pre, output_mu_copol_path),
-                check_dates_of_normal_param_files(crosspol_paths_pre, output_mu_crosspol_path),
-                check_dates_of_normal_param_files(copol_paths_pre, output_sigma_copol_path),
-                check_dates_of_normal_param_files(crosspol_paths_pre, output_sigma_crosspol_path),
-            ]
-            assert all(checks)
-
             compute_normal_params_per_burst_and_serialize(
-                copol_paths_pre,
-                crosspol_paths_pre,
-                output_mu_copol_path,
-                output_mu_crosspol_path,
-                output_sigma_copol_path,
-                output_sigma_crosspol_path,
+                path_data['copol_paths_pre'],
+                path_data['crosspol_paths_pre'],
+                path_data['output_mu_copol_path'],
+                path_data['output_mu_crosspol_path'],
+                path_data['output_sigma_copol_path'],
+                path_data['output_sigma_crosspol_path'],
                 memory_strategy=run_config.memory_strategy,
+                device=run_config.device,
             )
+    else:
+        if run_config.device in ('cuda', 'mps'):
+            raise NotImplementedError('Multi-GPU processing is not supported yet')
+        with cf.ProcessPoolExecutor(max_workers=run_config.n_workers_for_norm_param_estimation) as executor:
+            futures = [
+                executor.submit(
+                    compute_normal_params_per_burst_and_serialize,
+                    path_data['copol_paths_pre'],
+                    path_data['crosspol_paths_pre'],
+                    path_data['output_mu_copol_path'],
+                    path_data['output_mu_crosspol_path'],
+                    path_data['output_sigma_copol_path'],
+                    path_data['output_sigma_crosspol_path'],
+                    memory_strategy=run_config.memory_strategy,
+                    device=run_config.device,
+                )
+                for path_data in norm_param_paths
+            ]
+
+            for future in tqdm(
+                cf.as_completed(futures),
+                total=len(futures),
+                desc='Normal param estimation for burst/lookback pairs',
+                dynamic_ncols=True,
+            ):
+                try:
+                    future.result()  # Raises exception if the function failed
+                except Exception as e:
+                    print(f'{e}')
+                    raise
 
 
 def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
@@ -317,6 +374,9 @@ def run_dist_s1_sas_prep_workflow(
     bucket: str | None = None,
     bucket_prefix: str = '',
     n_workers_for_despeckling: int = 5,
+    device: str = 'best',
+    batch_size_for_despeckling: int = 25,
+    n_workers_for_norm_param_estimation: int = 1,
 ) -> RunConfigData:
     run_config = run_dist_s1_localization_workflow(
         mgrs_tile_id,
@@ -339,6 +399,9 @@ def run_dist_s1_sas_prep_workflow(
     run_config.bucket = bucket
     run_config.bucket_prefix = bucket_prefix
     run_config.n_workers_for_despeckling = n_workers_for_despeckling
+    run_config.batch_size_for_despeckling = batch_size_for_despeckling
+    run_config.n_workers_for_norm_param_estimation = n_workers_for_norm_param_estimation
+    run_config.device = device
     return run_config
 
 
@@ -370,6 +433,9 @@ def run_dist_s1_workflow(
     bucket: str | None = None,
     bucket_prefix: str = '',
     n_workers_for_despeckling: int = 5,
+    batch_size_for_despeckling: int = 25,
+    n_workers_for_norm_param_estimation: int = 1,
+    device: str = 'best',
 ) -> Path:
     run_config = run_dist_s1_sas_prep_workflow(
         mgrs_tile_id,
@@ -389,6 +455,9 @@ def run_dist_s1_workflow(
         bucket=bucket,
         bucket_prefix=bucket_prefix,
         n_workers_for_despeckling=n_workers_for_despeckling,
+        batch_size_for_despeckling=batch_size_for_despeckling,
+        n_workers_for_norm_param_estimation=n_workers_for_norm_param_estimation,
+        device=device,
     )
     _ = run_dist_s1_sas_workflow(run_config)
 
