@@ -58,17 +58,38 @@ def test_dist_s1_sas_main(
     with Path(tmp_runconfig_yml_path).open('r') as f:
         print(f.read())
 
-    # Run the command
+    # Run the command with more debugging info
     result = cli_runner.invoke(
         dist_s1,
         ['run_sas', '--runconfig_yml_path', str(tmp_runconfig_yml_path)],
+        catch_exceptions=False,  # Let exceptions propagate for better debugging
     )
-    # The product_dst_dir is created - have to find it because it has a processing time
-    # and will be different from the runconfig data object
+
+    # Print CLI execution details
+    print('\nCLI Result:')
+    print(f'Exit code: {result.exit_code}')
+    print(f'Output: {result.output}')
+    print(f'Exception: {result.exception}' if result.exception else 'No exception')
+
+    # Print directory contents
+    print('\nProduct directory contents:')
+    print(f'Directory exists: {product_dst_dir.exists()}')
+    if product_dst_dir.exists():
+        print(f'Directory contents: {list(product_dst_dir.iterdir())}')
+
+    # Check tmp directory contents too
+    print('\nTemp directory contents:')
+    print(f'Directory exists: {tmp_dir.exists()}')
+    if tmp_dir.exists():
+        print(f'Directory contents: {list(tmp_dir.iterdir())}')
+
     product_directories = list(product_dst_dir.glob('OPERA*'))
-    print(product_directories)
+    print(f'\nOPERA directories found: {product_directories}')
+
     # Should be one and only one product directory
     assert len(product_directories) == 1
+
+    # If we get here, check the product contents
     product_data_path = product_directories[0]
     out_product_data = ProductDirectoryData.from_product_path(product_data_path)
 
@@ -80,26 +101,6 @@ def test_dist_s1_sas_main(
 
     shutil.rmtree(tmp_dir)
     shutil.rmtree(product_dst_dir)
-
-    # Add debugging prints
-    print('RunConfig contents:')
-    with Path(tmp_runconfig_yml_path).open('r') as f:
-        print(f.read())
-
-    print('\nCLI Result:')
-    print(f'Exit code: {result.exit_code}')
-    print(f'Output: {result.output}')
-    print(f'Exception: {result.exception}' if result.exception else 'No exception')
-
-    # Print directory contents
-    print('\nProduct directory contents:')
-    print(f'Directory exists: {product_dst_dir.exists()}')
-    print(f'Directory contents: {list(product_dst_dir.iterdir())}')
-
-    product_directories = list(product_dst_dir.glob('OPERA*'))
-    print(f'\nOPERA directories found: {product_directories}')
-    # Should be one and only one product directory
-    assert len(product_directories) == 1
 
 
 @pytest.mark.parametrize('device', ['best', 'cpu'])
