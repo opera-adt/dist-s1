@@ -13,9 +13,10 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Golden dataset - used CPU and low memory strategy to create the dataset.
 - Updated equality testing for DIST-S1 product comparison lowered comparison tolerance to 0.0001 (was 1e-05).
 - Forced minimum version of rasterio to 1.4.0 for merging operations.
+- Pydantic model updates to ensure `product_dst_dir` is set to `dst_dir` without using `setattr`.
 
 ### Added
-- Exposes runconfig parameter to force use of a device (CPU, GPU, MPS, or None). None will use the best available device.
+- Exposes runconfig parameter to force use of a device (`cpu`, 'cuda', 'mps', or 'best'). `best` will use the best available device.
 - Exposes runconfig to control batch size for despeckling (how many arrays are loaded into CPU memory at once).
 - Allows for CPU multi-CPU processing (if desired) and exposes runconfig parameter to control number of workers.
    - Validates multiprocessing to use CPU device.

@@ -119,11 +119,11 @@ class RunConfigData(BaseModel):
     post_rtc_copol: list[Path | str]
     post_rtc_crosspol: list[Path | str]
     mgrs_tile_id: str
-    dst_dir: Path | str | None = None
+    dst_dir: Path | str = Path('out')
     water_mask_path: Path | str | None = None
     apply_water_mask: bool = Field(default=True)
     check_input_paths: bool = True
-    device: str | None = Field(
+    device: str = Field(
         default='best',
         pattern='^(best|cuda|mps|cpu)$',
     )
@@ -215,10 +215,11 @@ class RunConfigData(BaseModel):
             product_dst_dir = Path(product_dst_dir)
         return product_dst_dir
 
-    def __setattr__(self, name: str, value: Path | str | None) -> None:
-        if name == 'product_dst_dir' and value is None:
-            value = Path(self.dst_dir)
-        super().__setattr__(name, value)
+    @field_validator('product_dst_dir', mode='before')
+    def set_default_product_dst_dir(cls, product_dst_dir: Path | str | None, info: ValidationInfo) -> Path:
+        if product_dst_dir is None:
+            return Path(info.data['dst_dir'])
+        return Path(product_dst_dir) if isinstance(product_dst_dir, str) else product_dst_dir
 
     @field_validator('pre_rtc_crosspol', 'post_rtc_crosspol')
     def check_matching_lengths_copol_and_crosspol(
