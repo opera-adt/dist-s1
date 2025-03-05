@@ -220,8 +220,7 @@ class RunConfigData(BaseModel):
     @field_validator('product_dst_dir', mode='before')
     def validate_product_dst_dir(cls, product_dst_dir: Path | str | None, info: ValidationInfo) -> Path:
         if product_dst_dir is None:
-            # Use dst_dir if product_dst_dir is not specified
-            product_dst_dir = info.data['dst_dir']
+            product_dst_dir = Path(info.data['dst_dir'])
         elif isinstance(product_dst_dir, str):
             product_dst_dir = Path(product_dst_dir)
         return product_dst_dir.resolve()
@@ -290,12 +289,9 @@ class RunConfigData(BaseModel):
     @property
     def product_data_model(self) -> ProductDirectoryData:
         if self._product_data_model is None:
-            product_name = self.product_name
-            # Use dst_dir if product_dst_dir is None
-            dst_dir = Path(self.product_dst_dir) if self.product_dst_dir is not None else Path(self.dst_dir)
             self._product_data_model = ProductDirectoryData(
-                dst_dir=dst_dir,
-                product_name=product_name,
+                dst_dir=self.product_dst_dir,
+                product_name=self.product_name,
             )
         return self._product_data_model
 
