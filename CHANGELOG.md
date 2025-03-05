@@ -10,6 +10,9 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 - Defaults to "low" for memory strategy for CPU usage.
+- Golden dataset - used CPU and low memory strategy to create the dataset.
+- Updated equality testing for DIST-S1 product comparison lowered comparison tolerance to 0.0001 (was 1e-05).
+- Forced minimum version of rasterio to 1.4.0 for merging operations.
 
 ### Added
 - Exposes runconfig parameter to force use of a device (CPU, GPU, MPS, or None). None will use the best available device.
