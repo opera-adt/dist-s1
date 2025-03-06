@@ -23,6 +23,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
    - Ensures that the number of workers is not greater than the number of vCPUs (via `mp.cpu_count()`).
 - If GPU is used, ensure multiprocessing is not used.
 - Added a `n_workers_for_norm_param_estimation` parameter to the runconfig to control the number of workers for normal parameter estimation.
+- Better instructions for generating a sample product via a docker container.
 
 ### Fixed
 - Ensures that the number of workers for despeckling is not greater than the number of vCPUs (via `mp.cpu_count()`).
