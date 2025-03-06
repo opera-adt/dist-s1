@@ -6,16 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.0.9] - 2025-06-05
-
-### Added
-- ProductFileData comparison to allow for individual product file comparison (fixes [#51](https://github.com/opera-adt/dist-s1/issues/51)).
-
 
 ## [0.0.8] - 2025-03-05
 
 ### Changed
 - Defaults to "low" for memory strategy for CPU usage.
+- ProductFileData comparison to allow for individual product file comparison (fixes [#51](https://github.com/opera-adt/dist-s1/issues/51)).
 - Golden dataset - used CPU and low memory strategy to create the dataset.
 - Updated equality testing for DIST-S1 product comparison lowered comparison tolerance to 0.0001 (was 1e-05).
 - Forced minimum version of rasterio to 1.4.0 for merging operations.
