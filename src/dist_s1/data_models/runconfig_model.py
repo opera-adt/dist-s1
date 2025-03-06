@@ -138,11 +138,11 @@ class RunConfigData(BaseModel):
         ge=1,
     )
     n_workers_for_norm_param_estimation: int = Field(
-        default=1,
+        default=8,
         ge=1,
     )
     n_workers_for_despeckling: int = Field(
-        default=5,
+        default=8,
         ge=1,
     )
     n_lookbacks: int = Field(default=3, ge=1, le=3)
