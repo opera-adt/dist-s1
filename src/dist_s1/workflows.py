@@ -1,9 +1,10 @@
-import concurrent.futures as cf
 import multiprocessing as mp
 from datetime import datetime
+from functools import partial
 from pathlib import Path
 
 import pandas as pd
+import torch.multiprocessing as tmp
 from tqdm.auto import tqdm
 
 from dist_s1.aws import upload_product_to_s3
@@ -22,7 +23,7 @@ from dist_s1.processing import (
 
 
 # Use spawn for multiprocessing
-mp.set_start_method('spawn', force=True)
+tmp.set_start_method('spawn', force=True)
 
 
 def curate_input_burst_rtc_input_for_dist(
@@ -179,6 +180,19 @@ def run_despeckle_workflow(run_config: RunConfigData) -> None:
     )
 
 
+def _process_normal_params(path_data: dict, memory_strategy: str, device: str) -> None:
+    return compute_normal_params_per_burst_and_serialize(
+        path_data['copol_paths_pre'],
+        path_data['crosspol_paths_pre'],
+        path_data['output_mu_copol_path'],
+        path_data['output_mu_crosspol_path'],
+        path_data['output_sigma_copol_path'],
+        path_data['output_sigma_crosspol_path'],
+        memory_strategy=memory_strategy,
+        device=device,
+    )
+
+
 def run_normal_param_estimation_workflow(run_config: RunConfigData) -> None:
     """Compute normal params per burst and serialize.
 
@@ -221,29 +235,23 @@ def run_normal_param_estimation_workflow(run_config: RunConfigData) -> None:
     else:
         if run_config.device in ('cuda', 'mps'):
             raise NotImplementedError('Multi-GPU processing is not supported yet')
-        with cf.ProcessPoolExecutor(max_workers=run_config.n_workers_for_norm_param_estimation) as executor:
-            futures = [
-                executor.submit(
-                    compute_normal_params_per_burst_and_serialize,
-                    path_data['copol_paths_pre'],
-                    path_data['crosspol_paths_pre'],
-                    path_data['output_mu_copol_path'],
-                    path_data['output_mu_crosspol_path'],
-                    path_data['output_sigma_copol_path'],
-                    path_data['output_sigma_crosspol_path'],
-                    memory_strategy=run_config.memory_strategy,
-                    device=run_config.device,
-                )
-                for path_data in norm_param_paths
-            ]
 
-            for future in tqdm(
-                cf.as_completed(futures),
-                total=len(futures),
-                desc='Normal param estimation for burst/lookback pairs',
-                dynamic_ncols=True,
-            ):
-                future.result()  # Raises exception if the function failed
+        # Create a partial function with the memory strategy and device
+        worker_fn = partial(
+            _process_normal_params, memory_strategy=run_config.memory_strategy, device=run_config.device
+        )
+
+        # Start a pool of workers
+        with tmp.Pool(processes=run_config.n_workers_for_norm_param_estimation) as pool:
+            # Map the work to the pool and show progress
+            list(
+                tqdm(
+                    pool.imap(worker_fn, norm_param_paths),
+                    total=len(norm_param_paths),
+                    desc='Normal param estimation for burst/lookback pairs',
+                    dynamic_ncols=True,
+                )
+            )
 
 
 def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
