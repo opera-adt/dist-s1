@@ -23,7 +23,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Updated some example parameters for testing.
 - Set minimum number of workers for despeckling and estimation of normal parameters to 8.
 - Logic to deal with `n_workers_for_norm_param_estimation` when GPU is available (forcing it to be 1).
-- Set `batch_size_for_despeckling` to 100.
+- Set `batch_size_for_despeckling` to 25.
 
 ### Added
 - Exposes runconfig parameter to force use of a device (`cpu`, `cuda`, `mps`, or `best`). `best` will use the best available device.
@@ -34,6 +34,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - If GPU is used, ensure multiprocessing is not used.
 - Added a `n_workers_for_norm_param_estimation` parameter to the runconfig to control the number of workers for normal parameter estimation.
 - Better instructions for generating a sample product via a docker container.
+- Swap out concurrent.futures with torch.multiprocessing for normal parameter estimation for efficient CPU processing.
 
 ### Fixed
 - Ensures that the number of workers for despeckling is not greater than the number of vCPUs (via `mp.cpu_count()`).
