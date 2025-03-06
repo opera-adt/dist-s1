@@ -86,13 +86,13 @@ class ProductNameData(BaseModel):
 
 
 class ProductFileData(BaseModel):
-    path: Path 
+    path: Path
 
     @classmethod
     def from_product_path(cls, product_path: str) -> 'ProductFileData':
         """Instantiate from a file path."""
-        return cls(path=product_path) 
-
+        return cls(path=product_path)
+    
     def compare(
         self, other: 'ProductFileData', rtol: float = 1e-05, atol: float = 1e-08, equal_nan: bool = True
     ) -> tuple[bool, str]:
