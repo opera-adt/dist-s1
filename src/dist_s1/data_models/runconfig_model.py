@@ -230,7 +230,8 @@ class RunConfigData(BaseModel):
     def validate_n_workers(cls, n_workers: int, info: ValidationInfo) -> int:
         if n_workers > mp.cpu_count():
             warnings.warn(
-                f'{info.field_name} ({n_workers}) is greater than the number of CPUs ({mp.cpu_count()}), using latter.'
+                f'{info.field_name} ({n_workers}) is greater than the number of CPUs ({mp.cpu_count()}), using latter.',
+                UserWarning,
             )
             n_workers = mp.cpu_count()
         return n_workers
@@ -513,4 +514,8 @@ class RunConfigData(BaseModel):
 
         # Device-specific validations
         if self.device in ['cuda', 'mps'] and self.n_workers_for_norm_param_estimation > 1:
-            raise ValueError('CUDA and mps do not support multiprocessing')
+            warnings.warn(
+                'CUDA and mps do not support multiprocessing; setting n_workers_for_norm_param_estimation to 1',
+                UserWarning,
+            )
+            self.n_workers_for_norm_param_estimation = 1

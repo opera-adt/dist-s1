@@ -5,6 +5,7 @@ import pandas as pd
 from dist_s1_enumerator import enumerate_one_dist_s1_product, localize_rtc_s1_ts
 
 from dist_s1.constants import MODEL_CONTEXT_LENGTH
+from dist_s1.credentials import ensure_earthdata_credentials
 from dist_s1.data_models.runconfig_model import RunConfigData
 
 
@@ -26,6 +27,9 @@ def localize_rtc_s1(
         post_date_buffer_days=post_date_buffer_days,
         max_pre_imgs_per_burst=(MODEL_CONTEXT_LENGTH + 2),
     )
+    # Ensure earthdata Credentials
+    ensure_earthdata_credentials()
+
     # The function will create the out_dir if it doesn't exist
     if input_data_dir is None:
         input_data_dir = dst_dir

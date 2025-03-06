@@ -14,6 +14,8 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Updated equality testing for DIST-S1 product comparison lowered comparison tolerance to 0.0001 (was 1e-05).
 - Forced minimum version of rasterio to 1.4.0 for merging operations.
 - Pydantic model updates to ensure `product_dst_dir` is set to `dst_dir` without using `setattr`.
+- Set minimum number of workers for despeckling and estimation of normal parameters to 8.
+- Logic to deal with `n_workers_for_norm_param_estimation` when GPU is available (forcing it to be 1).
 
 ### Added
 - Exposes runconfig parameter to force use of a device (`cpu`, `cuda`, `mps`, or `best`). `best` will use the best available device.
@@ -26,6 +28,8 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 - Ensures that the number of workers for despeckling is not greater than the number of vCPUs (via `mp.cpu_count()`).
+- Returned allclose absolute tolerance to 1e-05 for golden dataset comparison.
+- Ensures Earthdata credentials are provided when localizing data and can be passed as environment variables.
 
 
 ## [0.0.7] - 2025-02-25
