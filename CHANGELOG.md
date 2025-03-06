@@ -14,6 +14,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Updated equality testing for DIST-S1 product comparison lowered comparison tolerance to 0.0001 (was 1e-05).
 - Forced minimum version of rasterio to 1.4.0 for merging operations.
 - Pydantic model updates to ensure `product_dst_dir` is set to `dst_dir` without using `setattr`.
+- Updated some example parameters for testing.
 
 ### Added
 - Exposes runconfig parameter to force use of a device (`cpu`, `cuda`, `mps`, or `best`). `best` will use the best available device.
@@ -26,6 +27,8 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 - Ensures that the number of workers for despeckling is not greater than the number of vCPUs (via `mp.cpu_count()`).
+- Updates default number of parameters for CLI to match runconfig (this is what cloud operations utilize if not specified).
+- removed extraneous try/except in `normal_param_estimation_workflow` used for debugging.
 
 
 ## [0.0.7] - 2025-02-25

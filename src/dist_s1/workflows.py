@@ -243,11 +243,7 @@ def run_normal_param_estimation_workflow(run_config: RunConfigData) -> None:
                 desc='Normal param estimation for burst/lookback pairs',
                 dynamic_ncols=True,
             ):
-                try:
-                    future.result()  # Raises exception if the function failed
-                except Exception as e:
-                    print(f'{e}')
-                    raise
+                future.result()  # Raises exception if the function failed
 
 
 def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
