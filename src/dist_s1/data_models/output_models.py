@@ -120,12 +120,12 @@ class ProductFileData(BaseModel):
             return False, f'File not found: {self.path}'
         if not other.path.exists():
             return False, f'File not found: {other.path}'
-        
+
         with rasterio.open(self.path) as src_self, rasterio.open(other.path) as src_other:
             # Compare image dimensions
             if src_self.shape != src_other.shape:
                 return False, f'Shape mismatch: {src_self.shape} != {src_other.shape}'
-
+            
             # Read raster data
             data_self = src_self.read()
             data_other = src_other.read()
@@ -138,9 +138,7 @@ class ProductFileData(BaseModel):
                 max_diff = np.max(np.abs(data_self - data_other))
                 min_diff = np.min(np.abs(data_self - data_other))
                 return False, (
-                    f'Pixel mismatch count: {mismatch_count}\n'
-                    f'Max difference: {max_diff}\n'
-                    f'Min difference: {min_diff}'
+                    f'Pixel mismatch count: {mismatch_count}\nMax difference: {max_diff}\nMin difference: {min_diff}'
                 )
 
             # Compare metadata (tags)
