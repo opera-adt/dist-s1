@@ -134,7 +134,7 @@ class RunConfigData(BaseModel):
     )
     tqdm_enabled: bool = Field(default=True)
     batch_size_for_despeckling: int = Field(
-        default=25,
+        default=100,
         ge=1,
     )
     n_workers_for_norm_param_estimation: int = Field(
