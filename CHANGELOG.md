@@ -23,7 +23,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Updated some example parameters for testing.
 - Set minimum number of workers for despeckling and estimation of normal parameters to 8.
 - Logic to deal with `n_workers_for_norm_param_estimation` when GPU is available (forcing it to be 1).
-- Set `batch_size_for_despeckling` to 100.
+- Set `batch_size_for_despeckling` to 25.
 
 ### Added
 - Exposes runconfig parameter to force use of a device (`cpu`, `cuda`, `mps`, or `best`). `best` will use the best available device.

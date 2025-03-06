@@ -123,7 +123,7 @@ def common_options(func: Callable) -> Callable:
     @click.option(
         '--batch_size_for_despeckling',
         type=int,
-        default=100,
+        default=25,
         required=False,
         help='Batch size for despeckling the bursts; i.e. how many arrays are loaded into CPU memory at once.',
     )
