@@ -102,7 +102,7 @@ def common_options(func: Callable) -> Callable:
     @click.option(
         '--n_workers_for_despeckling',
         type=int,
-        default=5,
+        default=8,
         required=False,
         help='N CPUs to use for despeckling the bursts',
     )
@@ -123,14 +123,14 @@ def common_options(func: Callable) -> Callable:
     @click.option(
         '--batch_size_for_despeckling',
         type=int,
-        default=25,
+        default=100,
         required=False,
         help='Batch size for despeckling the bursts; i.e. how many arrays are loaded into CPU memory at once.',
     )
     @click.option(
         '--n_workers_for_norm_param_estimation',
         type=int,
-        default=1,
+        default=8,
         required=False,
         help='Number of CPUs to use for normal parameter estimation; error willbe thrown if GPU is available and not'
         ' or set to something other than CPU.',
