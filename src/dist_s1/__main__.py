@@ -113,6 +113,28 @@ def common_options(func: Callable) -> Callable:
         required=False,
         help='S3 bucket prefix to upload the final products to.',
     )
+    @click.option(
+        '--device',
+        type=click.Choice(['cpu', 'cuda', 'mps', 'best']),
+        required=False,
+        default='best',
+        help='Device to use for transformer model inference of normal parameters.',
+    )
+    @click.option(
+        '--batch_size_for_despeckling',
+        type=int,
+        default=25,
+        required=False,
+        help='Batch size for despeckling the bursts; i.e. how many arrays are loaded into CPU memory at once.',
+    )
+    @click.option(
+        '--n_workers_for_norm_param_estimation',
+        type=int,
+        default=1,
+        required=False,
+        help='Number of CPUs to use for normal parameter estimation; error willbe thrown if GPU is available and not'
+        ' or set to something other than CPU.',
+    )
     @functools.wraps(func)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         return func(*args, **kwargs)
@@ -149,6 +171,9 @@ def run_sas_prep(
     bucket: str | None,
     bucket_prefix: str,
     n_workers_for_despeckling: int,
+    batch_size_for_despeckling: int,
+    n_workers_for_norm_param_estimation: int,
+    device: str,
 ) -> None:
     """Run SAS prep workflow."""
     run_config = run_dist_s1_sas_prep_workflow(
@@ -169,6 +194,9 @@ def run_sas_prep(
         bucket=bucket,
         bucket_prefix=bucket_prefix,
         n_workers_for_despeckling=n_workers_for_despeckling,
+        batch_size_for_despeckling=batch_size_for_despeckling,
+        n_workers_for_norm_param_estimation=n_workers_for_norm_param_estimation,
+        device=device,
     )
     run_config.to_yaml(runconfig_path)
 
@@ -177,6 +205,7 @@ def run_sas_prep(
 @cli.command(name='run_sas')
 @click.option('--runconfig_yml_path', required=True, help='Path to YAML runconfig file', type=click.Path(exists=True))
 def run_sas(runconfig_yml_path: str | Path) -> None:
+    """Run SAS workflow."""
     run_config = RunConfigData.from_yaml(runconfig_yml_path)
     run_dist_s1_sas_workflow(run_config)
 
@@ -202,10 +231,12 @@ def run(
     bucket: str | None,
     bucket_prefix: str,
     n_workers_for_despeckling: int,
+    batch_size_for_despeckling: int,
+    n_workers_for_norm_param_estimation: int,
+    device: str,
 ) -> str:
     """Localize data and run dist_s1_workflow."""
-    # Localize data
-    run_config = run_dist_s1_workflow(
+    return run_dist_s1_workflow(
         mgrs_tile_id,
         post_date,
         track_number,
@@ -223,8 +254,10 @@ def run(
         bucket=bucket,
         bucket_prefix=bucket_prefix,
         n_workers_for_despeckling=n_workers_for_despeckling,
+        batch_size_for_despeckling=batch_size_for_despeckling,
+        n_workers_for_norm_param_estimation=n_workers_for_norm_param_estimation,
+        device=device,
     )
-    return run_config
 
 
 if __name__ == '__main__':

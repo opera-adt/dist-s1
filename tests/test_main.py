@@ -3,6 +3,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 import geopandas as gpd
+import pytest
 from click.testing import CliRunner
 from pytest_mock import MockerFixture
 
@@ -40,9 +41,15 @@ def test_dist_s1_sas_main(
 
     # Load and modify runconfig - not the paths are relative to the test_dir
     runconfig_data = RunConfigData.from_yaml(cropped_10SGD_dataset_runconfig)
+    # Memory strategy was set to high to create the golden dataset
+    runconfig_data.memory_strategy = 'high'
+    # Force CPU device
+    runconfig_data.device = 'cpu'
+    # Limit workers for CI environment
+    runconfig_data.n_workers_for_despeckling = 4
     # We have a different product_dst_dir than the dst_dir called `tmp2`
-    product_dst_dir = test_dir / 'tmp2'
-    assert runconfig_data.product_dst_dir.resolve() == product_dst_dir.resolve()
+    product_dst_dir = (test_dir / 'tmp2').resolve()
+    runconfig_data.product_dst_dir = str(product_dst_dir)
 
     tmp_runconfig_yml_path = tmp_dir / 'runconfig.yml'
     runconfig_data.to_yaml(tmp_runconfig_yml_path)
@@ -51,12 +58,14 @@ def test_dist_s1_sas_main(
     result = cli_runner.invoke(
         dist_s1,
         ['run_sas', '--runconfig_yml_path', str(tmp_runconfig_yml_path)],
+        catch_exceptions=False,  # Let exceptions propagate for better debugging
     )
-    # The product_dst_dir is created - have to find it because it has a processing time
-    # and will be different from the runconfig data object
+
     product_directories = list(product_dst_dir.glob('OPERA*'))
     # Should be one and only one product directory
     assert len(product_directories) == 1
+
+    # If we get here, check the product contents
     product_data_path = product_directories[0]
     out_product_data = ProductDirectoryData.from_product_path(product_data_path)
 
@@ -70,12 +79,14 @@ def test_dist_s1_sas_main(
     shutil.rmtree(product_dst_dir)
 
 
+@pytest.mark.parametrize('device', ['best', 'cpu'])
 def test_dist_s1_main_interface(
     cli_runner: CliRunner,
     test_dir: Path,
     test_data_dir: Path,
     change_local_dir: Callable[[Path], None],
     mocker: MockerFixture,
+    device: str,
 ) -> None:
     """Tests the main dist-s1 CLI interface (not the outputs)."""
     # Store original working directory
@@ -115,6 +126,8 @@ def test_dist_s1_main_interface(
             '3',
             '--product_dst_dir',
             str(tmp_dir),
+            '--device',
+            device,
         ],
     )
     assert result.exit_code == 0

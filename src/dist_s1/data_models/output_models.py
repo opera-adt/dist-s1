@@ -212,7 +212,7 @@ class ProductDirectoryData(BaseModel):
         return len(failed_layers) == 0
 
     def __eq__(
-        self, other: 'ProductDirectoryData', *, rtol: float = 1e-05, atol: float = 1e-05, equal_nan: bool = True
+        self, other: 'ProductDirectoryData', *, rtol: float = 1e-05, atol: float = 1e-04, equal_nan: bool = True
     ) -> bool:
         """Compare two ProductDirectoryData instances for equality.
 

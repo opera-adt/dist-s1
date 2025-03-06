@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.8] - 2025-03-05
+
+### Changed
+- Defaults to "low" for memory strategy for CPU usage.
+- Golden dataset - used CPU and low memory strategy to create the dataset.
+- Updated equality testing for DIST-S1 product comparison lowered comparison tolerance to 0.0001 (was 1e-05).
+- Forced minimum version of rasterio to 1.4.0 for merging operations.
+- Pydantic model updates to ensure `product_dst_dir` is set to `dst_dir` without using `setattr`.
+
+### Added
+- Exposes runconfig parameter to force use of a device (`cpu`, `cuda`, `mps`, or `best`). `best` will use the best available device.
+- Exposes runconfig to control batch size for despeckling (how many arrays are loaded into CPU memory at once).
+- Allows for CPU multi-CPU processing (if desired) and exposes runconfig parameter to control number of workers.
+   - Validates multiprocessing to use CPU device.
+   - Ensures that the number of workers is not greater than the number of vCPUs (via `mp.cpu_count()`).
+- If GPU is used, ensure multiprocessing is not used.
+- Added a `n_workers_for_norm_param_estimation` parameter to the runconfig to control the number of workers for normal parameter estimation.
+
+### Fixed
+- Ensures that the number of workers for despeckling is not greater than the number of vCPUs (via `mp.cpu_count()`).
+
+
 ## [0.0.7] - 2025-02-25
 
 ### Added
