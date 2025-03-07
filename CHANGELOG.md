@@ -6,6 +6,40 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [0.0.8] - 2025-03-05
+
+### Changed
+- Defaults to "low" for memory strategy for CPU usage.
+- ProductFileData comparison to allow for individual product file comparison (fixes [#51](https://github.com/opera-adt/dist-s1/issues/51)).
+- Golden dataset - used CPU and low memory strategy to create the dataset.
+- Updated equality testing for DIST-S1 product comparison lowered comparison tolerance to 0.0001 (was 1e-05).
+- Forced minimum version of rasterio to 1.4.0 for merging operations.
+- Pydantic model updates to ensure `product_dst_dir` is set to `dst_dir` without using `setattr`.
+- Updated some example parameters for testing.
+- Set minimum number of workers for despeckling and estimation of normal parameters to 8.
+- Logic to deal with `n_workers_for_norm_param_estimation` when GPU is available (forcing it to be 1).
+- Set `batch_size_for_despeckling` to 25.
+
+### Added
+- Exposes runconfig parameter to force use of a device (`cpu`, `cuda`, `mps`, or `best`). `best` will use the best available device.
+- Exposes runconfig to control batch size for despeckling (how many arrays are loaded into CPU memory at once).
+- Allows for CPU multi-CPU processing (if desired) and exposes runconfig parameter to control number of workers.
+   - Validates multiprocessing to use CPU device.
+   - Ensures that the number of workers is not greater than the number of vCPUs (via `mp.cpu_count()`).
+- If GPU is used, ensure multiprocessing is not used.
+- Added a `n_workers_for_norm_param_estimation` parameter to the runconfig to control the number of workers for normal parameter estimation.
+- Better instructions for generating a sample product via a docker container.
+- Swap out concurrent.futures with torch.multiprocessing for normal parameter estimation for efficient CPU processing.
+
+### Fixed
+- Ensures that the number of workers for despeckling is not greater than the number of vCPUs (via `mp.cpu_count()`).
+- Updates default number of parameters for CLI to match runconfig (this is what cloud operations utilize if not specified).
+- removed extraneous try/except in `normal_param_estimation_workflow` used for debugging.
+- Returned allclose absolute tolerance to 1e-05 for golden dataset comparison.
+- Ensures Earthdata credentials are provided when localizing data and can be passed as environment variables.
+
+
 ## [0.0.7] - 2025-02-25
 
 ### Added

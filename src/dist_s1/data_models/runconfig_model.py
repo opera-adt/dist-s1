@@ -1,13 +1,17 @@
+import multiprocessing as mp
+import warnings
 from datetime import datetime
 from pathlib import Path, PosixPath
 
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+import torch
 import yaml
 from dist_s1_enumerator.asf import append_pass_data, extract_pass_id
 from dist_s1_enumerator.data_models import dist_s1_loc_input_schema
 from dist_s1_enumerator.mgrs_burst_data import get_lut_by_mgrs_tile_ids
+from distmetrics.transformer import get_device
 from pandera import check_input
 from pydantic import BaseModel, Field, ValidationError, ValidationInfo, field_validator
 from yaml import Dumper
@@ -116,16 +120,31 @@ class RunConfigData(BaseModel):
     post_rtc_copol: list[Path | str]
     post_rtc_crosspol: list[Path | str]
     mgrs_tile_id: str
-    dst_dir: Path | str | None = None
+    dst_dir: Path | str = Path('out')
     water_mask_path: Path | str | None = None
     apply_water_mask: bool = Field(default=True)
     check_input_paths: bool = True
+    device: str = Field(
+        default='best',
+        pattern='^(best|cuda|mps|cpu)$',
+    )
     memory_strategy: str | None = Field(
-        default='high',
+        default='low',
         pattern='^(high|low)$',
     )
     tqdm_enabled: bool = Field(default=True)
-    n_workers_for_despeckling: int = Field(default=5, ge=1)
+    batch_size_for_despeckling: int = Field(
+        default=25,
+        ge=1,
+    )
+    n_workers_for_norm_param_estimation: int = Field(
+        default=8,
+        ge=1,
+    )
+    n_workers_for_despeckling: int = Field(
+        default=8,
+        ge=1,
+    )
     n_lookbacks: int = Field(default=3, ge=1, le=3)
     # This is where default thresholds are set!
     moderate_confidence_threshold: float = Field(default=3.5, ge=0.0, le=15.0)
@@ -161,6 +180,19 @@ class RunConfigData(BaseModel):
             raise ValueError("Memory strategy must be in ['high', 'low']")
         return memory_strategy
 
+    @field_validator('device', mode='before')
+    def validate_device(cls, device: str) -> str:
+        """Validate and set the device. None or 'none' will be converted to the default device."""
+        if device == 'best':
+            device = get_device()
+        if device == 'cuda' and not torch.cuda.is_available():
+            raise ValueError('CUDA is not available even though device is set to cuda')
+        if device == 'mps' and not torch.backends.mps.is_available():
+            raise ValueError('MPS is not available even though device is set to mps')
+        if device not in ['cpu', 'cuda', 'mps']:
+            raise ValueError(f"Device '{device}' must be one of: cpu, cuda, mps")
+        return device
+
     @field_validator('pre_rtc_copol', 'pre_rtc_crosspol', 'post_rtc_copol', 'post_rtc_crosspol', mode='before')
     def convert_to_paths(cls, values: list[Path | str], info: ValidationInfo) -> list[Path]:
         """Convert all values to Path objects."""
@@ -175,16 +207,34 @@ class RunConfigData(BaseModel):
                 raise ValueError(bad_paths_str)
         return paths
 
-    @field_validator('product_dst_dir', mode='before')
-    def validate_product_dst_dir(cls, product_dst_dir: Path | str | None, info: ValidationInfo) -> Path | None:
-        if isinstance(product_dst_dir, str):
-            product_dst_dir = Path(product_dst_dir)
-        return product_dst_dir
+    @field_validator('dst_dir', mode='before')
+    def validate_dst_dir(cls, dst_dir: Path | str | None, info: ValidationInfo) -> Path:
+        dst_dir = Path(dst_dir) if isinstance(dst_dir, str) else dst_dir
+        if dst_dir.exists() and not dst_dir.is_dir():
+            raise ValidationError(f"Path '{dst_dir}' exists but is not a directory")
+        dst_dir.mkdir(parents=True, exist_ok=True)
+        return dst_dir.resolve()
 
-    def __setattr__(self, name: str, value: Path | str | None) -> None:
-        if name == 'product_dst_dir' and value is None:
-            value = Path(self.dst_dir)
-        super().__setattr__(name, value)
+    @field_validator('product_dst_dir', mode='before')
+    def validate_product_dst_dir(cls, product_dst_dir: Path | str | None, info: ValidationInfo) -> Path:
+        if product_dst_dir is None:
+            product_dst_dir = Path(info.data['dst_dir'])
+        elif isinstance(product_dst_dir, str):
+            product_dst_dir = Path(product_dst_dir)
+        if product_dst_dir.exists() and not product_dst_dir.is_dir():
+            raise ValidationError(f"Path '{product_dst_dir}' exists but is not a directory")
+        product_dst_dir.mkdir(parents=True, exist_ok=True)
+        return product_dst_dir.resolve()
+
+    @field_validator('n_workers_for_despeckling', 'n_workers_for_norm_param_estimation')
+    def validate_n_workers(cls, n_workers: int, info: ValidationInfo) -> int:
+        if n_workers > mp.cpu_count():
+            warnings.warn(
+                f'{info.field_name} ({n_workers}) is greater than the number of CPUs ({mp.cpu_count()}), using latter.',
+                UserWarning,
+            )
+            n_workers = mp.cpu_count()
+        return n_workers
 
     @field_validator('pre_rtc_crosspol', 'post_rtc_crosspol')
     def check_matching_lengths_copol_and_crosspol(
@@ -211,16 +261,6 @@ class RunConfigData(BaseModel):
         if df_mgrs_burst.empty:
             raise ValueError('The MGRS tile specified is not processed by DIST-S1')
         return mgrs_tile_id
-
-    @field_validator('dst_dir', mode='before')
-    def validate_dst_dir(cls, dst_dir: Path | str | None, info: ValidationInfo) -> Path:
-        if dst_dir is None:
-            dst_dir = Path.cwd()
-        dst_dir = Path(dst_dir) if isinstance(dst_dir, str) else dst_dir
-        if dst_dir.exists() and not dst_dir.is_dir():
-            raise ValidationError(f"Path '{dst_dir}' exists but is not a directory")
-        dst_dir.mkdir(parents=True, exist_ok=True)
-        return dst_dir
 
     @field_validator('moderate_confidence_threshold')
     def validate_moderate_threshold(cls, moderate_threshold: float, info: ValidationInfo) -> float:
@@ -261,8 +301,14 @@ class RunConfigData(BaseModel):
     def product_data_model(self) -> ProductDirectoryData:
         if self._product_data_model is None:
             product_name = self.product_name
+            # Use dst_dir if product_dst_dir is None
+            dst_dir = (
+                Path(self.product_dst_dir).resolve()
+                if self.product_dst_dir is not None
+                else Path(self.dst_dir).resolve()
+            )
             self._product_data_model = ProductDirectoryData(
-                dst_dir=self.product_dst_dir,
+                dst_dir=dst_dir,
                 product_name=product_name,
             )
         return self._product_data_model
@@ -466,6 +512,10 @@ class RunConfigData(BaseModel):
             overwrite=True,
         )
 
-        if self.product_dst_dir is None:
-            # Ensures value not pointer is assigned to attribute
-            self.product_dst_dir = Path(self.dst_dir)
+        # Device-specific validations
+        if self.device in ['cuda', 'mps'] and self.n_workers_for_norm_param_estimation > 1:
+            warnings.warn(
+                'CUDA and mps do not support multiprocessing; setting n_workers_for_norm_param_estimation to 1',
+                UserWarning,
+            )
+            self.n_workers_for_norm_param_estimation = 1

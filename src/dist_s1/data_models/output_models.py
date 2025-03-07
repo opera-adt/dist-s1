@@ -2,6 +2,7 @@ from datetime import datetime
 from pathlib import Path
 from warnings import warn
 
+import numpy as np
 import rasterio
 from pydantic import BaseModel, field_validator, model_validator
 
@@ -82,6 +83,77 @@ class ProductNameData(BaseModel):
         datetime.strptime(tokens[5], '%Y%m%dT%H%M%SZ')  # Processing datetime
 
         return True
+
+
+class ProductFileData(BaseModel):
+    path: Path
+
+    @classmethod
+    def from_product_path(cls, product_path: str) -> 'ProductFileData':
+        """Instantiate from a file path."""
+        return cls(path=product_path)
+
+    def compare(
+        self, other: 'ProductFileData', rtol: float = 1e-05, atol: float = 1e-08, equal_nan: bool = True
+    ) -> tuple[bool, str]:
+        """Compare two GeoTIFF files for equality.
+
+        Parameters
+        ----------
+        other : ProductFileData
+            GeoTIFF file to compare against.
+        rtol : float, optional
+            Relative tolerance for numpy.allclose, default 1e-05.
+        atol : float, optional
+            Absolute tolerance for numpy.allclose, default 1e-08.
+        equal_nan : bool, optional
+            Whether NaN values should be considered equal, default True.
+
+        Returns
+        -------
+        tuple (bool, str)
+            - True if the files match, False otherwise.
+            - A message describing differences if files do not match.
+        """
+        # Check if both files exist
+        if not self.path.exists():
+            return False, f'File not found: {self.path}'
+        if not other.path.exists():
+            return False, f'File not found: {other.path}'
+
+        with rasterio.open(self.path) as src_self, rasterio.open(other.path) as src_other:
+            # Compare image dimensions
+            if src_self.shape != src_other.shape:
+                return False, f'Shape mismatch: {src_self.shape} != {src_other.shape}'
+
+            # Read raster data
+            data_self = src_self.read()
+            data_other = src_other.read()
+
+            # Find pixel mismatches
+            diff_mask = ~np.isclose(data_self, data_other, rtol=rtol, atol=atol, equal_nan=equal_nan)
+            mismatch_count = np.sum(diff_mask)
+
+            if mismatch_count > 0:
+                max_diff = np.max(np.abs(data_self - data_other))
+                min_diff = np.min(np.abs(data_self - data_other))
+                return False, (
+                    f'Pixel mismatch count: {mismatch_count}\nMax difference: {max_diff}\nMin difference: {min_diff}'
+                )
+
+            # Compare metadata (tags)
+            tags_self = src_self.tags()
+            tags_other = src_other.tags()
+            mismatched_tags = {
+                key: (tags_self[key], tags_other[key])
+                for key in tags_self.keys() & tags_other.keys()
+                if tags_self[key] != tags_other[key]
+            }
+
+            if mismatched_tags:
+                return False, f'Metadata mismatch in tags: {mismatched_tags}'
+
+        return True, 'Files match perfectly.'
 
 
 class ProductDirectoryData(BaseModel):
