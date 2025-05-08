@@ -60,7 +60,7 @@ def update_tags_with_opera_ids(tags: dict) -> dict:
             continue
         else:
             opera_ids = [path.name for path in value]
-            opera_ids = [opera_id.replace('_VV.tif', '').replace('_HH.tif', '') for opera_id in opera_ids]
+            opera_ids = [opera_id.replace('_VV.tif', '') for opera_id in opera_ids]
             # pre_rtc_copol -> pre_opera_ids, etc.
             new_key = key.replace('_copol', '_opera_ids')
             tags[new_key] = opera_ids
