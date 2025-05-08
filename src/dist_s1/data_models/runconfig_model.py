@@ -107,10 +107,10 @@ def check_filename_format(filename: str, polarization: str) -> None:
         raise ValueError(f"File '{filename}' second token is not 'L2'")
     if tokens[2] != 'RTC-S1':
         raise ValueError(f"File '{filename}' third token is not 'RTC-S1'")
-    if polarization == 'copol' and not (filename.endswith('_VV.tif') or filename.endswith('_HH.tif')):
-        raise ValueError(f"File '{filename}' should end with '_VV.tif' or '_HH.tif' because it is copolarization")
-    elif polarization == 'crosspol' and not (filename.endswith('_VH.tif') or filename.endswith('_HV.tif')):
-        raise ValueError(f"File '{filename}' should end with '_VH.tif' or '_HV.tif' because it is crosspolarization")
+    if (polarization == 'copol') and not filename.endswith('_VV.tif'):
+        raise ValueError(f"File '{filename}' should end with '_VV.tif' because it is copolarization")
+    elif (polarization == 'crosspol') and not filename.endswith('_VH.tif'):
+        raise ValueError(f"File '{filename}' should end with '_VH.tif' because it is crosspolarization")
     return True
 
 
