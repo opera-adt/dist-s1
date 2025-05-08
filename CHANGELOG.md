@@ -10,7 +10,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [0.0.9] - 2025-05-07
 
 ### Added
-- Allows SAS to accept HH and HV polarizations. 
+- Updated packaging.py and runconfig_model.py to accept HH and HV polarizations.
 
 
 ## [0.0.8] - 2025-03-05
