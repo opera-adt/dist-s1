@@ -146,7 +146,10 @@ def common_options(func: Callable) -> Callable:
         '--model_source',
         type=click.Choice(['internal', 'external']),
         required=False,
-        help='Where to load Transformer model from; internal means load model stored inside docker image, external means load model from cfg and wts paths specified in parameters',
+        help='Where to load Transformer model from;'
+        ' internal means load model stored inside docker image,'
+        ' external means load model from cfg'
+        ' and wts paths specified in parameters',
     )
     @click.option(
         '--model_cfg_path',
