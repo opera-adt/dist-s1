@@ -26,7 +26,7 @@ def check_water_mask_profile(water_mask_profile: dict, ref_profile: dict) -> Non
 
 
 def get_water_mask(mgrs_tile_id: str, out_path: Path, overwrite: bool = False) -> Path:
-    if out_path.exists() and not overwrite:
+    if Path(out_path).exists() and not overwrite:
         return out_path
     profile_mgrs = get_mgrs_profile(mgrs_tile_id)
     height = profile_mgrs['height']
@@ -109,7 +109,7 @@ def water_mask_control_flow(
             _ = get_water_mask(mgrs_tile_id, out_water_mask_path, overwrite=False)
     elif isinstance(water_mask_path, str | Path) and apply_water_mask:
         if not str(water_mask_path).startswith('http') or not str(water_mask_path).startswith('s3'):
-            if not water_mask_path.exists():
+            if not Path(water_mask_path).exists():
                 raise FileNotFoundError(f'Water mask file does not exist: {water_mask_path}')
         with rasterio.open(water_mask_path) as src:
             wm_profile = src.profile
