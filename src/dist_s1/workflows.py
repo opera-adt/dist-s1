@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pandas as pd
 import torch.multiprocessing as tmp
-from tqdm.auto import tqdm
 import yaml
+from tqdm.auto import tqdm
 
 from dist_s1.aws import upload_product_to_s3
 from dist_s1.constants import MODEL_CONTEXT_LENGTH
@@ -180,7 +180,14 @@ def run_despeckle_workflow(run_config: RunConfigData) -> None:
     )
 
 
-def _process_normal_params(path_data: dict, memory_strategy: str, device: str, model_source: str, model_cfg_path: Path, model_wts_path: Path) -> None:
+def _process_normal_params(
+  path_data: dict,
+  memory_strategy: str,
+  device: str,
+  model_source: str,
+  model_cfg_path: Path,
+  model_wts_path: Path
+  ) -> None:
     return compute_normal_params_per_burst_and_serialize(
         path_data['copol_paths_pre'],
         path_data['crosspol_paths_pre'],
@@ -498,27 +505,27 @@ def run_dist_s1_sas_prep_runconfig_yml(
   if 'mgrs_tile_id' in rc_data:
     mgrs_tile_id = rc_data['mgrs_tile_id']
   else:
-    raise Exception("Missing mgrs_tile_id in template runconfig")
+    raise ValueError("Missing mgrs_tile_id in template runconfig")
 
   if 'post_date' in rc_data:
     post_date = rc_data['post_date']
   else:
-    raise Exception("Missing post_date in template runconfig")
+    raise ValueError("Missing post_date in template runconfig")
     
   if 'track_number' in rc_data:
     track_number = rc_data['track_number']
   else:
-    raise Exception("Missing track_number in template runconfig")
+    raise ValueError("Missing track_number in template runconfig")
     
   if 'dst_dir' in rc_data:
     dst_dir = rc_data['dst_dir']
   else:
-    raise Exception("Missing dst_dir in template runconfig")
+    raise ValueError("Missing dst_dir in template runconfig")
 
   if 'water_mask_path' in rc_data:
     water_mask_path = rc_data['water_mask_path']
   else:
-    raise Exception("Missing water_mask_path in template runconfig")
+    raise ValueError("Missing water_mask_path in template runconfig")
 
   # These can be left out (they have defaults)
   apply_water_mask = rc_data.get('apply_water_mask',True)
