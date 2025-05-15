@@ -65,6 +65,13 @@ def common_options(func: Callable) -> Callable:
         help='Input data directory. If None, uses `dst_dir`. Default None.',
     )
     @click.option(
+        '--intermed_data_dir',
+        type=str,
+        default=None,
+        required=False,
+        help='Intermediate data directory. If None, uses `intermed`. Default None.',
+    )
+    @click.option(
         '--water_mask_path',
         type=str,
         default=None,
@@ -132,8 +139,28 @@ def common_options(func: Callable) -> Callable:
         type=int,
         default=8,
         required=False,
-        help='Number of CPUs to use for normal parameter estimation; error willbe thrown if GPU is available and not'
+        help='Number of CPUs to use for normal parameter estimation; error will be thrown if GPU is available and not'
         ' or set to something other than CPU.',
+    )
+    @click.option(
+        '--model_source',
+        type=click.Choice(['internal', 'external']),
+        required=False,
+        help='Where to load Transformer model from; internal means load model stored inside docker image, external means load model from cfg and wts paths specified in parameters',
+    )
+    @click.option(
+        '--model_cfg_path',
+        type=str,
+        default=None,
+        required=False,
+        help='Path to Transformer model config file.',
+    )
+    @click.option(
+        '--model_wts_path',
+        type=str,
+        default=None,
+        required=False,
+        help='Path to Transformer model weights file.',
     )
     @functools.wraps(func)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
@@ -163,6 +190,7 @@ def run_sas_prep(
     high_confidence_threshold: float,
     tqdm_enabled: bool,
     input_data_dir: str | Path | None,
+    intermed_data_dir: str | Path | None,
     runconfig_path: str | Path,
     n_lookbacks: int,
     dst_dir: str | Path,
@@ -174,6 +202,9 @@ def run_sas_prep(
     batch_size_for_despeckling: int,
     n_workers_for_norm_param_estimation: int,
     device: str,
+    model_source: str | None,
+    model_cfg_path: str | Path | None,
+    model_wts_path: str | Path | None,
 ) -> None:
     """Run SAS prep workflow."""
     run_config = run_dist_s1_sas_prep_workflow(
@@ -188,6 +219,7 @@ def run_sas_prep(
         tqdm_enabled=tqdm_enabled,
         input_data_dir=input_data_dir,
         dst_dir=dst_dir,
+        intermed_data_dir=intermed_data_dir,
         water_mask_path=water_mask_path,
         n_lookbacks=n_lookbacks,
         product_dst_dir=product_dst_dir,
@@ -197,6 +229,9 @@ def run_sas_prep(
         batch_size_for_despeckling=batch_size_for_despeckling,
         n_workers_for_norm_param_estimation=n_workers_for_norm_param_estimation,
         device=device,
+        model_source=model_source,
+        model_cfg_path=model_cfg_path,
+        model_wts_path=model_wts_path,
     )
     run_config.to_yaml(runconfig_path)
 
@@ -224,6 +259,7 @@ def run(
     high_confidence_threshold: float,
     tqdm_enabled: bool,
     input_data_dir: str | Path | None,
+    intermed_data_dir: str | Path | None,
     water_mask_path: str | Path | None,
     apply_water_mask: bool,
     n_lookbacks: int,
@@ -234,6 +270,9 @@ def run(
     batch_size_for_despeckling: int,
     n_workers_for_norm_param_estimation: int,
     device: str,
+    model_source: str | None,
+    model_cfg_path: str | Path | None,
+    model_wts_path: str | Path | None,
 ) -> str:
     """Localize data and run dist_s1_workflow."""
     return run_dist_s1_workflow(
@@ -248,6 +287,7 @@ def run(
         tqdm_enabled=tqdm_enabled,
         input_data_dir=input_data_dir,
         dst_dir=dst_dir,
+        intermed_data_dir=intermed_data_dir,
         water_mask_path=water_mask_path,
         n_lookbacks=n_lookbacks,
         product_dst_dir=product_dst_dir,
@@ -257,6 +297,9 @@ def run(
         batch_size_for_despeckling=batch_size_for_despeckling,
         n_workers_for_norm_param_estimation=n_workers_for_norm_param_estimation,
         device=device,
+        model_source=model_source,
+        model_cfg_path=model_cfg_path,
+        model_wts_path=model_wts_path,
     )
 
 

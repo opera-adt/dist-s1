@@ -5,6 +5,7 @@ from pathlib import Path
 import pandas as pd
 import torch.multiprocessing as tmp
 from tqdm.auto import tqdm
+import yaml
 
 from dist_s1.aws import upload_product_to_s3
 from dist_s1.constants import MODEL_CONTEXT_LENGTH
@@ -179,7 +180,7 @@ def run_despeckle_workflow(run_config: RunConfigData) -> None:
     )
 
 
-def _process_normal_params(path_data: dict, memory_strategy: str, device: str) -> None:
+def _process_normal_params(path_data: dict, memory_strategy: str, device: str, model_source: str, model_cfg_path: Path, model_wts_path: Path) -> None:
     return compute_normal_params_per_burst_and_serialize(
         path_data['copol_paths_pre'],
         path_data['crosspol_paths_pre'],
@@ -189,6 +190,9 @@ def _process_normal_params(path_data: dict, memory_strategy: str, device: str) -
         path_data['output_sigma_crosspol_path'],
         memory_strategy=memory_strategy,
         device=device,
+        model_source=model_source,
+        model_cfg_path=model_cfg_path,
+        model_wts_path=model_wts_path,
     )
 
 
@@ -230,6 +234,9 @@ def run_normal_param_estimation_workflow(run_config: RunConfigData) -> None:
                 path_data['output_sigma_crosspol_path'],
                 memory_strategy=run_config.memory_strategy,
                 device=run_config.device,
+                model_source=run_config.model_source,
+                model_cfg_path=run_config.model_cfg_path,
+                model_wts_path=run_config.model_wts_path,
             )
     else:
         if run_config.device in ('cuda', 'mps'):
@@ -237,7 +244,12 @@ def run_normal_param_estimation_workflow(run_config: RunConfigData) -> None:
 
         # Create a partial function with the memory strategy and device
         worker_fn = partial(
-            _process_normal_params, memory_strategy=run_config.memory_strategy, device=run_config.device
+            _process_normal_params,
+            memory_strategy=run_config.memory_strategy,
+            device=run_config.device,
+            model_source=run_config.model_source,
+            model_cfg_path=run_config.model_cfg_path,
+            model_wts_path=run_config.model_wts_path,
         )
 
         # Start a pool of workers
@@ -366,6 +378,7 @@ def run_dist_s1_sas_prep_workflow(
     post_date_buffer_days: int = 1,
     dst_dir: str | Path = 'out',
     input_data_dir: str | Path | None = None,
+    intermed_data_dir: Path = Path('intermed'),
     memory_strategy: str = 'high',
     moderate_confidence_threshold: float = 3.5,
     high_confidence_threshold: float = 5.5,
@@ -380,6 +393,9 @@ def run_dist_s1_sas_prep_workflow(
     device: str = 'best',
     batch_size_for_despeckling: int = 25,
     n_workers_for_norm_param_estimation: int = 1,
+    model_source: str | None = None,
+    model_cfg_path: str | Path | None = None,
+    model_wts_path: str | Path | None = None,
 ) -> RunConfigData:
     run_config = run_dist_s1_localization_workflow(
         mgrs_tile_id,
@@ -397,6 +413,7 @@ def run_dist_s1_sas_prep_workflow(
     run_config.moderate_confidence_threshold = moderate_confidence_threshold
     run_config.high_confidence_threshold = high_confidence_threshold
     run_config.n_lookbacks = n_lookbacks
+    run_config.intermed_data_dir = intermed_data_dir
     run_config.water_mask_path = water_mask_path
     run_config.product_dst_dir = product_dst_dir
     run_config.bucket = bucket
@@ -405,6 +422,9 @@ def run_dist_s1_sas_prep_workflow(
     run_config.batch_size_for_despeckling = batch_size_for_despeckling
     run_config.n_workers_for_norm_param_estimation = n_workers_for_norm_param_estimation
     run_config.device = device
+    run_config.model_source = model_source
+    run_config.model_cfg_path = model_cfg_path
+    run_config.model_wts_path = model_wts_path
     return run_config
 
 
@@ -425,6 +445,7 @@ def run_dist_s1_workflow(
     post_date_buffer_days: int = 1,
     dst_dir: str | Path = 'out',
     input_data_dir: str | Path | None = None,
+    intermed_data_dir: Path | None = Path('intermed'),
     memory_strategy: str = 'high',
     moderate_confidence_threshold: float = 3.5,
     high_confidence_threshold: float = 5.5,
@@ -447,6 +468,7 @@ def run_dist_s1_workflow(
         post_date_buffer_days=post_date_buffer_days,
         dst_dir=dst_dir,
         input_data_dir=input_data_dir,
+        intermed_data_dir=intermed_data_dir,
         memory_strategy=memory_strategy,
         moderate_confidence_threshold=moderate_confidence_threshold,
         high_confidence_threshold=high_confidence_threshold,
@@ -465,3 +487,89 @@ def run_dist_s1_workflow(
     _ = run_dist_s1_sas_workflow(run_config)
 
     return run_config
+
+def run_dist_s1_sas_prep_runconfig_yml(
+  run_config_template_yml_path: Path | str) -> RunConfigData:
+  with Path.open(run_config_template_yml_path) as file:
+    data = yaml.safe_load(file)
+    rc_data = data['run_config']
+  
+  # These must be present (no defaults)
+  if 'mgrs_tile_id' in rc_data:
+    mgrs_tile_id = rc_data['mgrs_tile_id']
+  else:
+    raise Exception("Missing mgrs_tile_id in template runconfig")
+
+  if 'post_date' in rc_data:
+    post_date = rc_data['post_date']
+  else:
+    raise Exception("Missing post_date in template runconfig")
+    
+  if 'track_number' in rc_data:
+    track_number = rc_data['track_number']
+  else:
+    raise Exception("Missing track_number in template runconfig")
+    
+  if 'dst_dir' in rc_data:
+    dst_dir = rc_data['dst_dir']
+  else:
+    raise Exception("Missing dst_dir in template runconfig")
+
+  if 'water_mask_path' in rc_data:
+    water_mask_path = rc_data['water_mask_path']
+  else:
+    raise Exception("Missing water_mask_path in template runconfig")
+
+  # These can be left out (they have defaults)
+  apply_water_mask = rc_data.get('apply_water_mask',True)
+  post_date_buffer_days = rc_data.get('post_date_buffer_days',1)
+  input_data_dir = rc_data.get('input_data_dir',dst_dir)
+  intermed_data_dir = rc_data.get('intermed_data_dir',Path('intermed'))
+  memory_strategy = rc_data.get('memory_strategy','high')
+  model_source = rc_data.get('model_source','internal')
+  model_cfg_path = rc_data.get('model_cfg_path',None)
+  model_wts_path = rc_data.get('model_wts_path',None)
+  tqdm_enabled = rc_data.get('tqdm_enabled',True)
+  n_lookbacks = rc_data.get('n_lookbacks',1)
+  moderate_confidence_threshold=rc_data.get('moderate_confidence_threshold',3.5)
+  high_confidence_threshold = rc_data.get('high_confidence_threshold',5.5)
+  product_dst_dir = rc_data.get('product_dst_dir',dst_dir)
+  bucket = rc_data.get('bucket',None)
+  bucket_prefix = rc_data.get('bucket_prefix',None)
+  n_workers_for_despeckling = rc_data.get('n_workers_for_despeckling',1)
+  batch_size_for_despeckling = rc_data.get('batch_size_for_despeckling',25)
+  n_workers_for_norm_param_estimation = rc_data.get(
+    'n_workers_for_norm_param_estimation',1)
+  device = rc_data.get('device','cpu')
+
+  run_config = run_dist_s1_localization_workflow(
+    mgrs_tile_id,
+    post_date,
+    track_number,
+    post_date_buffer_days,
+    dst_dir=dst_dir,
+    input_data_dir=input_data_dir,
+    apply_water_mask=apply_water_mask,
+    water_mask_path=water_mask_path,
+    )
+
+  run_config.memory_strategy = memory_strategy
+  run_config.tqdm_enabled = tqdm_enabled
+  run_config.apply_water_mask = apply_water_mask
+  run_config.moderate_confidence_threshold = moderate_confidence_threshold
+  run_config.high_confidence_threshold = high_confidence_threshold
+  run_config.n_lookbacks = n_lookbacks
+  run_config.intermed_data_dir = intermed_data_dir
+  run_config.water_mask_path = water_mask_path
+  run_config.product_dst_dir = product_dst_dir
+  run_config.bucket = bucket
+  run_config.bucket_prefix = bucket_prefix
+  run_config.n_workers_for_despeckling = n_workers_for_despeckling
+  run_config.batch_size_for_despeckling = batch_size_for_despeckling
+  run_config.n_workers_for_norm_param_estimation = n_workers_for_norm_param_estimation
+  run_config.model_source = model_source
+  run_config.model_cfg_path = model_cfg_path
+  run_config.model_wts_path = model_wts_path
+  run_config.device = device
+
+  return run_config

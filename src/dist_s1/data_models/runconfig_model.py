@@ -121,6 +121,7 @@ class RunConfigData(BaseModel):
     post_rtc_crosspol: list[Path | str]
     mgrs_tile_id: str
     dst_dir: Path | str = Path('out')
+    intermed_data_dir: Path = Path('intermed')
     water_mask_path: Path | str | None = None
     apply_water_mask: bool = Field(default=True)
     check_input_paths: bool = True
@@ -152,6 +153,13 @@ class RunConfigData(BaseModel):
     product_dst_dir: Path | str | None = None
     bucket: str | None = None
     bucket_prefix: str = ''
+    # model_source of None means use internal model
+    # model_source == "external" means use externally supplied paths
+    #   (paths supplied in model_cfg_path and model_wts_path)
+    # Other string values mean use internal model
+    model_source: str | None = None
+    model_cfg_path: Path | str | None = None
+    model_wts_path: Path | str | None = None
 
     # Private attributes that are associated to properties
     _burst_ids: list[str] | None = None
@@ -225,6 +233,14 @@ class RunConfigData(BaseModel):
             raise ValidationError(f"Path '{product_dst_dir}' exists but is not a directory")
         product_dst_dir.mkdir(parents=True, exist_ok=True)
         return product_dst_dir.resolve()
+
+    @field_validator('intermed_data_dir', mode='before')
+    def validate_intermed_data_dir(cls, intermed_data_dir: Path | str | None, info: ValidationInfo) -> Path:
+        intermed_data_dir = Path(intermed_data_dir) if isinstance(intermed_data_dir, str) else intermed_data_dir
+        if intermed_data_dir.exists() and not intermed_data_dir.is_dir():
+            raise ValidationError(f"Path '{intermed_data_dir}' exists but is not a directory")
+        intermed_data_dir.mkdir(parents=True, exist_ok=True)
+        return intermed_data_dir.resolve()
 
     @field_validator('n_workers_for_despeckling', 'n_workers_for_norm_param_estimation')
     def validate_n_workers(cls, n_workers: int, info: ValidationInfo) -> int:
@@ -373,7 +389,7 @@ class RunConfigData(BaseModel):
     @property
     def final_unformatted_tif_paths(self) -> dict:
         # We are going to have a directory without metadata, colorbar, tags, etc.
-        pre_product_dir = self.dst_dir / 'pre_product'
+        pre_product_dir = Path(self.intermed_data_dir) / 'pre_product'
         pre_product_dir.mkdir(parents=True, exist_ok=True)
         final_unformatted_tif_paths = {
             'alert_status_path': pre_product_dir / 'alert_status.tif',
@@ -387,7 +403,7 @@ class RunConfigData(BaseModel):
     @property
     def df_burst_distmetrics(self) -> pd.DataFrame:
         if self._df_burst_distmetric is None:
-            normal_param_dir = self.dst_dir / 'normal_params'
+            normal_param_dir = Path(self.intermed_data_dir) / 'normal_params'
             normal_param_dir.mkdir(parents=True, exist_ok=True)
 
             df_inputs = self.df_inputs.copy()
@@ -414,7 +430,7 @@ class RunConfigData(BaseModel):
                             f'loc_path_normal_{normal_param_token}_delta{lookback}_{polarization_token}'
                         ] = df_dist_by_burst.apply(
                             generate_burst_dist_paths,
-                            top_level_data_dir=self.dst_dir,
+                            top_level_data_dir=Path(self.intermed_data_dir),
                             dst_dir_name='normal_params',
                             path_token=normal_param_token,
                             polarization_token=polarization_token,
@@ -427,7 +443,7 @@ class RunConfigData(BaseModel):
             # Metrics Paths
             df_dist_by_burst['loc_path_metric_delta0'] = df_dist_by_burst.apply(
                 generate_burst_dist_paths,
-                top_level_data_dir=self.dst_dir,
+                top_level_data_dir=Path(self.intermed_data_dir),
                 dst_dir_name='metrics',
                 path_token='distmetric',
                 lookback=0,
@@ -440,7 +456,7 @@ class RunConfigData(BaseModel):
             for lookback in range(self.n_lookbacks):
                 df_dist_by_burst[f'loc_path_disturb_delta{lookback}'] = df_dist_by_burst.apply(
                     generate_burst_dist_paths,
-                    top_level_data_dir=self.dst_dir,
+                    top_level_data_dir=Path(self.intermed_data_dir),
                     dst_dir_name='disturbance',
                     path_token='disturb',
                     lookback=lookback,
@@ -452,7 +468,7 @@ class RunConfigData(BaseModel):
             # Disturbance Paths Time Aggregated
             df_dist_by_burst['loc_path_disturb_time_aggregated'] = df_dist_by_burst.apply(
                 generate_burst_dist_paths,
-                top_level_data_dir=self.dst_dir,
+                top_level_data_dir=Path(self.intermed_data_dir),
                 dst_dir_name='disturbance/time_aggregated',
                 path_token='disturb',
                 lookback=None,
@@ -492,7 +508,7 @@ class RunConfigData(BaseModel):
                 loc_path = str(loc_path).replace('.tif', '_tv.tif')
                 acq_pass_date = row.acq_date_for_mgrs_pass
                 filename = Path(loc_path).name
-                out_path = self.dst_dir / 'tv_despeckle' / acq_pass_date / filename
+                out_path = Path(self.intermed_data_dir) / 'tv_despeckle' / acq_pass_date / filename
                 return str(out_path)
 
             df['loc_path_copol_dspkl'] = df.apply(get_despeckle_path, polarization='copol', axis=1)
