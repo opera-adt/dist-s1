@@ -64,12 +64,11 @@ def compute_normal_params_per_burst_and_serialize(
     if device == 'best':
         device = None
     if model_source == 'external':
-      model = load_transformer_model(model_token=model_source,
-        model_cfg_path=model_cfg_path,
-        model_wts_path=model_wts_path,
-        device=device)
+        model = load_transformer_model(
+            model_token=model_source, model_cfg_path=model_cfg_path, model_wts_path=model_wts_path, device=device
+        )
     else:
-      model = load_transformer_model(device=device)
+        model = load_transformer_model(device=device)
 
     copol_data = [open_one_ds(path) for path in pre_copol_paths_dskpl_paths]
     crosspol_data = [open_one_ds(path) for path in pre_crosspol_paths_dskpl_paths]
