@@ -459,6 +459,9 @@ def run_dist_s1_workflow(
     batch_size_for_despeckling: int = 25,
     n_workers_for_norm_param_estimation: int = 1,
     device: str = 'best',
+    model_source: str | None = None,
+    model_cfg_path: str | Path | None = None,
+    model_wts_path: str | Path | None = None,
 ) -> Path:
     run_config = run_dist_s1_sas_prep_workflow(
         mgrs_tile_id,
@@ -481,6 +484,9 @@ def run_dist_s1_workflow(
         batch_size_for_despeckling=batch_size_for_despeckling,
         n_workers_for_norm_param_estimation=n_workers_for_norm_param_estimation,
         device=device,
+        model_source=model_source,
+        model_cfg_path=model_cfg_path,
+        model_wts_path=model_wts_path,
     )
     _ = run_dist_s1_sas_workflow(run_config)
 
