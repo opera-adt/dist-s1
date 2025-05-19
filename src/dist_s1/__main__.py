@@ -65,13 +65,6 @@ def common_options(func: Callable) -> Callable:
         help='Input data directory. If None, uses `dst_dir`. Default None.',
     )
     @click.option(
-        '--intermed_data_dir',
-        type=str,
-        default=None,
-        required=False,
-        help='Intermediate data directory. If None, uses `intermed`. Default None.',
-    )
-    @click.option(
         '--water_mask_path',
         type=str,
         default=None,
@@ -193,7 +186,6 @@ def run_sas_prep(
     high_confidence_threshold: float,
     tqdm_enabled: bool,
     input_data_dir: str | Path | None,
-    intermed_data_dir: str | Path | None,
     runconfig_path: str | Path,
     n_lookbacks: int,
     dst_dir: str | Path,
@@ -222,7 +214,6 @@ def run_sas_prep(
         tqdm_enabled=tqdm_enabled,
         input_data_dir=input_data_dir,
         dst_dir=dst_dir,
-        intermed_data_dir=intermed_data_dir,
         water_mask_path=water_mask_path,
         n_lookbacks=n_lookbacks,
         product_dst_dir=product_dst_dir,
@@ -262,7 +253,6 @@ def run(
     high_confidence_threshold: float,
     tqdm_enabled: bool,
     input_data_dir: str | Path | None,
-    intermed_data_dir: str | Path | None,
     water_mask_path: str | Path | None,
     apply_water_mask: bool,
     n_lookbacks: int,
@@ -290,7 +280,6 @@ def run(
         tqdm_enabled=tqdm_enabled,
         input_data_dir=input_data_dir,
         dst_dir=dst_dir,
-        intermed_data_dir=intermed_data_dir,
         water_mask_path=water_mask_path,
         n_lookbacks=n_lookbacks,
         product_dst_dir=product_dst_dir,

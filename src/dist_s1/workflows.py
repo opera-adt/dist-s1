@@ -385,7 +385,6 @@ def run_dist_s1_sas_prep_workflow(
     post_date_buffer_days: int = 1,
     dst_dir: str | Path = 'out',
     input_data_dir: str | Path | None = None,
-    intermed_data_dir: Path = Path('intermed'),
     memory_strategy: str = 'high',
     moderate_confidence_threshold: float = 3.5,
     high_confidence_threshold: float = 5.5,
@@ -420,7 +419,6 @@ def run_dist_s1_sas_prep_workflow(
     run_config.moderate_confidence_threshold = moderate_confidence_threshold
     run_config.high_confidence_threshold = high_confidence_threshold
     run_config.n_lookbacks = n_lookbacks
-    run_config.intermed_data_dir = intermed_data_dir
     run_config.water_mask_path = water_mask_path
     run_config.product_dst_dir = product_dst_dir
     run_config.bucket = bucket
@@ -452,7 +450,6 @@ def run_dist_s1_workflow(
     post_date_buffer_days: int = 1,
     dst_dir: str | Path = 'out',
     input_data_dir: str | Path | None = None,
-    intermed_data_dir: Path | None = Path('intermed'),
     memory_strategy: str = 'high',
     moderate_confidence_threshold: float = 3.5,
     high_confidence_threshold: float = 5.5,
@@ -475,7 +472,6 @@ def run_dist_s1_workflow(
         post_date_buffer_days=post_date_buffer_days,
         dst_dir=dst_dir,
         input_data_dir=input_data_dir,
-        intermed_data_dir=intermed_data_dir,
         memory_strategy=memory_strategy,
         moderate_confidence_threshold=moderate_confidence_threshold,
         high_confidence_threshold=high_confidence_threshold,
@@ -531,7 +527,6 @@ def run_dist_s1_sas_prep_runconfig_yml(
   apply_water_mask = rc_data.get('apply_water_mask',True)
   post_date_buffer_days = rc_data.get('post_date_buffer_days',1)
   input_data_dir = rc_data.get('input_data_dir',dst_dir)
-  intermed_data_dir = rc_data.get('intermed_data_dir',Path('intermed'))
   memory_strategy = rc_data.get('memory_strategy','high')
   model_source = rc_data.get('model_source','internal')
   model_cfg_path = rc_data.get('model_cfg_path',None)
@@ -566,7 +561,6 @@ def run_dist_s1_sas_prep_runconfig_yml(
   run_config.moderate_confidence_threshold = moderate_confidence_threshold
   run_config.high_confidence_threshold = high_confidence_threshold
   run_config.n_lookbacks = n_lookbacks
-  run_config.intermed_data_dir = intermed_data_dir
   run_config.water_mask_path = water_mask_path
   run_config.product_dst_dir = product_dst_dir
   run_config.bucket = bucket
