@@ -133,12 +133,21 @@ class RunConfigData(BaseModel):
         pattern='^(high|low)$',
     )
     tqdm_enabled: bool = Field(default=True)
-    batch_size_for_despeckling: int = Field(
-        default=25,
-        ge=1,
-    )
     n_workers_for_norm_param_estimation: int = Field(
         default=8,
+        ge=1,
+    )
+    batch_size_for_norm_param_estimation: int = Field(
+        default=32,
+        ge=1,
+    )
+    stride_for_norm_param_estimation: int = Field(
+        default=2,
+        ge=1,
+        le=16,
+    )
+    batch_size_for_despeckling: int = Field(
+        default=25,
         ge=1,
     )
     n_workers_for_despeckling: int = Field(
@@ -149,6 +158,9 @@ class RunConfigData(BaseModel):
     # This is where default thresholds are set!
     moderate_confidence_threshold: float = Field(default=3.5, ge=0.0, le=15.0)
     high_confidence_threshold: float = Field(default=5.5, ge=0.0, le=15.0)
+
+    optimize: bool = Field(default=False)
+
     product_dst_dir: Path | str | None = None
     bucket: str | None = None
     bucket_prefix: str = ''
