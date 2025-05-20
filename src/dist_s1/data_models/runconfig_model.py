@@ -152,6 +152,13 @@ class RunConfigData(BaseModel):
     product_dst_dir: Path | str | None = None
     bucket: str | None = None
     bucket_prefix: str = ''
+    # model_source of None means use internal model
+    # model_source == "external" means use externally supplied paths
+    #   (paths supplied in model_cfg_path and model_wts_path)
+    # Other string values mean use internal model
+    model_source: str | None = None
+    model_cfg_path: Path | str | None = None
+    model_wts_path: Path | str | None = None
 
     # Private attributes that are associated to properties
     _burst_ids: list[str] | None = None
