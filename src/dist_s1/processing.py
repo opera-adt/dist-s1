@@ -53,14 +53,17 @@ def compute_normal_params_per_burst_and_serialize(
     out_path_sigma_copol: Path,
     out_path_sigma_crosspol: Path,
     memory_strategy: str = 'high',
+    stride: int = 2,
+    batch_size: int = 32,
     device: str = 'best',
+    optimize: bool = False
 ) -> Path:
     if device not in ('cpu', 'cuda', 'mps', 'best'):
         raise ValueError(f'Invalid device: {device}')
     # For distmetrics, None is how we choose the "best" available device
     if device == 'best':
         device = None
-    model = load_transformer_model(device=device)
+    model = load_transformer_model(device=device, optimize=optimize, batch_size=batch_size)
 
     copol_data = [open_one_ds(path) for path in pre_copol_paths_dskpl_paths]
     crosspol_data = [open_one_ds(path) for path in pre_crosspol_paths_dskpl_paths]
@@ -75,7 +78,8 @@ def compute_normal_params_per_burst_and_serialize(
         check_profiles_match(p_ref, p_crosspol)
 
     logits_mu, logits_sigma = estimate_normal_params_of_logits(
-        model, arrs_copol, arrs_crosspol, memory_strategy=memory_strategy, device=device
+        model, arrs_copol, arrs_crosspol, memory_strategy=memory_strategy, device=device, stride=stride,
+        batch_size=batch_size,
     )
     logits_mu_copol, logits_mu_crosspol = logits_mu[0, ...], logits_mu[1, ...]
     logits_sigma_copol, logits_sigma_crosspol = logits_sigma[0, ...], logits_sigma[1, ...]

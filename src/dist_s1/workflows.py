@@ -179,8 +179,15 @@ def run_despeckle_workflow(run_config: RunConfigData) -> None:
     )
 
 
-def _process_normal_params(path_data: dict, memory_strategy: str, device: str) -> None:
-    return compute_normal_params_per_burst_and_serialize(
+def _process_normal_params(
+        path_data: dict, 
+        memory_strategy: str, 
+        device: str, 
+        batch_size: int, 
+        stride: int, 
+        optimize: bool
+    ) -> None:
+    return x(
         path_data['copol_paths_pre'],
         path_data['crosspol_paths_pre'],
         path_data['output_mu_copol_path'],
@@ -189,6 +196,9 @@ def _process_normal_params(path_data: dict, memory_strategy: str, device: str) -
         path_data['output_sigma_crosspol_path'],
         memory_strategy=memory_strategy,
         device=device,
+        batch_size=batch_size,
+        stride=stride,
+        optimize=optimize
     )
 
 
@@ -230,6 +240,9 @@ def run_normal_param_estimation_workflow(run_config: RunConfigData) -> None:
                 path_data['output_sigma_crosspol_path'],
                 memory_strategy=run_config.memory_strategy,
                 device=run_config.device,
+                stride=run_config.stride_for_norm_param_estimation,
+                batch_size=run_config.batch_size_for_norm_param_estimation,
+                optimize=run_config.optimize
             )
     else:
         if run_config.device in ('cuda', 'mps'):
@@ -237,7 +250,9 @@ def run_normal_param_estimation_workflow(run_config: RunConfigData) -> None:
 
         # Create a partial function with the memory strategy and device
         worker_fn = partial(
-            _process_normal_params, memory_strategy=run_config.memory_strategy, device=run_config.device
+            _process_normal_params, memory_strategy=run_config.memory_strategy, device=run_config.device,
+            stride=run_config.stride_for_norm_param_estimation, optimize=run_config.optimize,
+            batch_size=run_config.batch_size_for_norm_param_estimation
         )
 
         # Start a pool of workers
