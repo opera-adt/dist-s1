@@ -11,11 +11,12 @@ from dist_s1.aws import upload_product_to_s3
 from dist_s1.constants import MODEL_CONTEXT_LENGTH
 from dist_s1.data_models.runconfig_model import RunConfigData
 from dist_s1.localize_rtc_s1 import localize_rtc_s1
-from dist_s1.packaging import generate_browse_image, package_disturbance_tifs
+from dist_s1.packaging import generate_browse_image, package_conf_db_disturbance_tifs, package_disturbance_tifs
 from dist_s1.processing import (
     aggregate_burst_disturbance_over_lookbacks_and_serialize,
     compute_burst_disturbance_for_lookback_group_and_serialize,
     compute_normal_params_per_burst_and_serialize,
+    compute_tile_disturbance_using_previous_product_and_serialize,
     despeckle_and_serialize_rtc_s1,
     merge_burst_disturbances_and_serialize,
     merge_burst_metrics_and_serialize,
@@ -343,7 +344,7 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
         # This will have the labels of the final disturbance map (see constants.py and the function itself)
         aggregate_burst_disturbance_over_lookbacks_and_serialize(
             disturbance_paths, time_aggregated_disturbance_path, run_config.n_lookbacks
-        )
+        )        
 
 
 def run_disturbance_merge_workflow(run_config: RunConfigData) -> None:
@@ -365,6 +366,46 @@ def run_disturbance_merge_workflow(run_config: RunConfigData) -> None:
         merge_burst_disturbances_and_serialize(dist_burst_paths_delta0, dst_last_pass_path, run_config.mgrs_tile_id)
 
 
+def run_disturbance_confirmation(run_config: RunConfigData) -> None:
+    print('Running disturbance confirmation')
+    # Use previous DIST-S1 product to confirm the disturbance
+    df_pre_dist_products = run_config.df_pre_dist_products
+
+    if df_pre_dist_products.empty:
+        print('No previous product found for confirmation. Assuming this is the first product.')
+        prev_prod_paths = None
+    else:
+        ordered_columns = [
+            'path_dist_status',
+            'path_dist_max',
+            'path_dist_conf',
+            'path_dist_date',
+            'path_dist_count',
+            'path_dist_perc',
+            'path_dist_dur',
+            'path_dist_last_date',
+        ]
+        prev_prod_paths = df_pre_dist_products[ordered_columns].values.flatten().tolist()
+    
+    final_unformated_conf_tif_paths = [
+    run_config.final_unformatted_tif_paths['dist_status_path'],
+    run_config.final_unformatted_tif_paths['dist_max_path'],
+    run_config.final_unformatted_tif_paths['dist_conf_path'],
+    run_config.final_unformatted_tif_paths['dist_date_path'],
+    run_config.final_unformatted_tif_paths['dist_count_path'],
+    run_config.final_unformatted_tif_paths['dist_perc_path'],
+    run_config.final_unformatted_tif_paths['dist_dur_path'],
+    run_config.final_unformatted_tif_paths['dist_last_date_path'],
+    ]
+    out_pattern_sample = run_config.product_data_model.layer_path_dict['DIST-STATUS']
+    compute_tile_disturbance_using_previous_product_and_serialize(
+        dist_metric_path=run_config.final_unformatted_tif_paths['metric_status_path'],
+        dist_metric_date = out_pattern_sample,
+        out_path_list=final_unformated_conf_tif_paths,
+        previous_dist_arr_path_list=prev_prod_paths
+    )
+
+
 def run_dist_s1_processing_workflow(run_config: RunConfigData) -> RunConfigData:
     # Despeckle by burst
     run_despeckle_workflow(run_config)
@@ -382,12 +423,21 @@ def run_dist_s1_processing_workflow(run_config: RunConfigData) -> RunConfigData:
 
 
 def run_dist_s1_packaging_workflow(run_config: RunConfigData) -> Path:
-    package_disturbance_tifs(run_config)
-    generate_browse_image(run_config)
+    if run_config.confirmation_strategy == 'compute_baseline':
+        print('Using computed baseline for confirmation')
+        package_disturbance_tifs(run_config)
 
-    product_data = run_config.product_data_model
-    product_data.validate_tif_layer_dtypes()
-    product_data.validate_layer_paths()
+        product_data = run_config.product_data_model
+        product_data.validate_tif_layer_dtypes()
+        product_data.validate_layer_paths()
+
+    if run_config.confirmation_strategy == 'use_prev_product':
+        print('Using previous product for confirmation')
+        run_disturbance_confirmation(run_config)
+        package_conf_db_disturbance_tifs(run_config)
+        # add validation for porduct here
+    
+    generate_browse_image(run_config) 
 
 
 def run_dist_s1_sas_prep_workflow(
@@ -403,6 +453,7 @@ def run_dist_s1_sas_prep_workflow(
     tqdm_enabled: bool = True,
     apply_water_mask: bool = True,
     n_lookbacks: int = 3,
+    confirmation_strategy: str = 'use_prev_product',
     water_mask_path: str | Path | None = None,
     product_dst_dir: str | Path | None = None,
     bucket: str | None = None,
@@ -434,6 +485,7 @@ def run_dist_s1_sas_prep_workflow(
     run_config.moderate_confidence_threshold = moderate_confidence_threshold
     run_config.high_confidence_threshold = high_confidence_threshold
     run_config.n_lookbacks = n_lookbacks
+    run_config.confirmation_strategy = confirmation_strategy
     run_config.water_mask_path = water_mask_path
     run_config.product_dst_dir = product_dst_dir
     run_config.bucket = bucket
@@ -475,6 +527,7 @@ def run_dist_s1_workflow(
     tqdm_enabled: bool = True,
     apply_water_mask: bool = True,
     n_lookbacks: int = 3,
+    confirmation_strategy: str = 'use_prev_product',
     product_dst_dir: str | Path | None = None,
     bucket: str | None = None,
     bucket_prefix: str = '',
@@ -502,6 +555,7 @@ def run_dist_s1_workflow(
         tqdm_enabled=tqdm_enabled,
         apply_water_mask=apply_water_mask,
         n_lookbacks=n_lookbacks,
+        confirmation_strategy=confirmation_strategy,
         water_mask_path=water_mask_path,
         product_dst_dir=product_dst_dir,
         bucket=bucket,

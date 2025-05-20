@@ -104,6 +104,58 @@ def package_disturbance_tifs(run_config: RunConfigData) -> None:
     serialize_one_2d_ds(X_metric, p_metric, product_data.layer_path_dict['GEN-METRIC'], colormap=DIST_CMAP, tags=tags)
 
 
+def package_conf_db_disturbance_tifs(run_config: RunConfigData) -> None:
+    print('Packaging CONF DB disturbance tifs')
+    # Map from field name in run_config to output key in product_data.layer_path_dict
+    disturbance_layers = [
+    {'key': 'dist_status_path', 'label': 'DIST-STATUS'},
+    {'key': 'dist_max_path', 'label': 'DIST-MAX'},
+    {'key': 'dist_conf_path', 'label': 'DIST-CONF'},
+    {'key': 'dist_date_path', 'label': 'DIST-DATE'},
+    {'key': 'dist_count_path', 'label': 'DIST-COUNT'},
+    {'key': 'dist_perc_path', 'label': 'DIST-PERC'},
+    {'key': 'dist_dur_path', 'label': 'DIST-DUR'},
+    {'key': 'dist_last_date_path', 'label': 'DIST-LAST-DATE'},
+    {'key': 'metric_status_path', 'label': 'GEN-METRIC'},
+    ]
+
+    X_dict = {}
+    p_dict = {}
+    label_dict = {}
+
+    for item in disturbance_layers:
+        key = item['key']
+        label = item['label']
+
+        path = run_config.final_unformatted_tif_paths[key]
+        X, p = open_one_ds(path)
+
+        if run_config.apply_water_mask:
+            X = apply_water_mask(X, p, run_config.water_mask_path)
+
+        X_dict[key] = X
+        p_dict[key] = p
+        label_dict[key] = label
+
+    tags = run_config.get_public_attributes()
+    tags['version'] = dist_s1.__version__
+    tags = update_tags_with_opera_ids(tags)
+    tags = update_tag_types(tags)
+
+    product_data = run_config.product_data_model
+
+    for item in disturbance_layers:
+        key = item['key']
+        label = item['label']
+        
+        X = X_dict[key]
+        p = p_dict[key]
+        out_path = product_data.layer_path_dict[label]
+        print('Exporting', out_path)
+        
+        serialize_one_2d_ds(X, p, out_path, colormap=DIST_CMAP, tags=tags)
+
+
 def generate_browse_image(run_config: RunConfigData) -> None:
     product_data = run_config.product_data_model
     with Env(GDAL_PAM_ENABLED='NO'):

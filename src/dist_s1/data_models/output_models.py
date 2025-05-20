@@ -13,6 +13,14 @@ TIF_LAYER_DTYPES = {
     'DIST-GEN-STATUS': 'uint8',
     'GEN-METRIC': 'float32',
     'DIST-GEN-STATUS-ACQ': 'uint8',
+    'DIST-STATUS': 'uint8',
+    'DIST-MAX': 'unint16',
+    'DIST-CONF': 'uint16',
+    'DIST-DATE': 'uint16',
+    'DIST-COUNT': 'uint8',
+    'DIST-PERC': 'uint8',
+    'DIST-DUR': 'uint16',
+    'DIST-LAST-DATE': 'uint16',
 }
 TIF_LAYERS = TIF_LAYER_DTYPES.keys()
 EXPECTED_FORMAT_STRING = (
