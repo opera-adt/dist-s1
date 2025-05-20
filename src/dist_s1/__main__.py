@@ -132,8 +132,31 @@ def common_options(func: Callable) -> Callable:
         type=int,
         default=8,
         required=False,
-        help='Number of CPUs to use for normal parameter estimation; error willbe thrown if GPU is available and not'
+        help='Number of CPUs to use for normal parameter estimation; error will be thrown if GPU is available and not'
         ' or set to something other than CPU.',
+    )
+    @click.option(
+        '--model_source',
+        type=click.Choice(['internal', 'external']),
+        required=False,
+        help='Where to load Transformer model from;'
+        ' internal means load model stored inside docker image,'
+        ' external means load model from cfg'
+        ' and wts paths specified in parameters',
+    )
+    @click.option(
+        '--model_cfg_path',
+        type=str,
+        default=None,
+        required=False,
+        help='Path to Transformer model config file.',
+    )
+    @click.option(
+        '--model_wts_path',
+        type=str,
+        default=None,
+        required=False,
+        help='Path to Transformer model weights file.',
     )
     @functools.wraps(func)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
@@ -174,6 +197,9 @@ def run_sas_prep(
     batch_size_for_despeckling: int,
     n_workers_for_norm_param_estimation: int,
     device: str,
+    model_source: str | None,
+    model_cfg_path: str | Path | None,
+    model_wts_path: str | Path | None,
 ) -> None:
     """Run SAS prep workflow."""
     run_config = run_dist_s1_sas_prep_workflow(
@@ -197,6 +223,9 @@ def run_sas_prep(
         batch_size_for_despeckling=batch_size_for_despeckling,
         n_workers_for_norm_param_estimation=n_workers_for_norm_param_estimation,
         device=device,
+        model_source=model_source,
+        model_cfg_path=model_cfg_path,
+        model_wts_path=model_wts_path,
     )
     run_config.to_yaml(runconfig_path)
 
@@ -234,6 +263,9 @@ def run(
     batch_size_for_despeckling: int,
     n_workers_for_norm_param_estimation: int,
     device: str,
+    model_source: str | None,
+    model_cfg_path: str | Path | None,
+    model_wts_path: str | Path | None,
 ) -> str:
     """Localize data and run dist_s1_workflow."""
     return run_dist_s1_workflow(
@@ -257,6 +289,9 @@ def run(
         batch_size_for_despeckling=batch_size_for_despeckling,
         n_workers_for_norm_param_estimation=n_workers_for_norm_param_estimation,
         device=device,
+        model_source=model_source,
+        model_cfg_path=model_cfg_path,
+        model_wts_path=model_wts_path,
     )
 
 

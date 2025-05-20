@@ -56,14 +56,24 @@ def compute_normal_params_per_burst_and_serialize(
     stride: int = 2,
     batch_size: int = 32,
     device: str = 'best',
-    optimize: bool = False
+    optimize: bool = False,
+    model_source: str | None = None,
+    model_cfg_path: Path | None = None,
+    model_wts_path: Path | None = None,
 ) -> Path:
     if device not in ('cpu', 'cuda', 'mps', 'best'):
         raise ValueError(f'Invalid device: {device}')
     # For distmetrics, None is how we choose the "best" available device
     if device == 'best':
         device = None
-    model = load_transformer_model(device=device, optimize=optimize, batch_size=batch_size)
+
+    if model_source == 'external':
+        model = load_transformer_model(
+            model_token=model_source, model_cfg_path=model_cfg_path, model_wts_path=model_wts_path, 
+            device=device, optimize=optimize, batch_size=batch_size
+        )
+    else:
+        model = load_transformer_model(device=device, optimize=optimize, batch_size=batch_size)
 
     copol_data = [open_one_ds(path) for path in pre_copol_paths_dskpl_paths]
     crosspol_data = [open_one_ds(path) for path in pre_crosspol_paths_dskpl_paths]
