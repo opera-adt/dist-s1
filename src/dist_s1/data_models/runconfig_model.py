@@ -142,7 +142,7 @@ class RunConfigData(BaseModel):
         ge=1,
     )
     stride_for_norm_param_estimation: int = Field(
-        default=2,
+        default=16,
         ge=1,
         le=16,
     )
