@@ -137,10 +137,12 @@ class RunConfigData(BaseModel):
         default=8,
         ge=1,
     )
+    # Batch size for transformer model.
     batch_size_for_norm_param_estimation: int = Field(
         default=32,
         ge=1,
     )
+    # Stride for transformer model.
     stride_for_norm_param_estimation: int = Field(
         default=16,
         ge=1,
@@ -159,7 +161,9 @@ class RunConfigData(BaseModel):
     moderate_confidence_threshold: float = Field(default=3.5, ge=0.0, le=15.0)
     high_confidence_threshold: float = Field(default=5.5, ge=0.0, le=15.0)
 
-    optimize: bool = Field(default=False)
+    # Flag to enable optimizations. False, load the model and use it.
+    # True, load the model and compile for CPU or GPU
+    optimize: bool = Field(default=True)
 
     product_dst_dir: Path | str | None = None
     bucket: str | None = None
