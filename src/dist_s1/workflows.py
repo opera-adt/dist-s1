@@ -414,6 +414,9 @@ def run_dist_s1_sas_prep_workflow(
     model_source: str | None = None,
     model_cfg_path: str | Path | None = None,
     model_wts_path: str | Path | None = None,
+    stride_for_norm_param_estimation: int = 16,
+    batch_size_for_norm_param_estimation: int = 32,
+    optimize: bool = True
 ) -> RunConfigData:
     run_config = run_dist_s1_localization_workflow(
         mgrs_tile_id,
@@ -442,6 +445,9 @@ def run_dist_s1_sas_prep_workflow(
     run_config.model_source = model_source
     run_config.model_cfg_path = model_cfg_path
     run_config.model_wts_path = model_wts_path
+    run_config.stride_for_norm_param_estimation = stride_for_norm_param_estimation
+    run_config.batch_size_for_norm_param_estimation = batch_size_for_norm_param_estimation
+    run_config.optimize = optimize
     return run_config
 
 
@@ -479,6 +485,9 @@ def run_dist_s1_workflow(
     model_source: str | None = None,
     model_cfg_path: str | Path | None = None,
     model_wts_path: str | Path | None = None,
+    stride_for_norm_param_estimation: int = 16,
+    batch_size_for_norm_param_estimation: int = 32,
+    optimize: bool = True
 ) -> Path:
     run_config = run_dist_s1_sas_prep_workflow(
         mgrs_tile_id,
@@ -504,6 +513,9 @@ def run_dist_s1_workflow(
         model_source=model_source,
         model_cfg_path=model_cfg_path,
         model_wts_path=model_wts_path,
+        stride_for_norm_param_estimation=stride_for_norm_param_estimation,
+        batch_size_for_norm_param_estimation=batch_size_for_norm_param_estimation,
+        optimize=optimize
     )
     _ = run_dist_s1_sas_workflow(run_config)
 
@@ -560,6 +572,9 @@ def run_dist_s1_sas_prep_runconfig_yml(run_config_template_yml_path: Path | str)
     batch_size_for_despeckling = rc_data.get('batch_size_for_despeckling', 25)
     n_workers_for_norm_param_estimation = rc_data.get('n_workers_for_norm_param_estimation', 1)
     device = rc_data.get('device', 'cpu')
+    stride_for_norm_param_estimation = rc_data.get('stride_for_norm_param_estimation', 16)
+    batch_size_for_norm_param_estimation = rc_data.get('batch_size_for_norm_param_estimation', 32)
+    optimize = rc_data.get('optimize', True)
 
     run_config = run_dist_s1_localization_workflow(
         mgrs_tile_id,
@@ -589,5 +604,8 @@ def run_dist_s1_sas_prep_runconfig_yml(run_config_template_yml_path: Path | str)
     run_config.model_cfg_path = model_cfg_path
     run_config.model_wts_path = model_wts_path
     run_config.device = device
+    run_config.stride_for_norm_param_estimation = stride_for_norm_param_estimation
+    run_config.batch_size_for_norm_param_estimation = batch_size_for_norm_param_estimation
+    run_config.optimize = optimize
 
     return run_config
