@@ -116,15 +116,15 @@ def check_filename_format(filename: str, polarization: str) -> None:
 
 def check_dist_product_filename_format(filename: str) -> None:
     valid_suffixes = (
-        '_DIST-STATUS.tif',
-        '_DIST-MAX.tif',
-        '_DIST-CONF.tif',
-        '_DIST-DATE.tif',
-        '_DIST-COUNT.tif',
-        '_DIST-PERC.tif',
-        '_DIST-DUR.tif',
-        '_DIST-LAST-DATE.tif',
-        '_DIST-GEN-STATUS.tif',
+        'DIST-GEN-STATUS.tif',
+        'DIST-GEN-MAX.tif',
+        'DIST-GEN-CONF.tif',
+        'DIST-GEN-DATE.tif',
+        'DIST-GEN-COUNT.tif',
+        'DIST-GEN-PERC.tif',
+        'DIST-GEN-DUR.tif',
+        'DIST-GEN-LAST-DATE.tif',
+        'DIST-GEN-STATUS.tif',
     )
 
     tokens = filename.split('_')
@@ -198,6 +198,8 @@ class RunConfigData(BaseModel):
     # True, load the model and compile for CPU or GPU
     optimize: bool = Field(default=True)
     n_lookbacks: int = Field(default=3, ge=1, le=3)
+    max_pre_imgs_per_burst_mw: list[int] = [5, 5]
+    delta_lookback_days_mw: list[int] = [365*2, 365*1]
     # This is where default thresholds are set!
     moderate_confidence_threshold: float = Field(default=3.5, ge=0.0, le=15.0)
     high_confidence_threshold: float = Field(default=5.5, ge=0.0, le=15.0)
@@ -357,8 +359,10 @@ class RunConfigData(BaseModel):
     @field_validator('pre_dist_s1_product')
     def check_dist_product_filename_format(cls, values: Path, field: ValidationInfo) -> None:
         """Check the previous DIST-S1 filename format to ensure correct structure and tokens."""
+        if not values:
+            return values
         for file_path in values:
-            check_dist_product_filename_format(file_path.name, field.field_name.split('_')[-1])
+            check_dist_product_filename_format(file_path.name)
         return values
 
     @field_validator('mgrs_tile_id')
@@ -622,14 +626,14 @@ class RunConfigData(BaseModel):
     @property
     def df_pre_dist_products(self) -> pd.DataFrame:
         VALID_SUFFIXES = (
-            '_DIST-STATUS.tif',
-            '_DIST-MAX.tif',
-            '_DIST-CONF.tif',
-            '_DIST-DATE.tif',
-            '_DIST-COUNT.tif',
-            '_DIST-PERC.tif',
-            '_DIST-DUR.tif',
-            '_DIST-LAST-DATE.tif',
+            '_DIST-GEN-STATUS.tif',
+            '_DIST-GEN-MAX.tif',
+            '_DIST-GEN-CONF.tif',
+            '_DIST-GEN-DATE.tif',
+            '_DIST-GEN-COUNT.tif',
+            '_DIST-GEN-PERC.tif',
+            '_DIST-GEN-DUR.tif',
+            '_DIST-GEN-LAST-DATE.tif',
             )
         
         if self._df_pre_dist_products is None:
@@ -664,14 +668,14 @@ class RunConfigData(BaseModel):
 
             # Rename columns to user-friendly names
             column_mapping = {
-                '_DIST-STATUS.tif': 'path_dist_status',
-                '_DIST-MAX.tif': 'path_dist_max',
-                '_DIST-CONF.tif': 'path_dist_conf',
-                '_DIST-DATE.tif': 'path_dist_date',
-                '_DIST-COUNT.tif': 'path_dist_count',
-                '_DIST-PERC.tif': 'path_dist_perc',
-                '_DIST-DUR.tif': 'path_dist_dur',
-                '_DIST-LAST-DATE.tif': 'path_dist_last_date',
+                '_DIST-GEN-STATUS.tif': 'path_dist_status',
+                '_DIST-GEN-MAX.tif': 'path_dist_max',
+                '_DIST-GEN-CONF.tif': 'path_dist_conf',
+                '_DIST-GEN-DATE.tif': 'path_dist_date',
+                '_DIST-GEN-COUNT.tif': 'path_dist_count',
+                '_DIST-GEN-PERC.tif': 'path_dist_perc',
+                '_DIST-GEN-DUR.tif': 'path_dist_dur',
+                '_DIST-GEN-LAST-DATE.tif': 'path_dist_last_date',
             }
 
             df = pd.DataFrame(rows)

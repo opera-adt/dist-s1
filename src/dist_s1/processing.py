@@ -287,7 +287,7 @@ def compute_tile_disturbance_using_previous_product_and_serialize(
     dist_date = datetime.datetime.strptime(Path(dist_metric_date).name.split('_')[4], '%Y%m%dT%H%M%SZ')
 
     # Load current metric and profile
-    currAnom, profile = open_one_ds(dist_metric_path)
+    currAnom, anom_prof = open_one_ds(dist_metric_path)
     rows, cols = currAnom.shape
     currDate = (dist_date - base_date).days
 
@@ -297,12 +297,13 @@ def compute_tile_disturbance_using_previous_product_and_serialize(
         status = np.full((rows, cols), 255, dtype=np.uint8)
         max_anom = np.full((rows, cols), -1, dtype=np.int16)
         conf = np.zeros((rows, cols), dtype=np.int16)
-        date = np.zeros((rows, cols), dtype=np.int64)
+        date = np.zeros((rows, cols), dtype=np.int16)
         count = np.zeros((rows, cols), dtype=np.uint8)
         percent = np.full((rows, cols), 200, dtype=np.uint8)
         dur = np.zeros((rows, cols), dtype=np.int16)
-        lastObs = np.zeros((rows, cols), dtype=np.int64)
+        lastObs = np.zeros((rows, cols), dtype=np.int16)
     elif all(p is not None for p in previous_dist_arr_path_list):
+        print(previous_dist_arr_path_list)
         status, _ = open_one_ds(previous_dist_arr_path_list[0])
         max_anom, _ = open_one_ds(previous_dist_arr_path_list[1])
         conf, _ = open_one_ds(previous_dist_arr_path_list[2])
@@ -419,16 +420,24 @@ def compute_tile_disturbance_using_previous_product_and_serialize(
 
     status[updating & (max_anom < lowthresh)] = NODIST
     lastObs[valid] = currDate
+    
+    p_dist_int8 = anom_prof.copy()
+    p_dist_int8['nodata'] = 255
+    p_dist_int8['dtype'] = np.uint8
+
+    p_dist_int16 = anom_prof.copy()
+    p_dist_int16['nodata'] = 255
+    p_dist_int16['dtype'] = np.int16 
 
     # Serialize output
-    serialize_one_2d_ds(status, profile, out_path_list[0])
-    serialize_one_2d_ds(max_anom, profile, out_path_list[1])
-    serialize_one_2d_ds(conf, profile, out_path_list[2])
-    serialize_one_2d_ds(date, profile, out_path_list[3])
-    serialize_one_2d_ds(count, profile, out_path_list[4])
-    serialize_one_2d_ds(percent, profile, out_path_list[5])
-    serialize_one_2d_ds(dur, profile, out_path_list[6])
-    serialize_one_2d_ds(lastObs, profile, out_path_list[7])
+    serialize_one_2d_ds(status, p_dist_int8, out_path_list[0])
+    serialize_one_2d_ds(max_anom, p_dist_int16, out_path_list[1])
+    serialize_one_2d_ds(conf, p_dist_int16, out_path_list[2])
+    serialize_one_2d_ds(date, p_dist_int16, out_path_list[3])
+    serialize_one_2d_ds(count, p_dist_int8, out_path_list[4])
+    serialize_one_2d_ds(percent, p_dist_int8, out_path_list[5])
+    serialize_one_2d_ds(dur, p_dist_int16, out_path_list[6])
+    serialize_one_2d_ds(lastObs, p_dist_int16, out_path_list[7])
 
 
 def merge_burst_disturbances_and_serialize(

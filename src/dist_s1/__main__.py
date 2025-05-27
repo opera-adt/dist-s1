@@ -86,6 +86,20 @@ def common_options(func: Callable) -> Callable:
         help='Number of lookbacks to use for change confirmation within SAS. Use value 1, to avoid SAS confirmation.',
     )
     @click.option(
+        '--lookback_strategy',
+        type=click.Choice(['multi_window', 'immediate_lookback']),
+        required=False,
+        default='multi_window',
+        help='Options to use for lookback strategy.',
+    )
+    @click.option(
+        '--confirmation_strategy',
+        type=click.Choice(['compute_baseline', 'use_prev_product']),
+        required=False,
+        default='use_prev_product',
+        help='Options to use for confirmation strategy.',
+    )
+    @click.option(
         '--product_dst_dir',
         type=str,
         default=None,
@@ -105,7 +119,7 @@ def common_options(func: Callable) -> Callable:
         default=8,
         required=False,
         help='N CPUs to use for despeckling the bursts',
-    )
+    )  
     @click.option(
         '--bucket_prefix',
         type=str,
@@ -211,6 +225,8 @@ def run_sas_prep(
     input_data_dir: str | Path | None,
     runconfig_path: str | Path,
     n_lookbacks: int,
+    lookback_strategy: str,
+    confirmation_strategy: str,
     dst_dir: str | Path,
     water_mask_path: str | Path | None,
     product_dst_dir: str | Path | None,
@@ -242,6 +258,8 @@ def run_sas_prep(
         dst_dir=dst_dir,
         water_mask_path=water_mask_path,
         n_lookbacks=n_lookbacks,
+        lookback_strategy=lookback_strategy,
+        confirmation_strategy=confirmation_strategy,
         product_dst_dir=product_dst_dir,
         bucket=bucket,
         bucket_prefix=bucket_prefix,
@@ -285,6 +303,8 @@ def run(
     water_mask_path: str | Path | None,
     apply_water_mask: bool,
     n_lookbacks: int,
+    lookback_strategy: str,
+    confirmation_strategy: str,
     product_dst_dir: str | Path | None,
     bucket: str | None,
     bucket_prefix: str,
@@ -314,6 +334,8 @@ def run(
         dst_dir=dst_dir,
         water_mask_path=water_mask_path,
         n_lookbacks=n_lookbacks,
+        lookback_strategy=lookback_strategy,
+        confirmation_strategy=confirmation_strategy,
         product_dst_dir=product_dst_dir,
         bucket=bucket,
         bucket_prefix=bucket_prefix,

@@ -13,7 +13,10 @@ def localize_rtc_s1(
     mgrs_tile_id: str,
     post_date: str | datetime | pd.Timestamp,
     track_number: int,
+    lookback_strategy: str = 'multi_window',
     post_date_buffer_days: int = 1,
+    max_pre_imgs_per_burst_mw: list[int] = [5, 5],
+    delta_lookback_days_mw: list[int] = [365*2, 365*1],
     input_data_dir: Path | str | None = None,
     dst_dir: Path | str | None = 'out',
     tqdm_enabled: bool = True,
@@ -24,8 +27,11 @@ def localize_rtc_s1(
         mgrs_tile_id,
         track_number=track_number,
         post_date=post_date,
+        lookback_strategy=lookback_strategy,
         post_date_buffer_days=post_date_buffer_days,
         max_pre_imgs_per_burst=(MODEL_CONTEXT_LENGTH + 2),
+        max_pre_imgs_per_burst_mw=[item + 2 for item in max_pre_imgs_per_burst_mw],
+        delta_lookback_days_mw=delta_lookback_days_mw,
     )
     # Ensure earthdata Credentials
     ensure_earthdata_credentials()

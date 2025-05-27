@@ -108,14 +108,15 @@ def package_conf_db_disturbance_tifs(run_config: RunConfigData) -> None:
     print('Packaging CONF DB disturbance tifs')
     # Map from field name in run_config to output key in product_data.layer_path_dict
     disturbance_layers = [
-    {'key': 'dist_status_path', 'label': 'DIST-STATUS'},
-    {'key': 'dist_max_path', 'label': 'DIST-MAX'},
-    {'key': 'dist_conf_path', 'label': 'DIST-CONF'},
-    {'key': 'dist_date_path', 'label': 'DIST-DATE'},
-    {'key': 'dist_count_path', 'label': 'DIST-COUNT'},
-    {'key': 'dist_perc_path', 'label': 'DIST-PERC'},
-    {'key': 'dist_dur_path', 'label': 'DIST-DUR'},
-    {'key': 'dist_last_date_path', 'label': 'DIST-LAST-DATE'},
+    {'key': 'dist_status_path', 'label': 'DIST-GEN-STATUS'},
+    {'key': 'alert_delta0_path', 'label': 'DIST-GEN-STATUS-ACQ'},
+    {'key': 'dist_max_path', 'label': 'DIST-GEN-MAX'},
+    {'key': 'dist_conf_path', 'label': 'DIST-GEN-CONF'},
+    {'key': 'dist_date_path', 'label': 'DIST-GEN-DATE'},
+    {'key': 'dist_count_path', 'label': 'DIST-GEN-COUNT'},
+    {'key': 'dist_perc_path', 'label': 'DIST-GEN-PERC'},
+    {'key': 'dist_dur_path', 'label': 'DIST-GEN-DUR'},
+    {'key': 'dist_last_date_path', 'label': 'DIST-GEN-LAST-DATE'},
     {'key': 'metric_status_path', 'label': 'GEN-METRIC'},
     ]
 

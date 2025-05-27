@@ -124,7 +124,10 @@ def run_dist_s1_localization_workflow(
     mgrs_tile_id: str,
     post_date: str | datetime,
     track_number: int,
+    lookback_strategy: str = 'multi_window',
     post_date_buffer_days: int = 1,
+    max_pre_imgs_per_burst_mw: list[int] = [5, 5],
+    delta_lookback_days_mw: list[int] = [365 * 2, 365 * 1],
     dst_dir: str | Path = 'out',
     input_data_dir: str | Path | None = None,
     apply_water_mask: bool = True,
@@ -135,7 +138,10 @@ def run_dist_s1_localization_workflow(
         mgrs_tile_id,
         post_date,
         track_number,
+        lookback_strategy=lookback_strategy,
         post_date_buffer_days=post_date_buffer_days,
+        max_pre_imgs_per_burst_mw=max_pre_imgs_per_burst_mw,
+        delta_lookback_days_mw=delta_lookback_days_mw,
         dst_dir=dst_dir,
         input_data_dir=input_data_dir,
         apply_water_mask=apply_water_mask,
@@ -397,7 +403,7 @@ def run_disturbance_confirmation(run_config: RunConfigData) -> None:
     run_config.final_unformatted_tif_paths['dist_dur_path'],
     run_config.final_unformatted_tif_paths['dist_last_date_path'],
     ]
-    out_pattern_sample = run_config.product_data_model.layer_path_dict['DIST-STATUS']
+    out_pattern_sample = run_config.product_data_model.layer_path_dict['DIST-GEN-STATUS']
     compute_tile_disturbance_using_previous_product_and_serialize(
         dist_metric_path=run_config.final_unformatted_tif_paths['metric_status_path'],
         dist_metric_date = out_pattern_sample,
@@ -435,7 +441,10 @@ def run_dist_s1_packaging_workflow(run_config: RunConfigData) -> Path:
         print('Using previous product for confirmation')
         run_disturbance_confirmation(run_config)
         package_conf_db_disturbance_tifs(run_config)
-        # add validation for porduct here
+        
+        product_data = run_config.product_data_model
+        product_data.validate_conf_db_tif_layer_dtypes()
+        product_data.validate_conf_db_layer_paths()
     
     generate_browse_image(run_config) 
 
@@ -453,6 +462,9 @@ def run_dist_s1_sas_prep_workflow(
     tqdm_enabled: bool = True,
     apply_water_mask: bool = True,
     n_lookbacks: int = 3,
+    lookback_strategy: str = 'multi_window',
+    max_pre_imgs_per_burst_mw: list[int] = [5, 5],
+    delta_lookback_days_mw: list[int] = [365*2, 365*1],
     confirmation_strategy: str = 'use_prev_product',
     water_mask_path: str | Path | None = None,
     product_dst_dir: str | Path | None = None,
@@ -473,7 +485,10 @@ def run_dist_s1_sas_prep_workflow(
         mgrs_tile_id,
         post_date,
         track_number,
+        lookback_strategy,
         post_date_buffer_days,
+        max_pre_imgs_per_burst_mw,
+        delta_lookback_days_mw,
         dst_dir=dst_dir,
         input_data_dir=input_data_dir,
         apply_water_mask=apply_water_mask,
@@ -485,6 +500,7 @@ def run_dist_s1_sas_prep_workflow(
     run_config.moderate_confidence_threshold = moderate_confidence_threshold
     run_config.high_confidence_threshold = high_confidence_threshold
     run_config.n_lookbacks = n_lookbacks
+    run_config.lookback_strategy = lookback_strategy
     run_config.confirmation_strategy = confirmation_strategy
     run_config.water_mask_path = water_mask_path
     run_config.product_dst_dir = product_dst_dir
