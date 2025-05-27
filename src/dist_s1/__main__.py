@@ -158,6 +158,29 @@ def common_options(func: Callable) -> Callable:
         required=False,
         help='Path to Transformer model weights file.',
     )
+    @click.option(
+        '--stride_for_norm_param_estimation',
+        type=int,
+        default=16,
+        required=False,
+        help='Batch size for norm param. Number of pixels the'
+        ' convolutional filter moves across the input image at'
+        ' each step.'
+    )
+    @click.option(
+        '--batch_size_for_norm_param_estimation',
+        type=int,
+        default=32,
+        required=False,
+        help='Batch size for norm param estimation; Tune it according to resouces i.e. memory.',
+    )
+    @click.option(
+        '--optimize',
+        type=bool,
+        default=True,
+        required=False,
+        help='Flag to enable compilation duringe execution.',
+    )
     @functools.wraps(func)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         return func(*args, **kwargs)
@@ -200,6 +223,9 @@ def run_sas_prep(
     model_source: str | None,
     model_cfg_path: str | Path | None,
     model_wts_path: str | Path | None,
+    stride_for_norm_param_estimation: int = 16,
+    batch_size_for_norm_param_estimation: int = 32,
+    optimize: bool = True
 ) -> None:
     """Run SAS prep workflow."""
     run_config = run_dist_s1_sas_prep_workflow(
@@ -226,6 +252,9 @@ def run_sas_prep(
         model_source=model_source,
         model_cfg_path=model_cfg_path,
         model_wts_path=model_wts_path,
+        stride_for_norm_param_estimation=stride_for_norm_param_estimation,
+        batch_size_for_norm_param_estimation=batch_size_for_norm_param_estimation,
+        optimize=optimize
     )
     run_config.to_yaml(runconfig_path)
 
@@ -266,6 +295,9 @@ def run(
     model_source: str | None,
     model_cfg_path: str | Path | None,
     model_wts_path: str | Path | None,
+    stride_for_norm_param_estimation: int = 16,
+    batch_size_for_norm_param_estimation: int = 32,
+    optimize: bool = True
 ) -> str:
     """Localize data and run dist_s1_workflow."""
     return run_dist_s1_workflow(
@@ -292,6 +324,9 @@ def run(
         model_source=model_source,
         model_cfg_path=model_cfg_path,
         model_wts_path=model_wts_path,
+        stride_for_norm_param_estimation=stride_for_norm_param_estimation,
+        batch_size_for_norm_param_estimation=batch_size_for_norm_param_estimation,
+        optimize=optimize
     )
 
 
