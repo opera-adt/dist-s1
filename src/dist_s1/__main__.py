@@ -13,6 +13,13 @@ P = ParamSpec('P')  # Captures all parameter types
 R = TypeVar('R')  # Captures the return type
 
 
+def parse_int_list(ctx: click.Context, param: click.Parameter, value: str) -> list[int]:
+    try:
+        return [int(x.strip()) for x in value.split(',')]
+    except Exception as e:
+        raise click.BadParameter(f"Invalid list format: {value}. Expected comma-separated integers (e.g., 4,4,2).")
+
+
 @click.group()
 def cli() -> None:
     """CLI for dist-s1 workflows."""
@@ -89,14 +96,31 @@ def common_options(func: Callable) -> Callable:
         '--lookback_strategy',
         type=click.Choice(['multi_window', 'immediate_lookback']),
         required=False,
-        default='multi_window',
+        default='immediate_lookback',
         help='Options to use for lookback strategy.',
+    )
+    @click.option(
+        '--max_pre_imgs_per_burst_mw',
+        default='5,5',
+        callback=parse_int_list,
+        required=False,
+        show_default=True,
+        help='Comma-separated list of integers (e.g., --max_pre_imgs_per_burst_mw 4,4,2).',
+    )
+    @click.option(
+        '--delta_lookback_days_mw',
+        default='730,365',
+        callback=parse_int_list,
+        required=False,
+        show_default=True,
+        help='Comma-separated list of integers (e.g., --delta_lookback_days_mw 730,365,0). '
+             'Provide list values in order of older to recent lookback days.',
     )
     @click.option(
         '--confirmation_strategy',
         type=click.Choice(['compute_baseline', 'use_prev_product']),
         required=False,
-        default='use_prev_product',
+        default='compute_baseline',
         help='Options to use for confirmation strategy.',
     )
     @click.option(
@@ -202,6 +226,19 @@ def common_options(func: Callable) -> Callable:
     return wrapper
 
 
+# Load parameter as list of integers
+@cli.command()
+@common_options
+def parse_pre_imgs_per_burst_mw(max_pre_imgs_per_burst_mw: list[int], **kwargs: dict[str, object]) -> None:
+    print("Parsed list:", max_pre_imgs_per_burst_mw)
+
+
+@cli.command()
+@common_options
+def parse_delta_lookback_days_mw(delta_lookback_days_mw: list[int], **kwargs: dict[str, object]) -> None:
+    print("Parsed list:", delta_lookback_days_mw)
+
+
 # SAS Prep Workflow (No Internet Access)
 @cli.command(name='run_sas_prep')
 @click.option(
@@ -226,6 +263,8 @@ def run_sas_prep(
     runconfig_path: str | Path,
     n_lookbacks: int,
     lookback_strategy: str,
+    delta_lookback_days_mw: list[int],
+    max_pre_imgs_per_burst_mw: list[int],
     confirmation_strategy: str,
     dst_dir: str | Path,
     water_mask_path: str | Path | None,
@@ -259,6 +298,8 @@ def run_sas_prep(
         water_mask_path=water_mask_path,
         n_lookbacks=n_lookbacks,
         lookback_strategy=lookback_strategy,
+        max_pre_imgs_per_burst_mw=max_pre_imgs_per_burst_mw,
+        delta_lookback_days_mw=delta_lookback_days_mw,
         confirmation_strategy=confirmation_strategy,
         product_dst_dir=product_dst_dir,
         bucket=bucket,
@@ -304,6 +345,8 @@ def run(
     apply_water_mask: bool,
     n_lookbacks: int,
     lookback_strategy: str,
+    delta_lookback_days_mw: list[int],
+    max_pre_imgs_per_burst_mw: list[int],
     confirmation_strategy: str,
     product_dst_dir: str | Path | None,
     bucket: str | None,
@@ -335,6 +378,8 @@ def run(
         water_mask_path=water_mask_path,
         n_lookbacks=n_lookbacks,
         lookback_strategy=lookback_strategy,
+        max_pre_imgs_per_burst_mw=max_pre_imgs_per_burst_mw,
+        delta_lookback_days_mw=delta_lookback_days_mw,
         confirmation_strategy=confirmation_strategy,
         product_dst_dir=product_dst_dir,
         bucket=bucket,

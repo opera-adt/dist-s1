@@ -124,10 +124,10 @@ def run_dist_s1_localization_workflow(
     mgrs_tile_id: str,
     post_date: str | datetime,
     track_number: int,
-    lookback_strategy: str = 'multi_window',
+    lookback_strategy: str = 'immediate_lookback',
     post_date_buffer_days: int = 1,
     max_pre_imgs_per_burst_mw: list[int] = [5, 5],
-    delta_lookback_days_mw: list[int] = [365 * 2, 365 * 1],
+    delta_lookback_days_mw: list[int] = [730, 365],
     dst_dir: str | Path = 'out',
     input_data_dir: str | Path | None = None,
     apply_water_mask: bool = True,
@@ -188,16 +188,16 @@ def run_despeckle_workflow(run_config: RunConfigData) -> None:
 
 
 def _process_normal_params(
-        path_data: dict, 
-        memory_strategy: str, 
-        device: str, 
-        model_source: str, 
-        model_cfg_path: Path, 
-        model_wts_path: Path,
-        batch_size: int, 
-        stride: int, 
-        optimize: bool
-    ) -> None:
+    path_data: dict,
+    memory_strategy: str,
+    device: str,
+    model_source: str,
+    model_cfg_path: Path,
+    model_wts_path: Path,
+    batch_size: int,
+    stride: int,
+    optimize: bool,
+) -> None:
     return compute_normal_params_per_burst_and_serialize(
         path_data['copol_paths_pre'],
         path_data['crosspol_paths_pre'],
@@ -212,7 +212,7 @@ def _process_normal_params(
         model_wts_path=model_wts_path,
         batch_size=batch_size,
         stride=stride,
-        optimize=optimize
+        optimize=optimize,
     )
 
 
@@ -259,7 +259,7 @@ def run_normal_param_estimation_workflow(run_config: RunConfigData) -> None:
                 model_wts_path=run_config.model_wts_path,
                 stride=run_config.stride_for_norm_param_estimation,
                 batch_size=run_config.batch_size_for_norm_param_estimation,
-                optimize=run_config.optimize
+                optimize=run_config.optimize,
             )
     else:
         if run_config.device in ('cuda', 'mps'):
@@ -273,9 +273,9 @@ def run_normal_param_estimation_workflow(run_config: RunConfigData) -> None:
             model_source=run_config.model_source,
             model_cfg_path=run_config.model_cfg_path,
             model_wts_path=run_config.model_wts_path,
-            stride=run_config.stride_for_norm_param_estimation, 
+            stride=run_config.stride_for_norm_param_estimation,
             optimize=run_config.optimize,
-            batch_size=run_config.batch_size_for_norm_param_estimation
+            batch_size=run_config.batch_size_for_norm_param_estimation,
         )
 
         # Start a pool of workers
@@ -350,7 +350,7 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
         # This will have the labels of the final disturbance map (see constants.py and the function itself)
         aggregate_burst_disturbance_over_lookbacks_and_serialize(
             disturbance_paths, time_aggregated_disturbance_path, run_config.n_lookbacks
-        )        
+        )
 
 
 def run_disturbance_merge_workflow(run_config: RunConfigData) -> None:
@@ -392,23 +392,23 @@ def run_disturbance_confirmation(run_config: RunConfigData) -> None:
             'path_dist_last_date',
         ]
         prev_prod_paths = df_pre_dist_products[ordered_columns].values.flatten().tolist()
-    
+
     final_unformated_conf_tif_paths = [
-    run_config.final_unformatted_tif_paths['dist_status_path'],
-    run_config.final_unformatted_tif_paths['dist_max_path'],
-    run_config.final_unformatted_tif_paths['dist_conf_path'],
-    run_config.final_unformatted_tif_paths['dist_date_path'],
-    run_config.final_unformatted_tif_paths['dist_count_path'],
-    run_config.final_unformatted_tif_paths['dist_perc_path'],
-    run_config.final_unformatted_tif_paths['dist_dur_path'],
-    run_config.final_unformatted_tif_paths['dist_last_date_path'],
+        run_config.final_unformatted_tif_paths['dist_status_path'],
+        run_config.final_unformatted_tif_paths['dist_max_path'],
+        run_config.final_unformatted_tif_paths['dist_conf_path'],
+        run_config.final_unformatted_tif_paths['dist_date_path'],
+        run_config.final_unformatted_tif_paths['dist_count_path'],
+        run_config.final_unformatted_tif_paths['dist_perc_path'],
+        run_config.final_unformatted_tif_paths['dist_dur_path'],
+        run_config.final_unformatted_tif_paths['dist_last_date_path'],
     ]
-    out_pattern_sample = run_config.product_data_model.layer_path_dict['DIST-GEN-STATUS']
+    out_pattern_sample = run_config.product_data_model.layer_path_dict['GEN-DIST-STATUS']
     compute_tile_disturbance_using_previous_product_and_serialize(
         dist_metric_path=run_config.final_unformatted_tif_paths['metric_status_path'],
-        dist_metric_date = out_pattern_sample,
+        dist_metric_date=out_pattern_sample,
         out_path_list=final_unformated_conf_tif_paths,
-        previous_dist_arr_path_list=prev_prod_paths
+        previous_dist_arr_path_list=prev_prod_paths,
     )
 
 
@@ -441,12 +441,12 @@ def run_dist_s1_packaging_workflow(run_config: RunConfigData) -> Path:
         print('Using previous product for confirmation')
         run_disturbance_confirmation(run_config)
         package_conf_db_disturbance_tifs(run_config)
-        
+
         product_data = run_config.product_data_model
         product_data.validate_conf_db_tif_layer_dtypes()
         product_data.validate_conf_db_layer_paths()
-    
-    generate_browse_image(run_config) 
+
+    generate_browse_image(run_config)
 
 
 def run_dist_s1_sas_prep_workflow(
@@ -462,10 +462,10 @@ def run_dist_s1_sas_prep_workflow(
     tqdm_enabled: bool = True,
     apply_water_mask: bool = True,
     n_lookbacks: int = 3,
-    lookback_strategy: str = 'multi_window',
+    lookback_strategy: str = 'immediate_lookback',
     max_pre_imgs_per_burst_mw: list[int] = [5, 5],
-    delta_lookback_days_mw: list[int] = [365*2, 365*1],
-    confirmation_strategy: str = 'use_prev_product',
+    delta_lookback_days_mw: list[int] = [730, 365],
+    confirmation_strategy: str = 'compute_baseline',
     water_mask_path: str | Path | None = None,
     product_dst_dir: str | Path | None = None,
     bucket: str | None = None,
@@ -479,7 +479,7 @@ def run_dist_s1_sas_prep_workflow(
     model_wts_path: str | Path | None = None,
     stride_for_norm_param_estimation: int = 16,
     batch_size_for_norm_param_estimation: int = 32,
-    optimize: bool = True
+    optimize: bool = True,
 ) -> RunConfigData:
     run_config = run_dist_s1_localization_workflow(
         mgrs_tile_id,
@@ -543,7 +543,7 @@ def run_dist_s1_workflow(
     tqdm_enabled: bool = True,
     apply_water_mask: bool = True,
     n_lookbacks: int = 3,
-    confirmation_strategy: str = 'use_prev_product',
+    confirmation_strategy: str = 'compute_baseline',
     product_dst_dir: str | Path | None = None,
     bucket: str | None = None,
     bucket_prefix: str = '',
@@ -556,7 +556,7 @@ def run_dist_s1_workflow(
     model_wts_path: str | Path | None = None,
     stride_for_norm_param_estimation: int = 16,
     batch_size_for_norm_param_estimation: int = 32,
-    optimize: bool = True
+    optimize: bool = True,
 ) -> Path:
     run_config = run_dist_s1_sas_prep_workflow(
         mgrs_tile_id,
@@ -585,7 +585,7 @@ def run_dist_s1_workflow(
         model_wts_path=model_wts_path,
         stride_for_norm_param_estimation=stride_for_norm_param_estimation,
         batch_size_for_norm_param_estimation=batch_size_for_norm_param_estimation,
-        optimize=optimize
+        optimize=optimize,
     )
     _ = run_dist_s1_sas_workflow(run_config)
 

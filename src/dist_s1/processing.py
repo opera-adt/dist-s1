@@ -70,8 +70,12 @@ def compute_normal_params_per_burst_and_serialize(
 
     if model_source == 'external':
         model = load_transformer_model(
-            model_token=model_source, model_cfg_path=model_cfg_path, model_wts_path=model_wts_path, 
-            device=device, optimize=optimize, batch_size=batch_size
+            model_token=model_source,
+            model_cfg_path=model_cfg_path,
+            model_wts_path=model_wts_path,
+            device=device,
+            optimize=optimize,
+            batch_size=batch_size,
         )
     else:
         model = load_transformer_model(device=device, optimize=optimize, batch_size=batch_size)
@@ -89,7 +93,12 @@ def compute_normal_params_per_burst_and_serialize(
         check_profiles_match(p_ref, p_crosspol)
 
     logits_mu, logits_sigma = estimate_normal_params_of_logits(
-        model, arrs_copol, arrs_crosspol, memory_strategy=memory_strategy, device=device, stride=stride,
+        model,
+        arrs_copol,
+        arrs_crosspol,
+        memory_strategy=memory_strategy,
+        device=device,
+        stride=stride,
         batch_size=batch_size,
     )
     logits_mu_copol, logits_mu_crosspol = logits_mu[0, ...], logits_mu[1, ...]
@@ -281,7 +290,7 @@ def compute_tile_disturbance_using_previous_product_and_serialize(
 ) -> None:
     # Status codes
     NODIST, FIRSTLO, PROVLO, CONFLO, FIRSTHI, PROVHI, CONFHI, CONFLOFIN, CONFHIFIN, NODATA = range(10)
-    NODATA = 255 # right now this function is not used, check the function.  
+    NODATA = 255  # right now this function is not used, check the function.
 
     # Get dist_date from a sample path pattern
     dist_date = datetime.datetime.strptime(Path(dist_metric_date).name.split('_')[4], '%Y%m%dT%H%M%SZ')
@@ -293,7 +302,7 @@ def compute_tile_disturbance_using_previous_product_and_serialize(
 
     # Initialize or load previous arrays
     if previous_dist_arr_path_list is None:
-        print("This is a first product tile with date", dist_date)
+        print('This is a first product tile with date', dist_date)
         status = np.full((rows, cols), 255, dtype=np.uint8)
         max_anom = np.full((rows, cols), -1, dtype=np.int16)
         conf = np.zeros((rows, cols), dtype=np.int16)
@@ -313,7 +322,7 @@ def compute_tile_disturbance_using_previous_product_and_serialize(
         dur, _ = open_one_ds(previous_dist_arr_path_list[6])
         lastObs, _ = open_one_ds(previous_dist_arr_path_list[7])
     else:
-        raise ValueError("Missing previous product data for non-first acquisitions.")
+        raise ValueError('Missing previous product data for non-first acquisitions.')
 
     valid = currAnom >= 0
 
@@ -329,9 +338,7 @@ def compute_tile_disturbance_using_previous_product_and_serialize(
 
     with np.errstate(divide='ignore', invalid='ignore'):
         prevnocount = np.where(
-            (percent > 0) & (percent <= 100),
-            ((100 - percent) / percent * count).astype(np.int32),
-            0
+            (percent > 0) & (percent <= 100), ((100 - percent) / percent * count).astype(np.int32), 0
         )
 
     disturbed = (currAnom >= lowthresh) & valid
@@ -345,16 +352,18 @@ def compute_tile_disturbance_using_previous_product_and_serialize(
     max_anom[continuing] = np.maximum(max_anom[continuing], currAnom[continuing])
     can_increment = continuing & (count < max_obs_num_year)
     count[can_increment] += 1
-    percent[can_increment] = ((count[can_increment] * 100) /
-                              (count[can_increment] + prevnocount[can_increment])).astype(np.uint8)
+    percent[can_increment] = (
+        (count[can_increment] * 100) / (count[can_increment] + prevnocount[can_increment])
+    ).astype(np.uint8)
 
     dur[disturbed] = currDate - date[disturbed] + 1
 
     not_disturbed = (~disturbed) & valid
     adjust_percent = not_disturbed & (percent > 0) & (percent <= 100) & (count < max_obs_num_year + 1)
     prevcount = count.copy()
-    percent[adjust_percent] = ((count[adjust_percent] * 100) /
-                               (prevcount[adjust_percent] + prevnocount[adjust_percent] + 1)).astype(np.uint8)
+    percent[adjust_percent] = (
+        (count[adjust_percent] * 100) / (prevcount[adjust_percent] + prevnocount[adjust_percent] + 1)
+    ).astype(np.uint8)
 
     status_reset = not_disturbed & (status == NODATA)
     status[status_reset] = NODIST
@@ -371,8 +380,9 @@ def compute_tile_disturbance_using_previous_product_and_serialize(
     prevmean[update_conf] = conf[update_conf] / (count[update_conf] ** 2)
     mean = np.zeros_like(prevmean)
     denom = count + prevnocount + 1
-    mean[update_conf] = (prevmean[update_conf] * (count[update_conf] + prevnocount[update_conf]) +
-                         currAnomConf[update_conf]) / denom[update_conf]
+    mean[update_conf] = (
+        prevmean[update_conf] * (count[update_conf] + prevnocount[update_conf]) + currAnomConf[update_conf]
+    ) / denom[update_conf]
     tempconf = (mean * count * count).astype(np.int32)
     conf[update_conf] = np.clip(tempconf[update_conf], 0, conf_upper_lim)
 
@@ -380,14 +390,13 @@ def compute_tile_disturbance_using_previous_product_and_serialize(
     conf[new_conf] = np.minimum(currAnom[new_conf], metric_value_upper_lim)
 
     lastAnomDate = date + dur - 1
-    nocount = ((lastObs > lastAnomDate).astype(np.int8) +
-               (currAnom < lowthresh).astype(np.int8))
+    nocount = (lastObs > lastAnomDate).astype(np.int8) + (currAnom < lowthresh).astype(np.int8)
 
     updating = (status <= 6) | (status == NODATA)
     must_finish = updating & (
-        (nocount == 2) |
-        ((currDate - lastAnomDate) >= nodaylimit) & (lastAnomDate > 0) |
-        ((dur == 1) & (currAnom < lowthresh))
+        (nocount == 2)
+        | ((currDate - lastAnomDate) >= nodaylimit) & (lastAnomDate > 0)
+        | ((dur == 1) & (currAnom < lowthresh))
     )
 
     status[must_finish & (status == CONFLO)] = CONFLOFIN
@@ -420,14 +429,14 @@ def compute_tile_disturbance_using_previous_product_and_serialize(
 
     status[updating & (max_anom < lowthresh)] = NODIST
     lastObs[valid] = currDate
-    
+
     p_dist_int8 = anom_prof.copy()
     p_dist_int8['nodata'] = 255
     p_dist_int8['dtype'] = np.uint8
 
     p_dist_int16 = anom_prof.copy()
     p_dist_int16['nodata'] = 255
-    p_dist_int16['dtype'] = np.int16 
+    p_dist_int16['dtype'] = np.int16
 
     # Serialize output
     serialize_one_2d_ds(status, p_dist_int8, out_path_list[0])

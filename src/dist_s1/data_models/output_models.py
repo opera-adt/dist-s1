@@ -10,28 +10,29 @@ from dist_s1.constants import PRODUCT_VERSION
 
 
 TIF_LAYER_DTYPES = {
-    'DIST-GEN-STATUS': 'uint8',
+    'GEN-DIST-STATUS': 'uint8',
     'GEN-METRIC': 'float32',
-    'DIST-GEN-STATUS-ACQ': 'uint8',
-    'DIST-GEN-MAX': 'int16',
-    'DIST-GEN-CONF': 'int16',
-    'DIST-GEN-DATE': 'int16',
-    'DIST-GEN-COUNT': 'uint8',
-    'DIST-GEN-PERC': 'uint8',
-    'DIST-GEN-DUR': 'int16',
-    'DIST-GEN-LAST-DATE': 'int16',
+    'GEN-DIST-STATUS-ACQ': 'uint8',
+    'GEN-METRIC-MAX': 'int16',
+    'GEN-DIST-CONF': 'int16',
+    'GEN-DIST-DATE': 'int16',
+    'GEN-DIST-COUNT': 'uint8',
+    'GEN-DIST-PERC': 'uint8',
+    'GEN-DIST-DUR': 'int16',
+    'GEN-DIST-LAST-DATE': 'int16',
 }
-COMP_BASELINE_LAYERS = {"DIST-GEN-STATUS", "GEN-METRIC", "DIST-GEN-STATUS-ACQ"}
+COMP_BASELINE_LAYERS = {'GEN-DIST-STATUS', 'GEN-METRIC', 'GEN-DIST-STATUS-ACQ'}
 CONF_DB_LAYERS = {
-    "DIST-GEN-STATUS", 
-    "GEN-METRIC", 
-    "DIST-GEN-MAX", 
-    "DIST-GEN-CONF", 
-    "DIST-GEN-DATE", 
-    "DIST-GEN-COUNT", 
-    "DIST-GEN-PERC", 
-    "DIST-GEN-DUR", 
-    "DIST-GEN-LAST-DATE"}
+    'GEN-DIST-STATUS',
+    'GEN-METRIC',
+    'GEN-METRIC-MAX',
+    'GEN-DIST-CONF',
+    'GEN-DIST-DATE',
+    'GEN-DIST-COUNT',
+    'GEN-DIST-PERC',
+    'GEN-DIST-DUR',
+    'GEN-DIST-LAST-DATE',
+}
 TIF_LAYERS = TIF_LAYER_DTYPES.keys()
 EXPECTED_FORMAT_STRING = (
     'OPERA_L3_DIST-ALERT-S1_T{mgrs_tile_id}_{acq_datetime}_{proc_datetime}_S1_30_v{PRODUCT_VERSION}'
@@ -233,7 +234,7 @@ class ProductDirectoryData(BaseModel):
                         failed_layers.append(layer)
         return len(failed_layers) == 0
 
-    # Validate CONF DB layers. To do: fix the repeated code for a better method 
+    # Validate CONF DB layers. To do: fix the repeated code for a better method
     def validate_conf_db_layer_paths(self) -> bool:
         failed_layers = []
         for layer, path in self.layer_path_dict.items():

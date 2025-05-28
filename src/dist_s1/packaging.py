@@ -93,11 +93,11 @@ def package_disturbance_tifs(run_config: RunConfigData) -> None:
 
     product_data = run_config.product_data_model
 
-    serialize_one_2d_ds(X_dist, p_dist, product_data.layer_path_dict['DIST-GEN-STATUS'], colormap=DIST_CMAP, tags=tags)
+    serialize_one_2d_ds(X_dist, p_dist, product_data.layer_path_dict['GEN-DIST-STATUS'], colormap=DIST_CMAP, tags=tags)
     serialize_one_2d_ds(
         X_dist_delta0,
         p_dist_delta0,
-        product_data.layer_path_dict['DIST-GEN-STATUS-ACQ'],
+        product_data.layer_path_dict['GEN-DIST-STATUS-ACQ'],
         colormap=DIST_CMAP,
         tags=tags,
     )
@@ -108,16 +108,16 @@ def package_conf_db_disturbance_tifs(run_config: RunConfigData) -> None:
     print('Packaging CONF DB disturbance tifs')
     # Map from field name in run_config to output key in product_data.layer_path_dict
     disturbance_layers = [
-    {'key': 'dist_status_path', 'label': 'DIST-GEN-STATUS'},
-    {'key': 'alert_delta0_path', 'label': 'DIST-GEN-STATUS-ACQ'},
-    {'key': 'dist_max_path', 'label': 'DIST-GEN-MAX'},
-    {'key': 'dist_conf_path', 'label': 'DIST-GEN-CONF'},
-    {'key': 'dist_date_path', 'label': 'DIST-GEN-DATE'},
-    {'key': 'dist_count_path', 'label': 'DIST-GEN-COUNT'},
-    {'key': 'dist_perc_path', 'label': 'DIST-GEN-PERC'},
-    {'key': 'dist_dur_path', 'label': 'DIST-GEN-DUR'},
-    {'key': 'dist_last_date_path', 'label': 'DIST-GEN-LAST-DATE'},
-    {'key': 'metric_status_path', 'label': 'GEN-METRIC'},
+        {'key': 'dist_status_path', 'label': 'GEN-DIST-STATUS'},
+        {'key': 'alert_delta0_path', 'label': 'GEN-DIST-STATUS-ACQ'},
+        {'key': 'dist_max_path', 'label': 'GEN-METRIC-MAX'},
+        {'key': 'dist_conf_path', 'label': 'GEN-DIST-CONF'},
+        {'key': 'dist_date_path', 'label': 'GEN-DIST-DATE'},
+        {'key': 'dist_count_path', 'label': 'GEN-DIST-COUNT'},
+        {'key': 'dist_perc_path', 'label': 'GEN-DIST-PERC'},
+        {'key': 'dist_dur_path', 'label': 'GEN-DIST-DUR'},
+        {'key': 'dist_last_date_path', 'label': 'GEN-DIST-LAST-DATE'},
+        {'key': 'metric_status_path', 'label': 'GEN-METRIC'},
     ]
 
     X_dict = {}
@@ -148,13 +148,17 @@ def package_conf_db_disturbance_tifs(run_config: RunConfigData) -> None:
     for item in disturbance_layers:
         key = item['key']
         label = item['label']
-        
+
         X = X_dict[key]
         p = p_dict[key]
         out_path = product_data.layer_path_dict[label]
+        if 'STATUS' in label:
+            colormap = DIST_CMAP
+        else:
+            colormap = None
         print('Exporting', out_path)
-        
-        serialize_one_2d_ds(X, p, out_path, colormap=DIST_CMAP, tags=tags)
+
+        serialize_one_2d_ds(X, p, out_path, colormap=colormap, tags=tags)
 
 
 def generate_browse_image(run_config: RunConfigData) -> None:

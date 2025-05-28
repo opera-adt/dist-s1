@@ -116,15 +116,15 @@ def check_filename_format(filename: str, polarization: str) -> None:
 
 def check_dist_product_filename_format(filename: str) -> None:
     valid_suffixes = (
-        'DIST-GEN-STATUS.tif',
-        'DIST-GEN-MAX.tif',
-        'DIST-GEN-CONF.tif',
-        'DIST-GEN-DATE.tif',
-        'DIST-GEN-COUNT.tif',
-        'DIST-GEN-PERC.tif',
-        'DIST-GEN-DUR.tif',
-        'DIST-GEN-LAST-DATE.tif',
-        'DIST-GEN-STATUS.tif',
+        'GEN-DIST-STATUS.tif',
+        'GEN-METRIC-MAX.tif',
+        'GEN-DIST-CONF.tif',
+        'GEN-DIST-DATE.tif',
+        'GEN-DIST-COUNT.tif',
+        'GEN-DIST-PERC.tif',
+        'GEN-DIST-DUR.tif',
+        'GEN-DIST-LAST-DATE.tif',
+        'GEN-DIST-STATUS.tif',
     )
 
     tokens = filename.split('_')
@@ -137,9 +137,7 @@ def check_dist_product_filename_format(filename: str) -> None:
     if tokens[2] != 'DIST-ALERT-S1':
         raise ValueError(f"File '{filename}' third token is not 'DIST-ALERT-S1'")
     if not any(filename.endswith(suffix) for suffix in valid_suffixes):
-        raise ValueError(
-            f"Filename '{filename}' must be a valid DIST-ALERT-S1 product: {valid_suffixes}"
-        )
+        raise ValueError(f"Filename '{filename}' must be a valid DIST-ALERT-S1 product: {valid_suffixes}")
     return True
 
 
@@ -187,29 +185,36 @@ class RunConfigData(BaseModel):
         ge=1,
     )
     lookback_strategy: str = Field(
-        default='multi_window',
+        default='immediate_lookback',
         pattern='^(multi_window|immediate_lookback)$',
     )
     confirmation_strategy: str = Field(
-        default='use_prev_product',
+        default='compute_baseline',
         pattern='^(compute_baseline|use_prev_product)$',
     )
     # Flag to enable optimizations. False, load the model and use it.
     # True, load the model and compile for CPU or GPU
     optimize: bool = Field(default=True)
     n_lookbacks: int = Field(default=3, ge=1, le=3)
-    max_pre_imgs_per_burst_mw: list[int] = [5, 5]
-    delta_lookback_days_mw: list[int] = [365*2, 365*1]
+    max_pre_imgs_per_burst_mw: list[int] = Field(
+        default=[5, 5],
+        description='Max number of pre-images per burst for multi-window lookback strategy',
+    )
+    delta_lookback_days_mw: list[int] = Field(
+        default=[730, 365],
+        description='Delta lookback days for multi-window lookback strategy',
+    )
     # This is where default thresholds are set!
     moderate_confidence_threshold: float = Field(default=3.5, ge=0.0, le=15.0)
     high_confidence_threshold: float = Field(default=5.5, ge=0.0, le=15.0)
     nodaylimit: int = Field(default=18)
-    max_obs_num_year: int = Field(default=253, description="Max observation number per year")
-    conf_upper_lim: int = Field(default=32000, description="Confidence upper limit")
-    conf_thresh: float = Field(default=3**2 * 3.5, description="Confidence threshold")
-    metric_value_upper_lim: float = Field(default=100, description="Metric upper limit")
-    base_date: datetime = Field(default=datetime(2020, 12, 31), 
-                                description="Reference date used to calculate the number of days")
+    max_obs_num_year: int = Field(default=253, description='Max observation number per year')
+    conf_upper_lim: int = Field(default=32000, description='Confidence upper limit')
+    conf_thresh: float = Field(default=3**2 * 3.5, description='Confidence threshold')
+    metric_value_upper_lim: float = Field(default=100, description='Metric upper limit')
+    base_date: datetime = Field(
+        default=datetime(2020, 12, 31), description='Reference date used to calculate the number of days'
+    )
     product_dst_dir: Path | str | None = None
     bucket: str | None = None
     bucket_prefix: str = ''
@@ -248,13 +253,13 @@ class RunConfigData(BaseModel):
         if memory_strategy not in ['high', 'low']:
             raise ValueError("Memory strategy must be in ['high', 'low']")
         return memory_strategy
-    
+
     @field_validator('lookback_strategy')
     def validate_lookback_strategy(cls, lookback_strategy: str) -> str:
         if lookback_strategy not in ['multi_window', 'immediate_lookback']:
             raise ValueError("Confirmation strategy must be in ['multi_window', 'immediate_lookback']")
         return lookback_strategy
-    
+
     @field_validator('confirmation_strategy')
     def validate_confirmation_strategy(cls, confirmation_strategy: str) -> str:
         if confirmation_strategy not in ['compute_baseline', 'use_prev_product']:
@@ -287,7 +292,7 @@ class RunConfigData(BaseModel):
                 bad_paths_str = 'The following paths do not exist: ' + ', '.join(str(path) for path in bad_paths)
                 raise ValueError(bad_paths_str)
         return paths
-    
+
     @field_validator('pre_dist_s1_product', mode='before')
     def convert_pre_dist_s1_product_to_paths(
         cls, values: list[Path | str] | None, info: ValidationInfo
@@ -299,7 +304,7 @@ class RunConfigData(BaseModel):
         if info.data.get('check_input_paths', True):
             bad_paths = [path for path in paths if not path.exists()]
             if bad_paths:
-                raise ValueError(f"The following paths do not exist: {', '.join(str(p) for p in bad_paths)}")
+                raise ValueError(f'The following paths do not exist: {", ".join(str(p) for p in bad_paths)}')
         return paths
 
     @field_validator('dst_dir', mode='before')
@@ -341,12 +346,12 @@ class RunConfigData(BaseModel):
         if rtc_copol is not None and len(rtc_copol) != len(rtc_crosspol):
             raise ValueError("The lists 'pre_rtc_copol' and 'pre_rtc_crosspol' must have the same length.")
         return rtc_crosspol
-    
+
     @field_validator('pre_dist_s1_product')
     def validate_pre_dist_s1_product_length(cls, values: list | None, info: ValidationInfo) -> list | None:
         """If pre_dist_s1_product is not None, ensure it has exactly 8 elements."""
         if values is not None and len(values) != 8:
-            raise ValueError(f"pre_dist_s1_product must have exactly 8 elements, got {len(values)}.")
+            raise ValueError(f'pre_dist_s1_product must have exactly 8 elements, got {len(values)}.')
         return values
 
     @field_validator('pre_rtc_copol', 'pre_rtc_crosspol', 'post_rtc_copol', 'post_rtc_crosspol')
@@ -355,7 +360,7 @@ class RunConfigData(BaseModel):
         for file_path in values:
             check_filename_format(file_path.name, field.field_name.split('_')[-1])
         return values
-    
+
     @field_validator('pre_dist_s1_product')
     def check_dist_product_filename_format(cls, values: Path, field: ValidationInfo) -> None:
         """Check the previous DIST-S1 filename format to ensure correct structure and tokens."""
@@ -448,6 +453,8 @@ class RunConfigData(BaseModel):
         dst_dir: Path | str | None = Path('out'),
         apply_water_mask: bool = True,
         water_mask_path: Path | str | None = None,
+        max_pre_imgs_per_burst_mw: list[int] | None = None,
+        delta_lookback_days_mw: list[int] | None = None,
     ) -> 'RunConfigData':
         """Transform input table from dist-s1-enumerator into RunConfigData object.
 
@@ -464,6 +471,8 @@ class RunConfigData(BaseModel):
             dst_dir=dst_dir,
             apply_water_mask=apply_water_mask,
             water_mask_path=water_mask_path,
+            max_pre_imgs_per_burst_mw=max_pre_imgs_per_burst_mw,
+            delta_lookback_days_mw=delta_lookback_days_mw,
         )
         return runconfig_data
 
@@ -621,21 +630,20 @@ class RunConfigData(BaseModel):
             df = df.sort_values(by=['jpl_burst_id', 'acq_dt']).reset_index(drop=True)
             self._df_inputs = df
         return self._df_inputs.copy()
-    
 
     @property
     def df_pre_dist_products(self) -> pd.DataFrame:
         VALID_SUFFIXES = (
-            '_DIST-GEN-STATUS.tif',
-            '_DIST-GEN-MAX.tif',
-            '_DIST-GEN-CONF.tif',
-            '_DIST-GEN-DATE.tif',
-            '_DIST-GEN-COUNT.tif',
-            '_DIST-GEN-PERC.tif',
-            '_DIST-GEN-DUR.tif',
-            '_DIST-GEN-LAST-DATE.tif',
-            )
-        
+            '_GEN-DIST-STATUS.tif',
+            '_GEN-METRIC-MAX.tif',
+            '_GEN-DIST-CONF.tif',
+            '_GEN-DIST-DATE.tif',
+            '_GEN-DIST-COUNT.tif',
+            '_GEN-DIST-PERC.tif',
+            '_GEN-DIST-DUR.tif',
+            '_GEN-DIST-LAST-DATE.tif',
+        )
+
         if self._df_pre_dist_products is None:
             if not self.pre_dist_s1_product:
                 self._df_pre_dist_products = pd.DataFrame()
@@ -664,18 +672,18 @@ class RunConfigData(BaseModel):
                     rows.append(row)
                 else:
                     missing = [s for s in VALID_SUFFIXES if s not in files]
-                    raise ValueError(f"Missing files for {key}: {missing}")
+                    raise ValueError(f'Missing files for {key}: {missing}')
 
             # Rename columns to user-friendly names
             column_mapping = {
-                '_DIST-GEN-STATUS.tif': 'path_dist_status',
-                '_DIST-GEN-MAX.tif': 'path_dist_max',
-                '_DIST-GEN-CONF.tif': 'path_dist_conf',
-                '_DIST-GEN-DATE.tif': 'path_dist_date',
-                '_DIST-GEN-COUNT.tif': 'path_dist_count',
-                '_DIST-GEN-PERC.tif': 'path_dist_perc',
-                '_DIST-GEN-DUR.tif': 'path_dist_dur',
-                '_DIST-GEN-LAST-DATE.tif': 'path_dist_last_date',
+                '_GEN-DIST-STATUS.tif': 'path_dist_status',
+                '_GEN-METRIC-MAX.tif': 'path_dist_max',
+                '_GEN-DIST-CONF.tif': 'path_dist_conf',
+                '_GEN-DIST-DATE.tif': 'path_dist_date',
+                '_GEN-DIST-COUNT.tif': 'path_dist_count',
+                '_GEN-DIST-PERC.tif': 'path_dist_perc',
+                '_GEN-DIST-DUR.tif': 'path_dist_dur',
+                '_GEN-DIST-LAST-DATE.tif': 'path_dist_last_date',
             }
 
             df = pd.DataFrame(rows)
@@ -683,7 +691,6 @@ class RunConfigData(BaseModel):
             df = df.sort_values(by='product_key').reset_index(drop=True)
             self._df_pre_dist_products = df
             return self._df_pre_dist_products.copy()
-
 
     def model_post_init(self, __context: ValidationInfo) -> None:
         # Water mask control flow
