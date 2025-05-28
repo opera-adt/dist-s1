@@ -462,6 +462,10 @@ class RunConfigData(BaseModel):
         """
         df_pre = product_df[product_df.input_category == 'pre'].reset_index(drop=True)
         df_post = product_df[product_df.input_category == 'post'].reset_index(drop=True)
+        if max_pre_imgs_per_burst_mw is None:
+            max_pre_imgs_per_burst_mw = [5, 5]
+        if delta_lookback_days_mw is None:
+            delta_lookback_days_mw = [730, 365]
         runconfig_data = RunConfigData(
             pre_rtc_copol=df_pre.loc_path_copol.tolist(),
             pre_rtc_crosspol=df_pre.loc_path_crosspol.tolist(),
