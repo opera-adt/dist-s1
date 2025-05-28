@@ -455,6 +455,7 @@ class RunConfigData(BaseModel):
         water_mask_path: Path | str | None = None,
         max_pre_imgs_per_burst_mw: list[int] | None = None,
         delta_lookback_days_mw: list[int] | None = None,
+        confirmation_strategy: str = 'use_prev_product',
     ) -> 'RunConfigData':
         """Transform input table from dist-s1-enumerator into RunConfigData object.
 
@@ -477,6 +478,7 @@ class RunConfigData(BaseModel):
             water_mask_path=water_mask_path,
             max_pre_imgs_per_burst_mw=max_pre_imgs_per_burst_mw,
             delta_lookback_days_mw=delta_lookback_days_mw,
+            confirmation_strategy=confirmation_strategy,
         )
         return runconfig_data
 
