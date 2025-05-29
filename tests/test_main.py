@@ -47,6 +47,8 @@ def test_dist_s1_sas_main(
     runconfig_data.device = 'cpu'
     # Limit workers for CI environment
     runconfig_data.n_workers_for_despeckling = 4
+    # Use confirmation_strategy = use_prev_product for now while better tests added
+    runconfig_data.confirmation_strategy = 'use_prev_product'
     # We have a different product_dst_dir than the dst_dir called `tmp2`
     product_dst_dir = (test_dir / 'tmp2').resolve()
     runconfig_data.product_dst_dir = str(product_dst_dir)

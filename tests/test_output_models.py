@@ -45,7 +45,7 @@ def test_product_directory_data_from_product_path(test_dir: Path, test_opera_gol
 
     assert golden_data == copied_data
 
-    gen_status_path = [p for p in new_product_file_paths if p.name.endswith('DIST-GEN-STATUS.tif')][0]
+    gen_status_path = [p for p in new_product_file_paths if p.name.endswith('GEN-DIST-STATUS.tif')][0]
     with rasterio.open(gen_status_path) as src:
         p = src.profile
         t = src.tags()

@@ -154,7 +154,12 @@ def test_dist_s1_sas_workflow(
     df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
     assert tmp_dir.exists() and tmp_dir.is_dir()
 
-    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, apply_water_mask=False)
+    config = RunConfigData.from_product_df(
+        df_product,
+        dst_dir=tmp_dir,
+        apply_water_mask=False,
+        confirmation_strategy='use_prev_product',
+    )
 
     run_dist_s1_sas_workflow(config)
 
