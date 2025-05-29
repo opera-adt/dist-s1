@@ -157,7 +157,7 @@ class RunConfigData(BaseModel):
         pattern='^(best|cuda|mps|cpu)$',
     )
     memory_strategy: str | None = Field(
-        default='low',
+        default='high',
         pattern='^(high|low)$',
     )
     tqdm_enabled: bool = Field(default=True)
@@ -195,7 +195,7 @@ class RunConfigData(BaseModel):
     # Flag to enable optimizations. False, load the model and use it.
     # True, load the model and compile for CPU or GPU
     optimize: bool = Field(default=True)
-    n_lookbacks: int = Field(default=3, ge=1, le=3)
+    n_lookbacks: int = Field(default=1, ge=1, le=3)
     max_pre_imgs_per_burst_mw: list[int] = Field(
         default=[5, 5],
         description='Max number of pre-images per burst for multi-window lookback strategy',
