@@ -16,7 +16,7 @@ R = TypeVar('R')  # Captures the return type
 def parse_int_list(ctx: click.Context, param: click.Parameter, value: str) -> list[int]:
     try:
         return [int(x.strip()) for x in value.split(',')]
-    except Exception as e:
+    except Exception:
         raise click.BadParameter(f'Invalid list format: {value}. Expected comma-separated integers (e.g., 4,4,2).')
 
 
