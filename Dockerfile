@@ -32,7 +32,7 @@ COPY --chown=dist_user:dist_user . /home/ops/dist-s1/
 # RUN chmod -R 777 /home/ops
 
 # Create the environment with mamba
-RUN mamba env create -f /home/ops/dist-s1/environment_gpu.yml && \
+RUN mamba env create -f /home/ops/dist-s1/environment.yml && \
     conda clean -afy
 
 # Ensure that environment is activated on startup and interactive shell

@@ -10,9 +10,28 @@ from dist_s1.constants import PRODUCT_VERSION
 
 
 TIF_LAYER_DTYPES = {
-    'DIST-GEN-STATUS': 'uint8',
+    'GEN-DIST-STATUS': 'uint8',
     'GEN-METRIC': 'float32',
-    'DIST-GEN-STATUS-ACQ': 'uint8',
+    'GEN-DIST-STATUS-ACQ': 'uint8',
+    'GEN-METRIC-MAX': 'int16',
+    'GEN-DIST-CONF': 'int16',
+    'GEN-DIST-DATE': 'int16',
+    'GEN-DIST-COUNT': 'uint8',
+    'GEN-DIST-PERC': 'uint8',
+    'GEN-DIST-DUR': 'int16',
+    'GEN-DIST-LAST-DATE': 'int16',
+}
+COMP_BASELINE_LAYERS = {'GEN-DIST-STATUS', 'GEN-METRIC', 'GEN-DIST-STATUS-ACQ'}
+CONF_DB_LAYERS = {
+    'GEN-DIST-STATUS',
+    'GEN-METRIC',
+    'GEN-METRIC-MAX',
+    'GEN-DIST-CONF',
+    'GEN-DIST-DATE',
+    'GEN-DIST-COUNT',
+    'GEN-DIST-PERC',
+    'GEN-DIST-DUR',
+    'GEN-DIST-LAST-DATE',
 }
 TIF_LAYERS = TIF_LAYER_DTYPES.keys()
 EXPECTED_FORMAT_STRING = (
@@ -193,6 +212,8 @@ class ProductDirectoryData(BaseModel):
     def validate_layer_paths(self) -> bool:
         failed_layers = []
         for layer, path in self.layer_path_dict.items():
+            if layer not in COMP_BASELINE_LAYERS:
+                continue
             if not path.exists():
                 warn(f'Layer {layer} does not exist at path: {path}', UserWarning)
                 failed_layers.append(layer)
@@ -201,6 +222,34 @@ class ProductDirectoryData(BaseModel):
     def validate_tif_layer_dtypes(self) -> bool:
         failed_layers = []
         for layer, path in self.layer_path_dict.items():
+            if layer not in COMP_BASELINE_LAYERS:
+                continue
+            if path.suffix == '.tif':
+                with rasterio.open(path) as src:
+                    if src.dtypes[0] != TIF_LAYER_DTYPES[layer]:
+                        warn(
+                            f'Layer {layer} has incorrect dtype: {src.dtypes[0]}; should be: {TIF_LAYER_DTYPES[layer]}',
+                            UserWarning,
+                        )
+                        failed_layers.append(layer)
+        return len(failed_layers) == 0
+
+    # Validate CONF DB layers. To do: fix the repeated code for a better method
+    def validate_conf_db_layer_paths(self) -> bool:
+        failed_layers = []
+        for layer, path in self.layer_path_dict.items():
+            if layer not in CONF_DB_LAYERS:
+                continue
+            if not path.exists():
+                warn(f'Layer {layer} does not exist at path: {path}', UserWarning)
+                failed_layers.append(layer)
+        return len(failed_layers) == 0
+
+    def validate_conf_db_tif_layer_dtypes(self) -> bool:
+        failed_layers = []
+        for layer, path in self.layer_path_dict.items():
+            if layer not in CONF_DB_LAYERS:
+                continue
             if path.suffix == '.tif':
                 with rasterio.open(path) as src:
                     if src.dtypes[0] != TIF_LAYER_DTYPES[layer]:

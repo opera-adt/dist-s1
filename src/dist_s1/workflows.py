@@ -4,17 +4,19 @@ from pathlib import Path
 
 import pandas as pd
 import torch.multiprocessing as tmp
+import yaml
 from tqdm.auto import tqdm
 
 from dist_s1.aws import upload_product_to_s3
 from dist_s1.constants import MODEL_CONTEXT_LENGTH
 from dist_s1.data_models.runconfig_model import RunConfigData
 from dist_s1.localize_rtc_s1 import localize_rtc_s1
-from dist_s1.packaging import generate_browse_image, package_disturbance_tifs
+from dist_s1.packaging import generate_browse_image, package_conf_db_disturbance_tifs, package_disturbance_tifs
 from dist_s1.processing import (
     aggregate_burst_disturbance_over_lookbacks_and_serialize,
     compute_burst_disturbance_for_lookback_group_and_serialize,
     compute_normal_params_per_burst_and_serialize,
+    compute_tile_disturbance_using_previous_product_and_serialize,
     despeckle_and_serialize_rtc_s1,
     merge_burst_disturbances_and_serialize,
     merge_burst_metrics_and_serialize,
@@ -122,7 +124,10 @@ def run_dist_s1_localization_workflow(
     mgrs_tile_id: str,
     post_date: str | datetime,
     track_number: int,
+    lookback_strategy: str = 'immediate_lookback',
     post_date_buffer_days: int = 1,
+    max_pre_imgs_per_burst_mw: list[int] = [5, 5],
+    delta_lookback_days_mw: list[int] = [730, 365],
     dst_dir: str | Path = 'out',
     input_data_dir: str | Path | None = None,
     apply_water_mask: bool = True,
@@ -133,7 +138,10 @@ def run_dist_s1_localization_workflow(
         mgrs_tile_id,
         post_date,
         track_number,
+        lookback_strategy=lookback_strategy,
         post_date_buffer_days=post_date_buffer_days,
+        max_pre_imgs_per_burst_mw=max_pre_imgs_per_burst_mw,
+        delta_lookback_days_mw=delta_lookback_days_mw,
         dst_dir=dst_dir,
         input_data_dir=input_data_dir,
         apply_water_mask=apply_water_mask,
@@ -179,7 +187,17 @@ def run_despeckle_workflow(run_config: RunConfigData) -> None:
     )
 
 
-def _process_normal_params(path_data: dict, memory_strategy: str, device: str) -> None:
+def _process_normal_params(
+    path_data: dict,
+    memory_strategy: str,
+    device: str,
+    model_source: str,
+    model_cfg_path: Path,
+    model_wts_path: Path,
+    batch_size: int,
+    stride: int,
+    optimize: bool,
+) -> None:
     return compute_normal_params_per_burst_and_serialize(
         path_data['copol_paths_pre'],
         path_data['crosspol_paths_pre'],
@@ -189,6 +207,12 @@ def _process_normal_params(path_data: dict, memory_strategy: str, device: str) -
         path_data['output_sigma_crosspol_path'],
         memory_strategy=memory_strategy,
         device=device,
+        model_source=model_source,
+        model_cfg_path=model_cfg_path,
+        model_wts_path=model_wts_path,
+        batch_size=batch_size,
+        stride=stride,
+        optimize=optimize,
     )
 
 
@@ -230,6 +254,12 @@ def run_normal_param_estimation_workflow(run_config: RunConfigData) -> None:
                 path_data['output_sigma_crosspol_path'],
                 memory_strategy=run_config.memory_strategy,
                 device=run_config.device,
+                model_source=run_config.model_source,
+                model_cfg_path=run_config.model_cfg_path,
+                model_wts_path=run_config.model_wts_path,
+                stride=run_config.stride_for_norm_param_estimation,
+                batch_size=run_config.batch_size_for_norm_param_estimation,
+                optimize=run_config.optimize,
             )
     else:
         if run_config.device in ('cuda', 'mps'):
@@ -237,7 +267,15 @@ def run_normal_param_estimation_workflow(run_config: RunConfigData) -> None:
 
         # Create a partial function with the memory strategy and device
         worker_fn = partial(
-            _process_normal_params, memory_strategy=run_config.memory_strategy, device=run_config.device
+            _process_normal_params,
+            memory_strategy=run_config.memory_strategy,
+            device=run_config.device,
+            model_source=run_config.model_source,
+            model_cfg_path=run_config.model_cfg_path,
+            model_wts_path=run_config.model_wts_path,
+            stride=run_config.stride_for_norm_param_estimation,
+            optimize=run_config.optimize,
+            batch_size=run_config.batch_size_for_norm_param_estimation,
         )
 
         # Start a pool of workers
@@ -334,6 +372,46 @@ def run_disturbance_merge_workflow(run_config: RunConfigData) -> None:
         merge_burst_disturbances_and_serialize(dist_burst_paths_delta0, dst_last_pass_path, run_config.mgrs_tile_id)
 
 
+def run_disturbance_confirmation(run_config: RunConfigData) -> None:
+    print('Running disturbance confirmation')
+    # Use previous DIST-S1 product to confirm the disturbance
+    df_pre_dist_products = run_config.df_pre_dist_products
+
+    if df_pre_dist_products.empty:
+        print('No previous product found for confirmation. Assuming this is the first product.')
+        prev_prod_paths = None
+    else:
+        ordered_columns = [
+            'path_dist_status',
+            'path_dist_max',
+            'path_dist_conf',
+            'path_dist_date',
+            'path_dist_count',
+            'path_dist_perc',
+            'path_dist_dur',
+            'path_dist_last_date',
+        ]
+        prev_prod_paths = df_pre_dist_products[ordered_columns].values.flatten().tolist()
+
+    final_unformated_conf_tif_paths = [
+        run_config.final_unformatted_tif_paths['dist_status_path'],
+        run_config.final_unformatted_tif_paths['dist_max_path'],
+        run_config.final_unformatted_tif_paths['dist_conf_path'],
+        run_config.final_unformatted_tif_paths['dist_date_path'],
+        run_config.final_unformatted_tif_paths['dist_count_path'],
+        run_config.final_unformatted_tif_paths['dist_perc_path'],
+        run_config.final_unformatted_tif_paths['dist_dur_path'],
+        run_config.final_unformatted_tif_paths['dist_last_date_path'],
+    ]
+    out_pattern_sample = run_config.product_data_model.layer_path_dict['GEN-DIST-STATUS']
+    compute_tile_disturbance_using_previous_product_and_serialize(
+        dist_metric_path=run_config.final_unformatted_tif_paths['metric_status_path'],
+        dist_metric_date=out_pattern_sample,
+        out_path_list=final_unformated_conf_tif_paths,
+        previous_dist_arr_path_list=prev_prod_paths,
+    )
+
+
 def run_dist_s1_processing_workflow(run_config: RunConfigData) -> RunConfigData:
     # Despeckle by burst
     run_despeckle_workflow(run_config)
@@ -351,12 +429,24 @@ def run_dist_s1_processing_workflow(run_config: RunConfigData) -> RunConfigData:
 
 
 def run_dist_s1_packaging_workflow(run_config: RunConfigData) -> Path:
-    package_disturbance_tifs(run_config)
-    generate_browse_image(run_config)
+    if run_config.confirmation_strategy == 'compute_baseline':
+        print('Using computed baseline for confirmation')
+        package_disturbance_tifs(run_config)
 
-    product_data = run_config.product_data_model
-    product_data.validate_tif_layer_dtypes()
-    product_data.validate_layer_paths()
+        product_data = run_config.product_data_model
+        product_data.validate_tif_layer_dtypes()
+        product_data.validate_layer_paths()
+
+    if run_config.confirmation_strategy == 'use_prev_product':
+        print('Using previous product for confirmation')
+        run_disturbance_confirmation(run_config)
+        package_conf_db_disturbance_tifs(run_config)
+
+        product_data = run_config.product_data_model
+        product_data.validate_conf_db_tif_layer_dtypes()
+        product_data.validate_conf_db_layer_paths()
+
+    generate_browse_image(run_config)
 
 
 def run_dist_s1_sas_prep_workflow(
@@ -372,6 +462,10 @@ def run_dist_s1_sas_prep_workflow(
     tqdm_enabled: bool = True,
     apply_water_mask: bool = True,
     n_lookbacks: int = 3,
+    lookback_strategy: str = 'immediate_lookback',
+    max_pre_imgs_per_burst_mw: list[int] = [5, 5],
+    delta_lookback_days_mw: list[int] = [730, 365],
+    confirmation_strategy: str = 'compute_baseline',
     water_mask_path: str | Path | None = None,
     product_dst_dir: str | Path | None = None,
     bucket: str | None = None,
@@ -380,12 +474,21 @@ def run_dist_s1_sas_prep_workflow(
     device: str = 'best',
     batch_size_for_despeckling: int = 25,
     n_workers_for_norm_param_estimation: int = 1,
+    model_source: str | None = None,
+    model_cfg_path: str | Path | None = None,
+    model_wts_path: str | Path | None = None,
+    stride_for_norm_param_estimation: int = 16,
+    batch_size_for_norm_param_estimation: int = 32,
+    optimize: bool = True,
 ) -> RunConfigData:
     run_config = run_dist_s1_localization_workflow(
         mgrs_tile_id,
         post_date,
         track_number,
+        lookback_strategy,
         post_date_buffer_days,
+        max_pre_imgs_per_burst_mw,
+        delta_lookback_days_mw,
         dst_dir=dst_dir,
         input_data_dir=input_data_dir,
         apply_water_mask=apply_water_mask,
@@ -397,6 +500,8 @@ def run_dist_s1_sas_prep_workflow(
     run_config.moderate_confidence_threshold = moderate_confidence_threshold
     run_config.high_confidence_threshold = high_confidence_threshold
     run_config.n_lookbacks = n_lookbacks
+    run_config.lookback_strategy = lookback_strategy
+    run_config.confirmation_strategy = confirmation_strategy
     run_config.water_mask_path = water_mask_path
     run_config.product_dst_dir = product_dst_dir
     run_config.bucket = bucket
@@ -405,6 +510,12 @@ def run_dist_s1_sas_prep_workflow(
     run_config.batch_size_for_despeckling = batch_size_for_despeckling
     run_config.n_workers_for_norm_param_estimation = n_workers_for_norm_param_estimation
     run_config.device = device
+    run_config.model_source = model_source
+    run_config.model_cfg_path = model_cfg_path
+    run_config.model_wts_path = model_wts_path
+    run_config.stride_for_norm_param_estimation = stride_for_norm_param_estimation
+    run_config.batch_size_for_norm_param_estimation = batch_size_for_norm_param_estimation
+    run_config.optimize = optimize
     return run_config
 
 
@@ -432,6 +543,10 @@ def run_dist_s1_workflow(
     tqdm_enabled: bool = True,
     apply_water_mask: bool = True,
     n_lookbacks: int = 3,
+    lookback_strategy: str = 'immediate_lookback',
+    max_pre_imgs_per_burst_mw: list[int] = [5, 5],
+    delta_lookback_days_mw: list[int] = [730, 365],
+    confirmation_strategy: str = 'compute_baseline',
     product_dst_dir: str | Path | None = None,
     bucket: str | None = None,
     bucket_prefix: str = '',
@@ -439,6 +554,12 @@ def run_dist_s1_workflow(
     batch_size_for_despeckling: int = 25,
     n_workers_for_norm_param_estimation: int = 1,
     device: str = 'best',
+    model_source: str | None = None,
+    model_cfg_path: str | Path | None = None,
+    model_wts_path: str | Path | None = None,
+    stride_for_norm_param_estimation: int = 16,
+    batch_size_for_norm_param_estimation: int = 32,
+    optimize: bool = True,
 ) -> Path:
     run_config = run_dist_s1_sas_prep_workflow(
         mgrs_tile_id,
@@ -453,6 +574,10 @@ def run_dist_s1_workflow(
         tqdm_enabled=tqdm_enabled,
         apply_water_mask=apply_water_mask,
         n_lookbacks=n_lookbacks,
+        lookback_strategy=lookback_strategy,
+        max_pre_imgs_per_burst_mw=max_pre_imgs_per_burst_mw,
+        delta_lookback_days_mw=delta_lookback_days_mw,
+        confirmation_strategy=confirmation_strategy,
         water_mask_path=water_mask_path,
         product_dst_dir=product_dst_dir,
         bucket=bucket,
@@ -461,7 +586,102 @@ def run_dist_s1_workflow(
         batch_size_for_despeckling=batch_size_for_despeckling,
         n_workers_for_norm_param_estimation=n_workers_for_norm_param_estimation,
         device=device,
+        model_source=model_source,
+        model_cfg_path=model_cfg_path,
+        model_wts_path=model_wts_path,
+        stride_for_norm_param_estimation=stride_for_norm_param_estimation,
+        batch_size_for_norm_param_estimation=batch_size_for_norm_param_estimation,
+        optimize=optimize,
     )
     _ = run_dist_s1_sas_workflow(run_config)
+
+    return run_config
+
+
+def run_dist_s1_sas_prep_runconfig_yml(run_config_template_yml_path: Path | str) -> RunConfigData:
+    with Path.open(run_config_template_yml_path) as file:
+        data = yaml.safe_load(file)
+        rc_data = data['run_config']
+
+    # These must be present (no defaults)
+    if 'mgrs_tile_id' in rc_data:
+        mgrs_tile_id = rc_data['mgrs_tile_id']
+    else:
+        raise ValueError('Missing mgrs_tile_id in template runconfig')
+
+    if 'post_date' in rc_data:
+        post_date = rc_data['post_date']
+    else:
+        raise ValueError('Missing post_date in template runconfig')
+
+    if 'track_number' in rc_data:
+        track_number = rc_data['track_number']
+    else:
+        raise ValueError('Missing track_number in template runconfig')
+
+    if 'dst_dir' in rc_data:
+        dst_dir = rc_data['dst_dir']
+    else:
+        raise ValueError('Missing dst_dir in template runconfig')
+
+    if 'water_mask_path' in rc_data:
+        water_mask_path = rc_data['water_mask_path']
+    else:
+        raise ValueError('Missing water_mask_path in template runconfig')
+
+    # These can be left out (they have defaults)
+    apply_water_mask = rc_data.get('apply_water_mask', True)
+    post_date_buffer_days = rc_data.get('post_date_buffer_days', 1)
+    input_data_dir = rc_data.get('input_data_dir', dst_dir)
+    memory_strategy = rc_data.get('memory_strategy', 'high')
+    model_source = rc_data.get('model_source', 'internal')
+    model_cfg_path = rc_data.get('model_cfg_path', None)
+    model_wts_path = rc_data.get('model_wts_path', None)
+    tqdm_enabled = rc_data.get('tqdm_enabled', True)
+    n_lookbacks = rc_data.get('n_lookbacks', 1)
+    moderate_confidence_threshold = rc_data.get('moderate_confidence_threshold', 3.5)
+    high_confidence_threshold = rc_data.get('high_confidence_threshold', 5.5)
+    product_dst_dir = rc_data.get('product_dst_dir', dst_dir)
+    bucket = rc_data.get('bucket', None)
+    bucket_prefix = rc_data.get('bucket_prefix', None)
+    n_workers_for_despeckling = rc_data.get('n_workers_for_despeckling', 1)
+    batch_size_for_despeckling = rc_data.get('batch_size_for_despeckling', 25)
+    n_workers_for_norm_param_estimation = rc_data.get('n_workers_for_norm_param_estimation', 1)
+    device = rc_data.get('device', 'cpu')
+    stride_for_norm_param_estimation = rc_data.get('stride_for_norm_param_estimation', 16)
+    batch_size_for_norm_param_estimation = rc_data.get('batch_size_for_norm_param_estimation', 32)
+    optimize = rc_data.get('optimize', True)
+
+    run_config = run_dist_s1_localization_workflow(
+        mgrs_tile_id,
+        post_date,
+        track_number,
+        post_date_buffer_days,
+        dst_dir=dst_dir,
+        input_data_dir=input_data_dir,
+        apply_water_mask=apply_water_mask,
+        water_mask_path=water_mask_path,
+    )
+
+    run_config.memory_strategy = memory_strategy
+    run_config.tqdm_enabled = tqdm_enabled
+    run_config.apply_water_mask = apply_water_mask
+    run_config.moderate_confidence_threshold = moderate_confidence_threshold
+    run_config.high_confidence_threshold = high_confidence_threshold
+    run_config.n_lookbacks = n_lookbacks
+    run_config.water_mask_path = water_mask_path
+    run_config.product_dst_dir = product_dst_dir
+    run_config.bucket = bucket
+    run_config.bucket_prefix = bucket_prefix
+    run_config.n_workers_for_despeckling = n_workers_for_despeckling
+    run_config.batch_size_for_despeckling = batch_size_for_despeckling
+    run_config.n_workers_for_norm_param_estimation = n_workers_for_norm_param_estimation
+    run_config.model_source = model_source
+    run_config.model_cfg_path = model_cfg_path
+    run_config.model_wts_path = model_wts_path
+    run_config.device = device
+    run_config.stride_for_norm_param_estimation = stride_for_norm_param_estimation
+    run_config.batch_size_for_norm_param_estimation = batch_size_for_norm_param_estimation
+    run_config.optimize = optimize
 
     return run_config

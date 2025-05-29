@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.10] - 2025-05-27
+
+### Added
+- Implemented confirmation database workflow. 
+- Updated `workflows.py`, `__main__.py`, `runconfig_model.py`, `output_models.py` and `processing` to accept confirmation database, `confirmation_strategy` and `lookback_strategy`  
+- Updated `workflows.py`, `processing.py`, and `runconfig_model.py` to accept `stride_for_norm_param_estimation`, `batch_size_for_norm_param_estimation`, `optimize` params.
+- Updated `workflows.py`, `processing.py`, and `runconfig_model.py` to accept `model_source`, `model_cfg_path`, and `model_wts_path` which allow an external Transformer model to be used.  If not present, the internal models are used as before.
+
 
 ## [0.0.9] - 2025-05-07
 

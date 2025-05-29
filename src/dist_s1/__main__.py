@@ -13,6 +13,13 @@ P = ParamSpec('P')  # Captures all parameter types
 R = TypeVar('R')  # Captures the return type
 
 
+def parse_int_list(ctx: click.Context, param: click.Parameter, value: str) -> list[int]:
+    try:
+        return [int(x.strip()) for x in value.split(',')]
+    except Exception:
+        raise click.BadParameter(f'Invalid list format: {value}. Expected comma-separated integers (e.g., 4,4,2).')
+
+
 @click.group()
 def cli() -> None:
     """CLI for dist-s1 workflows."""
@@ -86,6 +93,37 @@ def common_options(func: Callable) -> Callable:
         help='Number of lookbacks to use for change confirmation within SAS. Use value 1, to avoid SAS confirmation.',
     )
     @click.option(
+        '--lookback_strategy',
+        type=click.Choice(['multi_window', 'immediate_lookback']),
+        required=False,
+        default='immediate_lookback',
+        help='Options to use for lookback strategy.',
+    )
+    @click.option(
+        '--max_pre_imgs_per_burst_mw',
+        default='5,5',
+        callback=parse_int_list,
+        required=False,
+        show_default=True,
+        help='Comma-separated list of integers (e.g., --max_pre_imgs_per_burst_mw 4,4,2).',
+    )
+    @click.option(
+        '--delta_lookback_days_mw',
+        default='730,365',
+        callback=parse_int_list,
+        required=False,
+        show_default=True,
+        help='Comma-separated list of integers (e.g., --delta_lookback_days_mw 730,365,0). '
+        'Provide list values in order of older to recent lookback days.',
+    )
+    @click.option(
+        '--confirmation_strategy',
+        type=click.Choice(['compute_baseline', 'use_prev_product']),
+        required=False,
+        default='compute_baseline',
+        help='Options to use for confirmation strategy.',
+    )
+    @click.option(
         '--product_dst_dir',
         type=str,
         default=None,
@@ -132,14 +170,73 @@ def common_options(func: Callable) -> Callable:
         type=int,
         default=8,
         required=False,
-        help='Number of CPUs to use for normal parameter estimation; error willbe thrown if GPU is available and not'
+        help='Number of CPUs to use for normal parameter estimation; error will be thrown if GPU is available and not'
         ' or set to something other than CPU.',
+    )
+    @click.option(
+        '--model_source',
+        type=click.Choice(['internal', 'external']),
+        required=False,
+        help='Where to load Transformer model from;'
+        ' internal means load model stored inside docker image,'
+        ' external means load model from cfg'
+        ' and wts paths specified in parameters',
+    )
+    @click.option(
+        '--model_cfg_path',
+        type=str,
+        default=None,
+        required=False,
+        help='Path to Transformer model config file.',
+    )
+    @click.option(
+        '--model_wts_path',
+        type=str,
+        default=None,
+        required=False,
+        help='Path to Transformer model weights file.',
+    )
+    @click.option(
+        '--stride_for_norm_param_estimation',
+        type=int,
+        default=16,
+        required=False,
+        help='Batch size for norm param. Number of pixels the'
+        ' convolutional filter moves across the input image at'
+        ' each step.',
+    )
+    @click.option(
+        '--batch_size_for_norm_param_estimation',
+        type=int,
+        default=32,
+        required=False,
+        help='Batch size for norm param estimation; Tune it according to resouces i.e. memory.',
+    )
+    @click.option(
+        '--optimize',
+        type=bool,
+        default=True,
+        required=False,
+        help='Flag to enable compilation duringe execution.',
     )
     @functools.wraps(func)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         return func(*args, **kwargs)
 
     return wrapper
+
+
+# Load parameter as list of integers
+@cli.command()
+@common_options
+def parse_pre_imgs_per_burst_mw(max_pre_imgs_per_burst_mw: list[int], **kwargs: dict[str, object]) -> None:
+    print('Parsed list:', max_pre_imgs_per_burst_mw)
+
+
+@cli.command()
+@common_options
+def parse_delta_lookback_days_mw(delta_lookback_days_mw: list[int], **kwargs: dict[str, object]) -> None:
+    print('Parsed list:', delta_lookback_days_mw)
 
 
 # SAS Prep Workflow (No Internet Access)
@@ -165,6 +262,10 @@ def run_sas_prep(
     input_data_dir: str | Path | None,
     runconfig_path: str | Path,
     n_lookbacks: int,
+    lookback_strategy: str,
+    delta_lookback_days_mw: list[int],
+    max_pre_imgs_per_burst_mw: list[int],
+    confirmation_strategy: str,
     dst_dir: str | Path,
     water_mask_path: str | Path | None,
     product_dst_dir: str | Path | None,
@@ -174,6 +275,12 @@ def run_sas_prep(
     batch_size_for_despeckling: int,
     n_workers_for_norm_param_estimation: int,
     device: str,
+    model_source: str | None,
+    model_cfg_path: str | Path | None,
+    model_wts_path: str | Path | None,
+    stride_for_norm_param_estimation: int = 16,
+    batch_size_for_norm_param_estimation: int = 32,
+    optimize: bool = True,
 ) -> None:
     """Run SAS prep workflow."""
     run_config = run_dist_s1_sas_prep_workflow(
@@ -190,6 +297,10 @@ def run_sas_prep(
         dst_dir=dst_dir,
         water_mask_path=water_mask_path,
         n_lookbacks=n_lookbacks,
+        lookback_strategy=lookback_strategy,
+        max_pre_imgs_per_burst_mw=max_pre_imgs_per_burst_mw,
+        delta_lookback_days_mw=delta_lookback_days_mw,
+        confirmation_strategy=confirmation_strategy,
         product_dst_dir=product_dst_dir,
         bucket=bucket,
         bucket_prefix=bucket_prefix,
@@ -197,6 +308,12 @@ def run_sas_prep(
         batch_size_for_despeckling=batch_size_for_despeckling,
         n_workers_for_norm_param_estimation=n_workers_for_norm_param_estimation,
         device=device,
+        model_source=model_source,
+        model_cfg_path=model_cfg_path,
+        model_wts_path=model_wts_path,
+        stride_for_norm_param_estimation=stride_for_norm_param_estimation,
+        batch_size_for_norm_param_estimation=batch_size_for_norm_param_estimation,
+        optimize=optimize,
     )
     run_config.to_yaml(runconfig_path)
 
@@ -227,6 +344,10 @@ def run(
     water_mask_path: str | Path | None,
     apply_water_mask: bool,
     n_lookbacks: int,
+    lookback_strategy: str,
+    delta_lookback_days_mw: list[int],
+    max_pre_imgs_per_burst_mw: list[int],
+    confirmation_strategy: str,
     product_dst_dir: str | Path | None,
     bucket: str | None,
     bucket_prefix: str,
@@ -234,6 +355,12 @@ def run(
     batch_size_for_despeckling: int,
     n_workers_for_norm_param_estimation: int,
     device: str,
+    model_source: str | None,
+    model_cfg_path: str | Path | None,
+    model_wts_path: str | Path | None,
+    stride_for_norm_param_estimation: int = 16,
+    batch_size_for_norm_param_estimation: int = 32,
+    optimize: bool = True,
 ) -> str:
     """Localize data and run dist_s1_workflow."""
     return run_dist_s1_workflow(
@@ -250,6 +377,10 @@ def run(
         dst_dir=dst_dir,
         water_mask_path=water_mask_path,
         n_lookbacks=n_lookbacks,
+        lookback_strategy=lookback_strategy,
+        max_pre_imgs_per_burst_mw=max_pre_imgs_per_burst_mw,
+        delta_lookback_days_mw=delta_lookback_days_mw,
+        confirmation_strategy=confirmation_strategy,
         product_dst_dir=product_dst_dir,
         bucket=bucket,
         bucket_prefix=bucket_prefix,
@@ -257,6 +388,12 @@ def run(
         batch_size_for_despeckling=batch_size_for_despeckling,
         n_workers_for_norm_param_estimation=n_workers_for_norm_param_estimation,
         device=device,
+        model_source=model_source,
+        model_cfg_path=model_cfg_path,
+        model_wts_path=model_wts_path,
+        stride_for_norm_param_estimation=stride_for_norm_param_estimation,
+        batch_size_for_norm_param_estimation=batch_size_for_norm_param_estimation,
+        optimize=optimize,
     )
 
 
