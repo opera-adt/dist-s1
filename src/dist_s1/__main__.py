@@ -17,7 +17,7 @@ def parse_int_list(ctx: click.Context, param: click.Parameter, value: str) -> li
     try:
         return [int(x.strip()) for x in value.split(',')]
     except Exception as e:
-        raise click.BadParameter(f"Invalid list format: {value}. Expected comma-separated integers (e.g., 4,4,2).")
+        raise click.BadParameter(f'Invalid list format: {value}. Expected comma-separated integers (e.g., 4,4,2).')
 
 
 @click.group()
@@ -114,7 +114,7 @@ def common_options(func: Callable) -> Callable:
         required=False,
         show_default=True,
         help='Comma-separated list of integers (e.g., --delta_lookback_days_mw 730,365,0). '
-             'Provide list values in order of older to recent lookback days.',
+        'Provide list values in order of older to recent lookback days.',
     )
     @click.option(
         '--confirmation_strategy',
@@ -143,7 +143,7 @@ def common_options(func: Callable) -> Callable:
         default=8,
         required=False,
         help='N CPUs to use for despeckling the bursts',
-    )  
+    )
     @click.option(
         '--bucket_prefix',
         type=str,
@@ -203,7 +203,7 @@ def common_options(func: Callable) -> Callable:
         required=False,
         help='Batch size for norm param. Number of pixels the'
         ' convolutional filter moves across the input image at'
-        ' each step.'
+        ' each step.',
     )
     @click.option(
         '--batch_size_for_norm_param_estimation',
@@ -230,13 +230,13 @@ def common_options(func: Callable) -> Callable:
 @cli.command()
 @common_options
 def parse_pre_imgs_per_burst_mw(max_pre_imgs_per_burst_mw: list[int], **kwargs: dict[str, object]) -> None:
-    print("Parsed list:", max_pre_imgs_per_burst_mw)
+    print('Parsed list:', max_pre_imgs_per_burst_mw)
 
 
 @cli.command()
 @common_options
 def parse_delta_lookback_days_mw(delta_lookback_days_mw: list[int], **kwargs: dict[str, object]) -> None:
-    print("Parsed list:", delta_lookback_days_mw)
+    print('Parsed list:', delta_lookback_days_mw)
 
 
 # SAS Prep Workflow (No Internet Access)
@@ -280,7 +280,7 @@ def run_sas_prep(
     model_wts_path: str | Path | None,
     stride_for_norm_param_estimation: int = 16,
     batch_size_for_norm_param_estimation: int = 32,
-    optimize: bool = True
+    optimize: bool = True,
 ) -> None:
     """Run SAS prep workflow."""
     run_config = run_dist_s1_sas_prep_workflow(
@@ -313,7 +313,7 @@ def run_sas_prep(
         model_wts_path=model_wts_path,
         stride_for_norm_param_estimation=stride_for_norm_param_estimation,
         batch_size_for_norm_param_estimation=batch_size_for_norm_param_estimation,
-        optimize=optimize
+        optimize=optimize,
     )
     run_config.to_yaml(runconfig_path)
 
@@ -360,7 +360,7 @@ def run(
     model_wts_path: str | Path | None,
     stride_for_norm_param_estimation: int = 16,
     batch_size_for_norm_param_estimation: int = 32,
-    optimize: bool = True
+    optimize: bool = True,
 ) -> str:
     """Localize data and run dist_s1_workflow."""
     return run_dist_s1_workflow(
@@ -393,7 +393,7 @@ def run(
         model_wts_path=model_wts_path,
         stride_for_norm_param_estimation=stride_for_norm_param_estimation,
         batch_size_for_norm_param_estimation=batch_size_for_norm_param_estimation,
-        optimize=optimize
+        optimize=optimize,
     )
 
 
