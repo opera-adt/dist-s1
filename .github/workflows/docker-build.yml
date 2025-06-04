@@ -22,6 +22,6 @@ jobs:
     with:
       version_tag: ${{ needs.call-version-info-workflow.outputs.version_tag }}
       user: ${{ github.actor }}
-      file: Dockerfile
+      file: Dockerfile.nvidia
     secrets:
       USER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
