@@ -13,8 +13,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends libgl1 libglx-m
 SHELL ["/bin/bash", "-l", "-c"]
 
 # Create non-root user/group with default inputs
-ARG UID=1000
-ARG GID=1000
+ARG UID=1001
+ARG GID=1001
 
 RUN groupadd -g "${GID}" --system dist_user && \
     useradd -l -u "${UID}" -g "${GID}" --system -d /home/ops -m  -s /bin/bash dist_user && \
