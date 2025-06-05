@@ -9,7 +9,11 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [1.0.1] - 2025-06-04
 
 ### Changed
-- Now uses the Dockerfile without nvidia base. Should be smaller in size.
+- Now uses the Dockerfile without nvidia base. The image is smaller in size.
+- Updated the docker build action to align with the new ASF-based action (which is version-based and permits trunk based development).
+
+### Fixed
+- Running pytest in docker image now works (does not require `~/.netrc`)
 
 ## [1.0.0] - 2025-06-04
 
