@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.1] - 2025-06-04
+## [1.0.1] - 2025-06-05
 
 ### Changed
 - Now uses the Dockerfile without nvidia base. The image is smaller in size.
@@ -14,6 +14,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 - Running pytest in docker image now works (does not require `~/.netrc`)
+- PNG generation was not plotting the expected map when using the confirmation_strategy == 'use_prev_product' (Dist-HLS like).
 
 ## [1.0.0] - 2025-06-04
 

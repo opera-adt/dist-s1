@@ -312,7 +312,6 @@ def compute_tile_disturbance_using_previous_product_and_serialize(
         dur = np.zeros((rows, cols), dtype=np.int16)
         lastObs = np.zeros((rows, cols), dtype=np.int16)
     elif all(p is not None for p in previous_dist_arr_path_list):
-        print(previous_dist_arr_path_list)
         status, _ = open_one_ds(previous_dist_arr_path_list[0])
         max_anom, _ = open_one_ds(previous_dist_arr_path_list[1])
         conf, _ = open_one_ds(previous_dist_arr_path_list[2])
