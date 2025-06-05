@@ -5,8 +5,9 @@ LABEL description="DIST-S1 Container"
 ARG DEBIAN_FRONTEND=noninteractive
 ENV PYTHONDONTWRITEBYTECODE=true
 
-# Install libgl1-mesa-glx unzip vim
-RUN apt-get update && apt-get install -y --no-install-recommends libgl1 libglx-mesa0 unzip vim && \
+# Install build-essential for C++ compiler, libgl1-mesa-glx, unzip, and vim
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends build-essential libgl1 libglx-mesa0 unzip vim && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # run commands in a bash login shell
