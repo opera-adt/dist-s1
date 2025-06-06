@@ -13,8 +13,9 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Updated the docker build action to align with the new ASF-based action (which is version-based and permits trunk based development).
 
 ### Fixed
-- Running pytest in docker image now works (does not require `~/.netrc`)
+- Running pytest in docker image now works (does not require `~/.netrc`) - fixed by mocking credentials.
 - PNG generation was not plotting the expected map when using the confirmation_strategy == 'use_prev_product' (Dist-HLS like).
+- Duplicate click option for apply water mask (in `__main__.py`)
 
 ## [1.0.0] - 2025-06-04
 
