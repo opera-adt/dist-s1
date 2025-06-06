@@ -22,7 +22,6 @@ def localize_rtc_s1(
     tqdm_enabled: bool = True,
     apply_water_mask: bool = True,
     water_mask_path: Path | str | None = None,
-    confirmation_strategy: str = 'compute_baseline',
 ) -> RunConfigData:
     df_product = enumerate_one_dist_s1_product(
         mgrs_tile_id,
@@ -48,6 +47,5 @@ def localize_rtc_s1(
         water_mask_path=water_mask_path,
         max_pre_imgs_per_burst_mw=max_pre_imgs_per_burst_mw,
         delta_lookback_days_mw=delta_lookback_days_mw,
-        confirmation_strategy=confirmation_strategy,
     )
     return runconfig
