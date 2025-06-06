@@ -5,6 +5,7 @@ from pathlib import Path
 import geopandas as gpd
 import pytest
 from click.testing import CliRunner
+from pytest import MonkeyPatch
 from pytest_mock import MockerFixture
 
 from dist_s1.__main__ import cli as dist_s1
@@ -88,6 +89,7 @@ def test_dist_s1_main_interface(
     test_data_dir: Path,
     change_local_dir: Callable[[Path], None],
     mocker: MockerFixture,
+    monkeypatch: MonkeyPatch,
     device: str,
 ) -> None:
     """Tests the main dist-s1 CLI interface (not the outputs)."""
@@ -96,9 +98,13 @@ def test_dist_s1_main_interface(
     tmp_dir = test_dir / 'tmp'
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
+    monkeypatch.setenv('EARTHDATA_USERNAME', 'foo')
+    monkeypatch.setenv('EARTHDATA_PASSWORD', 'bar')
+
     df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
     config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, apply_water_mask=False)
 
+    # We don't need credentials because we mock the data.
     mocker.patch('dist_s1.localize_rtc_s1.enumerate_one_dist_s1_product', return_value=df_product)
     mocker.patch('dist_s1.localize_rtc_s1.localize_rtc_s1_ts', return_value=df_product)
     mocker.patch('dist_s1.workflows.run_dist_s1_sas_workflow', return_value=config)

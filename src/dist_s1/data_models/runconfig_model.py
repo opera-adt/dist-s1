@@ -194,7 +194,7 @@ class RunConfigData(BaseModel):
     )
     # Flag to enable optimizations. False, load the model and use it.
     # True, load the model and compile for CPU or GPU
-    optimize: bool = Field(default=True)
+    optimize: bool = Field(default=False)
     n_lookbacks: int = Field(default=1, ge=1, le=3)
     max_pre_imgs_per_burst_mw: list[int] = Field(
         default=[5, 5],
