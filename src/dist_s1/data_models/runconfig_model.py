@@ -194,7 +194,7 @@ class RunConfigData(BaseModel):
     )
     # Flag to enable optimizations. False, load the model and use it.
     # True, load the model and compile for CPU or GPU
-    optimize: bool = Field(default=True)
+    optimize: bool = Field(default=False)
     n_lookbacks: int = Field(default=1, ge=1, le=3)
     max_pre_imgs_per_burst_mw: list[int] = Field(
         default=[5, 5],
@@ -455,7 +455,7 @@ class RunConfigData(BaseModel):
         water_mask_path: Path | str | None = None,
         max_pre_imgs_per_burst_mw: list[int] | None = None,
         delta_lookback_days_mw: list[int] | None = None,
-        confirmation_strategy: str = 'use_prev_product',
+        confirmation_strategy: str = 'compute_baseline',
     ) -> 'RunConfigData':
         """Transform input table from dist-s1-enumerator into RunConfigData object.
 

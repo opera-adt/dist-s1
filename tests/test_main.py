@@ -99,6 +99,8 @@ def test_dist_s1_main_interface(
     df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
     config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, apply_water_mask=False)
 
+    # We don't need credentials because we mock the data.
+    mocker.patch('dist_s1.credentials.ensure_earthdata_credentials', return_value=None)
     mocker.patch('dist_s1.localize_rtc_s1.enumerate_one_dist_s1_product', return_value=df_product)
     mocker.patch('dist_s1.localize_rtc_s1.localize_rtc_s1_ts', return_value=df_product)
     mocker.patch('dist_s1.workflows.run_dist_s1_sas_workflow', return_value=config)

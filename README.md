@@ -172,10 +172,18 @@ The docker image will be tagged with `dist-s1-img` in the above examples.
 
 To generate a sample product via a docker container (e.g. the one built above), create a new empty directory and navigate to it. Then run:
 ```
-docker run -ti --rm -e EARTHDATA_USERNAME=<username> -e EARTHDATA_PASSWORD=<password> -v $(PWD):/home/ops/dist-s1-data dist-s1-img --mgrs_tile_id '11SLT' --post_date '2025-01-21' --track_number 71
+docker run -ti --rm -e EARTHDATA_USERNAME=<username> -e EARTHDATA_PASSWORD=<password> -v $(pwd):/home/ops/dist-s1-data dist-s1-img --mgrs_tile_id '11SLT' --post_date '2025-01-21' --track_number 71
 ```
 See the `src/dist_s1/etc/entrypoint.sh` file for the entrypoint of the container. It runs `dist-s1 run ...`.
 
+#### Generating and *Saving* a Sample Product
+
+For debugging, it's essential to see the outputs of the docker run. This is currently a work in progress (need to fix the `--user` field).
+Create a directory to run the test, navigate to it, and run `chmod 777 .`
+
+```
+docker run -ti --rm -e EARTHDATA_USERNAME=<USERNAME> -e EARTHDATA_PASSWORD=<PASSWORD> -v "$(pwd)":/home/ops/dist-s1-data --entrypoint "/bin/bash" dist-s1-img -l -c "cd dist-s1-data && python -um dist_s1 run --mgrs_tile_id '11SLT' --post_date '2025-01-21' --track_number 71"
+```
 
 ### GPU Docker Image
 
