@@ -29,8 +29,8 @@ WORKDIR /home/ops
 # https://docs.docker.com/develop/develop-images/dockerfile_best-practices/#leverage-build-cache
 COPY --chown=dist_user:dist_user . /home/ops/dist-s1/
 
-# Ensure all files are read/write by the user
-# RUN chmod -R 777 /home/ops
+# Ensure all files are read/execute by the user
+RUN chmod -R a+rx /home/ops
 
 # Create the environment with mamba
 RUN mamba env create -f /home/ops/dist-s1/environment.yml && \
