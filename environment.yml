@@ -20,6 +20,7 @@ dependencies:
  - matplotlib
  - numpy
  - pandas
+ - pandera>=0.24.0
  - pydantic
  - pytest
  - pytest-cov

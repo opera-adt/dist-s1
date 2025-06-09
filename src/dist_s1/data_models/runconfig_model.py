@@ -12,7 +12,7 @@ from dist_s1_enumerator.asf import append_pass_data, extract_pass_id
 from dist_s1_enumerator.data_models import dist_s1_loc_input_schema
 from dist_s1_enumerator.mgrs_burst_data import get_lut_by_mgrs_tile_ids
 from distmetrics.transformer import get_device
-from pandera import check_input
+from pandera.pandas import check_input
 from pydantic import BaseModel, Field, ValidationError, ValidationInfo, field_validator
 from yaml import Dumper
 
@@ -194,7 +194,7 @@ class RunConfigData(BaseModel):
     )
     # Flag to enable optimizations. False, load the model and use it.
     # True, load the model and compile for CPU or GPU
-    optimize: bool = Field(default=True)
+    optimize: bool = Field(default=False)
     n_lookbacks: int = Field(default=1, ge=1, le=3)
     max_pre_imgs_per_burst_mw: list[int] = Field(
         default=[5, 5],

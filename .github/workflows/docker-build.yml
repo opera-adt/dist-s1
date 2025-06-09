@@ -3,11 +3,11 @@ name: Build
 on:
   push:
     branches:
-      - main
       - dev
+    tags:
+      - 'v*'
   pull_request:
     branches:
-      - main
       - dev
 
 jobs:
@@ -22,8 +22,6 @@ jobs:
     with:
       version_tag: ${{ needs.call-version-info-workflow.outputs.version_tag }}
       user: ${{ github.actor }}
-      release_branch: main     
-      develop_branch: dev  
-      file: Dockerfile.nvidia
+      file: Dockerfile
     secrets:
       USER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
