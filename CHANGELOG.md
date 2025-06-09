@@ -18,6 +18,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Duplicate click option for apply water mask (in `__main__.py`)
 - Update default `confirmation_strategy` for the creation of runconfig from a dataframe (to `compute_baseline`).
 - Update the `run-steps` notebook.
+- Ensures pandera>=0.24.0 and removes future warnings from the library.
 
 ## [1.0.0] - 2025-06-04
 
