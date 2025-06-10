@@ -162,10 +162,14 @@ def package_conf_db_disturbance_tifs(run_config: RunConfigData) -> None:
 
 
 def generate_browse_image(run_config: RunConfigData) -> None:
+    if run_config.confirmation_strategy == 'compute_baseline':
+        final_tif2plot = 'alert_status_path'
+    if run_config.confirmation_strategy == 'use_prev_product':
+        final_tif2plot = 'dist_status_path'
     product_data = run_config.product_data_model
     with Env(GDAL_PAM_ENABLED='NO'):
         convert_geotiff_to_png(
-            run_config.final_unformatted_tif_paths['alert_status_path'],
+            run_config.final_unformatted_tif_paths[final_tif2plot],
             product_data.layer_path_dict['browse'],
             colormap=DIST_CMAP,
             water_mask_path=run_config.water_mask_path,

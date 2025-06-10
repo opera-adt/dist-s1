@@ -38,7 +38,6 @@ def common_options(func: Callable) -> Callable:
         'Near the dateline you may have two sequential track numbers.',
     )
     @click.option('--post_date_buffer_days', type=int, default=1, required=False, help='Buffer days around post-date.')
-    @click.option('--apply_water_mask', type=bool, default=True, required=False, help='Apply water mask to the data.')
     @click.option(
         '--dst_dir',
         type=str,

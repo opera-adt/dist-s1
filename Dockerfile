@@ -5,16 +5,17 @@ LABEL description="DIST-S1 Container"
 ARG DEBIAN_FRONTEND=noninteractive
 ENV PYTHONDONTWRITEBYTECODE=true
 
-# Install libgl1-mesa-glx unzip vim
-RUN apt-get update && apt-get install -y --no-install-recommends libgl1-mesa-glx unzip vim && \
+# Install build-essential for C++ compiler, libgl1-mesa-glx, unzip, and vim
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends build-essential libgl1 libglx-mesa0 unzip vim && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # run commands in a bash login shell
 SHELL ["/bin/bash", "-l", "-c"]
 
 # Create non-root user/group with default inputs
-ARG UID=1000
-ARG GID=1000
+ARG UID=1001
+ARG GID=1001
 
 RUN groupadd -g "${GID}" --system dist_user && \
     useradd -l -u "${UID}" -g "${GID}" --system -d /home/ops -m  -s /bin/bash dist_user && \
@@ -28,8 +29,8 @@ WORKDIR /home/ops
 # https://docs.docker.com/develop/develop-images/dockerfile_best-practices/#leverage-build-cache
 COPY --chown=dist_user:dist_user . /home/ops/dist-s1/
 
-# Ensure all files are read/write by the user
-# RUN chmod -R 777 /home/ops
+# Ensure all files are read/execute by the user
+RUN chmod -R a+rx /home/ops
 
 # Create the environment with mamba
 RUN mamba env create -f /home/ops/dist-s1/environment.yml && \
