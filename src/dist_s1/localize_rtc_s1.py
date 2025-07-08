@@ -13,7 +13,7 @@ def localize_rtc_s1(
     mgrs_tile_id: str,
     post_date: str | datetime | pd.Timestamp,
     track_number: int,
-    lookback_strategy: str = 'immediate_lookback',
+    lookback_strategy: str = 'multi_window',
     post_date_buffer_days: int = 1,
     max_pre_imgs_per_burst_mw: list[int] = [5, 5],
     delta_lookback_days_mw: list[int] = [730, 365],

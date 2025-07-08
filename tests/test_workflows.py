@@ -159,7 +159,7 @@ def test_dist_s1_sas_workflow(
         df_product,
         dst_dir=tmp_dir,
         apply_water_mask=False,
-        confirmation_strategy='use_prev_product',
+        confirmation=True,
     )
 
     run_dist_s1_sas_workflow(config)

@@ -124,7 +124,7 @@ def run_dist_s1_localization_workflow(
     mgrs_tile_id: str,
     post_date: str | datetime,
     track_number: int,
-    lookback_strategy: str = 'immediate_lookback',
+    lookback_strategy: str = 'multi_window',
     post_date_buffer_days: int = 1,
     max_pre_imgs_per_burst_mw: list[int] = [5, 5],
     delta_lookback_days_mw: list[int] = [730, 365],
@@ -259,7 +259,7 @@ def run_normal_param_estimation_workflow(run_config: RunConfigData) -> None:
                 model_wts_path=run_config.model_wts_path,
                 stride=run_config.stride_for_norm_param_estimation,
                 batch_size=run_config.batch_size_for_norm_param_estimation,
-                optimize=run_config.optimize,
+                optimize=run_config.model_compilation,
             )
     else:
         if run_config.device in ('cuda', 'mps'):
@@ -274,7 +274,7 @@ def run_normal_param_estimation_workflow(run_config: RunConfigData) -> None:
             model_cfg_path=run_config.model_cfg_path,
             model_wts_path=run_config.model_wts_path,
             stride=run_config.stride_for_norm_param_estimation,
-            optimize=run_config.optimize,
+            optimize=run_config.model_compilation,
             batch_size=run_config.batch_size_for_norm_param_estimation,
         )
 
@@ -324,8 +324,7 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
             if lookback == 0:
                 output_metric_path = df_metric_burst[f'loc_path_metric_delta{lookback}'].iloc[0]
 
-            # Computes the disturbance for a a single lookback group and serlialize
-            # Delta_0, Delta_1, ..., Delta_N_LOOKBACKS
+            # Computes the disturbance for a a single baseline group and serlialize
             # Labels will be 0 for no disturbance, 1 for moderate confidence disturbance,
             # 2 for high confidence disturbance, and 255 for nodata
             compute_burst_disturbance_for_lookback_group_and_serialize(
@@ -348,9 +347,7 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
         ]
         # Aggregate the disturbances maps for all the lookbacks computed above
         # This will have the labels of the final disturbance map (see constants.py and the function itself)
-        aggregate_burst_disturbance_over_lookbacks_and_serialize(
-            disturbance_paths, time_aggregated_disturbance_path, run_config.n_lookbacks
-        )
+        aggregate_burst_disturbance_over_lookbacks_and_serialize(disturbance_paths, time_aggregated_disturbance_path)
 
 
 def run_disturbance_merge_workflow(run_config: RunConfigData) -> None:
@@ -429,22 +426,18 @@ def run_dist_s1_processing_workflow(run_config: RunConfigData) -> RunConfigData:
 
 
 def run_dist_s1_packaging_workflow(run_config: RunConfigData) -> Path:
-    if run_config.confirmation_strategy == 'compute_baseline':
-        print('Using computed baseline for confirmation')
+    if not run_config.confirmation:
+        print('No confirmation requested, skipping confirmation step')
         package_disturbance_tifs(run_config)
 
-        product_data = run_config.product_data_model
-        product_data.validate_tif_layer_dtypes()
-        product_data.validate_layer_paths()
-
-    if run_config.confirmation_strategy == 'use_prev_product':
+    if run_config.confirmation:
         print('Using previous product for confirmation')
         run_disturbance_confirmation(run_config)
         package_conf_db_disturbance_tifs(run_config)
 
-        product_data = run_config.product_data_model
-        product_data.validate_conf_db_tif_layer_dtypes()
-        product_data.validate_conf_db_layer_paths()
+    product_data = run_config.product_data_model
+    product_data.validate_conf_db_tif_layer_dtypes()
+    product_data.validate_conf_db_layer_paths()
 
     generate_browse_image(run_config)
 
@@ -461,11 +454,10 @@ def run_dist_s1_sas_prep_workflow(
     high_confidence_threshold: float = 5.5,
     tqdm_enabled: bool = True,
     apply_water_mask: bool = True,
-    n_lookbacks: int = 3,
-    lookback_strategy: str = 'immediate_lookback',
+    lookback_strategy: str = 'multi_window',
     max_pre_imgs_per_burst_mw: list[int] = [5, 5],
     delta_lookback_days_mw: list[int] = [730, 365],
-    confirmation_strategy: str = 'compute_baseline',
+    confirmation: bool = True,
     water_mask_path: str | Path | None = None,
     product_dst_dir: str | Path | None = None,
     bucket: str | None = None,
@@ -499,9 +491,8 @@ def run_dist_s1_sas_prep_workflow(
     run_config.apply_water_mask = apply_water_mask
     run_config.moderate_confidence_threshold = moderate_confidence_threshold
     run_config.high_confidence_threshold = high_confidence_threshold
-    run_config.n_lookbacks = n_lookbacks
     run_config.lookback_strategy = lookback_strategy
-    run_config.confirmation_strategy = confirmation_strategy
+    run_config.confirmation = confirmation
     run_config.water_mask_path = water_mask_path
     run_config.product_dst_dir = product_dst_dir
     run_config.bucket = bucket
@@ -515,7 +506,7 @@ def run_dist_s1_sas_prep_workflow(
     run_config.model_wts_path = model_wts_path
     run_config.stride_for_norm_param_estimation = stride_for_norm_param_estimation
     run_config.batch_size_for_norm_param_estimation = batch_size_for_norm_param_estimation
-    run_config.optimize = optimize
+    run_config.model_compilation = optimize
     return run_config
 
 
@@ -542,11 +533,10 @@ def run_dist_s1_workflow(
     water_mask_path: str | Path | None = None,
     tqdm_enabled: bool = True,
     apply_water_mask: bool = True,
-    n_lookbacks: int = 3,
-    lookback_strategy: str = 'immediate_lookback',
+    lookback_strategy: str = 'multi_window',
     max_pre_imgs_per_burst_mw: list[int] = [5, 5],
     delta_lookback_days_mw: list[int] = [730, 365],
-    confirmation_strategy: str = 'compute_baseline',
+    confirmation: bool = True,
     product_dst_dir: str | Path | None = None,
     bucket: str | None = None,
     bucket_prefix: str = '',
@@ -573,11 +563,10 @@ def run_dist_s1_workflow(
         high_confidence_threshold=high_confidence_threshold,
         tqdm_enabled=tqdm_enabled,
         apply_water_mask=apply_water_mask,
-        n_lookbacks=n_lookbacks,
         lookback_strategy=lookback_strategy,
         max_pre_imgs_per_burst_mw=max_pre_imgs_per_burst_mw,
         delta_lookback_days_mw=delta_lookback_days_mw,
-        confirmation_strategy=confirmation_strategy,
+        confirmation=confirmation,
         water_mask_path=water_mask_path,
         product_dst_dir=product_dst_dir,
         bucket=bucket,
@@ -638,7 +627,6 @@ def run_dist_s1_sas_prep_runconfig_yml(run_config_template_yml_path: Path | str)
     model_cfg_path = rc_data.get('model_cfg_path', None)
     model_wts_path = rc_data.get('model_wts_path', None)
     tqdm_enabled = rc_data.get('tqdm_enabled', True)
-    n_lookbacks = rc_data.get('n_lookbacks', 1)
     moderate_confidence_threshold = rc_data.get('moderate_confidence_threshold', 3.5)
     high_confidence_threshold = rc_data.get('high_confidence_threshold', 5.5)
     product_dst_dir = rc_data.get('product_dst_dir', dst_dir)
@@ -668,7 +656,6 @@ def run_dist_s1_sas_prep_runconfig_yml(run_config_template_yml_path: Path | str)
     run_config.apply_water_mask = apply_water_mask
     run_config.moderate_confidence_threshold = moderate_confidence_threshold
     run_config.high_confidence_threshold = high_confidence_threshold
-    run_config.n_lookbacks = n_lookbacks
     run_config.water_mask_path = water_mask_path
     run_config.product_dst_dir = product_dst_dir
     run_config.bucket = bucket
@@ -682,6 +669,6 @@ def run_dist_s1_sas_prep_runconfig_yml(run_config_template_yml_path: Path | str)
     run_config.device = device
     run_config.stride_for_norm_param_estimation = stride_for_norm_param_estimation
     run_config.batch_size_for_norm_param_estimation = batch_size_for_norm_param_estimation
-    run_config.optimize = optimize
+    run_config.model_compilation = optimize
 
     return run_config

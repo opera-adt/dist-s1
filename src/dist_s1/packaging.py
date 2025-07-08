@@ -162,9 +162,9 @@ def package_conf_db_disturbance_tifs(run_config: RunConfigData) -> None:
 
 
 def generate_browse_image(run_config: RunConfigData) -> None:
-    if run_config.confirmation_strategy == 'compute_baseline':
+    if not run_config.confirmation:
         final_tif2plot = 'alert_status_path'
-    if run_config.confirmation_strategy == 'use_prev_product':
+    else:
         final_tif2plot = 'dist_status_path'
     product_data = run_config.product_data_model
     with Env(GDAL_PAM_ENABLED='NO'):
