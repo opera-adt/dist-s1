@@ -46,70 +46,6 @@ def despeckle_and_serialize_rtc_s1(
     return dst_paths
 
 
-def compute_normal_params_per_burst_and_serialize(
-    pre_copol_paths_dskpl_paths: list[Path],
-    pre_crosspol_paths_dskpl_paths: list[Path],
-    out_path_mu_copol: Path,
-    out_path_mu_crosspol: Path,
-    out_path_sigma_copol: Path,
-    out_path_sigma_crosspol: Path,
-    memory_strategy: str = 'high',
-    stride: int = 2,
-    batch_size: int = 32,
-    device: str = 'best',
-    optimize: bool = False,
-    model_source: str | None = None,
-    model_cfg_path: Path | None = None,
-    model_wts_path: Path | None = None,
-) -> Path:
-    if device not in ('cpu', 'cuda', 'mps', 'best'):
-        raise ValueError(f'Invalid device: {device}')
-    # For distmetrics, None is how we choose the "best" available device
-    if device == 'best':
-        device = None
-
-    if model_source == 'external':
-        model = load_transformer_model(
-            model_token=model_source,
-            model_cfg_path=model_cfg_path,
-            model_wts_path=model_wts_path,
-            device=device,
-            optimize=optimize,
-            batch_size=batch_size,
-        )
-    else:
-        model = load_transformer_model(device=device, optimize=optimize, batch_size=batch_size)
-
-    copol_data = [open_one_ds(path) for path in pre_copol_paths_dskpl_paths]
-    crosspol_data = [open_one_ds(path) for path in pre_crosspol_paths_dskpl_paths]
-    arrs_copol, profs_copol = zip(*copol_data)
-    arrs_crosspol, profs_crosspol = zip(*crosspol_data)
-
-    if len(arrs_copol) != len(arrs_crosspol):
-        raise ValueError('Length of Copolar and crosspolar arrays do not match')
-    p_ref = profs_copol[0]
-    for p_copol, p_crosspol in zip(profs_copol, profs_crosspol):
-        check_profiles_match(p_ref, p_copol)
-        check_profiles_match(p_ref, p_crosspol)
-
-    logits_mu, logits_sigma = estimate_normal_params_of_logits(
-        model,
-        arrs_copol,
-        arrs_crosspol,
-        memory_strategy=memory_strategy,
-        device=device,
-        stride=stride,
-        batch_size=batch_size,
-    )
-    logits_mu_copol, logits_mu_crosspol = logits_mu[0, ...], logits_mu[1, ...]
-    logits_sigma_copol, logits_sigma_crosspol = logits_sigma[0, ...], logits_sigma[1, ...]
-
-    serialize_one_2d_ds(logits_mu_copol, p_ref, out_path_mu_copol)
-    serialize_one_2d_ds(logits_mu_crosspol, p_ref, out_path_mu_crosspol)
-    serialize_one_2d_ds(logits_sigma_copol, p_ref, out_path_sigma_copol)
-    serialize_one_2d_ds(logits_sigma_crosspol, p_ref, out_path_sigma_crosspol)
-
-
 def compute_logit_mdist(arr_logit: np.ndarray, mean_logit: np.ndarray, sigma_logit: np.ndarray) -> np.ndarray:
     return np.abs(arr_logit - mean_logit) / sigma_logit
 
@@ -125,155 +61,119 @@ def label_one_disturbance(
     return arr
 
 
-def aggregate_disturbance_over_time(
-    disturbance_one_look_l: list[np.ndarray],
-    moderate_confidence_label: float = 1,
-    high_confidence_label: float = 2,
-    max_lookbacks: int | None = None,
+def label_alert_intermediate(
+    dist_arr: np.ndarray,
+    moderate_confidence_label: float,
+    high_confidence_label: float,
     nodata_value: int = 255,
 ) -> np.ndarray:
-    n_looks = len(disturbance_one_look_l)
+    nodata_mask = np.isnan(dist_arr)
 
-    # Mask - easier to handle 255 ignore via numpy builtins of nan
-    disturbance_stack = np.stack(disturbance_one_look_l, axis=0).astype(np.float32)
-    disturbance_stack[disturbance_stack == nodata_value] = np.nan
-    # Right now, we require the n_looks to have disturbances for all Deltas - any nodata will be no disturbance
-    nodata_mask = np.any(np.isnan(disturbance_stack), axis=0)
-
-    if (max_lookbacks is not None) and (n_looks > max_lookbacks) or (n_looks == 0):
-        raise ValueError(
-            f'Number of looks ({n_looks}) exceeds maximum number of lookbacks ({max_lookbacks}) or is zero.'
-        )
-    if n_looks == 1:
-        X_agg = disturbance_stack.squeeze(0)
-        X_agg[X_agg == moderate_confidence_label] = DISTLABEL2VAL['first_moderate_conf_disturbance']
-        X_agg[X_agg == high_confidence_label] = DISTLABEL2VAL['first_high_conf_disturbance']
-    elif len(disturbance_one_look_l) > 1:
-        X_dist_min = np.nanmin(disturbance_stack, axis=0)
-        X_dist_count = np.nansum((disturbance_stack != 0), axis=0).astype(np.uint8)
-        X_agg = np.zeros_like(X_dist_min)
-        # Requires all looks to have data to be labeled otherwise X_dist_count < n_looks
-        ind_moderate = (X_dist_count == n_looks) & (X_dist_min == moderate_confidence_label)
-        ind_high = (X_dist_count == n_looks) & (X_dist_min == high_confidence_label)
-        if n_looks == 2:
-            X_agg[ind_moderate] = DISTLABEL2VAL['provisional_moderate_conf_disturbance']
-            X_agg[ind_high] = DISTLABEL2VAL['provisional_high_conf_disturbance']
-        elif n_looks == 3:
-            X_agg[ind_moderate] = DISTLABEL2VAL['confirmed_moderate_conf_disturbance']
-            X_agg[ind_high] = DISTLABEL2VAL['confirmed_high_conf_disturbance']
-        else:
-            raise NotImplementedError(f'Number of scenes ({n_looks}) is not implemented.')
-    X_agg[nodata_mask] = nodata_value
-    X_agg = X_agg.astype(np.uint8)
-    return X_agg
+    dist_labels = np.zeros_like(dist_arr, dtype=np.uint8)
+    dist_labels[dist_labels == moderate_confidence_label] = DISTLABEL2VAL['first_moderate_conf_disturbance']
+    dist_labels[dist_labels == high_confidence_label] = DISTLABEL2VAL['first_high_conf_disturbance']
+    dist_labels[nodata_mask] = nodata_value
+    dist_labels = dist_labels.astype(np.uint8)
+    return dist_labels
 
 
-def compute_burst_disturbance_for_lookback_group_and_serialize(
+def compute_burst_disturbance_and_serialize(
     *,
-    copol_paths: list[Path],
-    crosspol_paths: list[Path],
-    logit_mean_copol_path: Path,
-    logit_mean_crosspol_path: Path,
-    logit_sigma_copol_path: Path,
-    logit_sigma_crosspol_path: Path,
+    pre_copol_paths: list[Path],
+    pre_crosspol_paths: list[Path],
+    post_copol_path: Path,
+    post_crosspol_path: Path,
+    acq_dts: list[datetime.datetime],
     out_dist_path: Path,
-    max_lookbacks: int,
     moderate_confidence_threshold: float,
     high_confidence_threshold: float,
     out_metric_path: Path | None = None,
+    utilize_acq_dts: bool = False,
+    use_logit: bool = True,
+    model_source: str | Path | None = None,
+    model_cfg_path: str | Path | None = None,
+    model_wts_path: str | Path | None = None,
+    memory_strategy: str = 'high',
+    stride: int = 16,
+    batch_size: int = 32,
+    device: str = 'best',
+    model_compilation: bool = False,
 ) -> None:
-    if len(copol_paths) != len(crosspol_paths):
-        raise ValueError('Length of Copolar and crosspolar arrays do not match')
-    if len(copol_paths) > max_lookbacks:
-        raise ValueError(
-            f'Number of looks ({len(copol_paths)}) exceeds maximum number of lookbacks ({max_lookbacks}) for '
-            f'paths: {copol_paths} and {crosspol_paths}'
+    if model_source == 'external':
+        model = load_transformer_model(
+            model_token=model_source,
+            model_cfg_path=model_cfg_path,
+            model_wts_path=model_wts_path,
+            device=device,
+            optimize=model_compilation,
+            batch_size=batch_size,
         )
-    copol_data = [open_one_ds(path) for path in copol_paths]
-    crosspol_data = [open_one_ds(path) for path in crosspol_paths]
+    else:
+        model = load_transformer_model(device=device, optimize=model_compilation, batch_size=batch_size)
 
-    arrs_copol, profs_copol = zip(*copol_data)
-    arrs_crosspol, profs_crosspol = zip(*crosspol_data)
+    if utilize_acq_dts:
+        print(f'Using acq_dts {acq_dts}')
 
-    logit_arrs_copol = [logit(arr) for arr in arrs_copol]
-    logit_arrs_crosspol = [logit(arr) for arr in arrs_crosspol]
+    pre_copol_data = [open_one_ds(path) for path in pre_copol_paths]
+    pre_crosspol_data = [open_one_ds(path) for path in pre_crosspol_paths]
+    post_copol_data = open_one_ds(post_copol_path)
+    post_crosspol_data = open_one_ds(post_crosspol_path)
 
-    logit_mean_copol, p_mean_copol = open_one_ds(logit_mean_copol_path)
-    logit_mean_crosspol, p_mean_crosspol = open_one_ds(logit_mean_crosspol_path)
-    logit_sigma_copol, p_sigma_copol = open_one_ds(logit_sigma_copol_path)
-    logit_sigma_crosspol, p_sigma_crosspol = open_one_ds(logit_sigma_crosspol_path)
+    pre_copol_arrs, pre_copol_profs = zip(*pre_copol_data)
+    pre_crosspol_arrs, pre_crosspol_profs = zip(*pre_crosspol_data)
+    post_copol_arr, post_copol_prof = post_copol_data
+    post_crosspol_arr, post_crosspol_prof = post_crosspol_data
 
+    if use_logit:
+        pre_copol_arrs = [logit(arr) for arr in pre_copol_arrs]
+        pre_crosspol_arrs = [logit(arr) for arr in pre_crosspol_arrs]
+        post_copol_arr = logit(post_copol_arr)
+        post_crosspol_arr = logit(post_crosspol_arr)
+
+    p_ref = pre_copol_profs[0].copy()
     [
-        check_profiles_match(p_mean_copol, p)
-        for p in [p_mean_crosspol, p_sigma_copol, p_sigma_crosspol, profs_crosspol[0], profs_copol[0]]
+        check_profiles_match(p_ref, p)
+        for p in pre_copol_profs + pre_crosspol_profs + [post_copol_prof] + [post_crosspol_prof]
     ]
 
-    mdist_copol_l = [compute_logit_mdist(arr, logit_mean_copol, logit_sigma_copol) for arr in logit_arrs_copol]
-    mdist_crosspol_l = [
-        compute_logit_mdist(arr, logit_mean_crosspol, logit_sigma_crosspol) for arr in logit_arrs_crosspol
-    ]
+    mu_2d, sigma_2d = estimate_normal_params_of_logits(
+        model,
+        pre_copol_arrs,
+        pre_crosspol_arrs,
+        memory_strategy=memory_strategy,
+        device=device,
+        stride=stride,
+        batch_size=batch_size,
+    )
 
-    mdist_l = [
-        np.nanmax(np.stack([mdist_copol, mdist_crosspol], axis=0), axis=0)
-        for mdist_copol, mdist_crosspol in zip(mdist_copol_l, mdist_crosspol_l)
-    ]
+    post_arr_2d = np.stack([post_copol_arr, post_crosspol_arr], axis=0)
+    z_score_2d = np.abs(post_arr_2d - mu_2d) / sigma_2d
+    metric = np.nanmax(z_score_2d, axis=0)
 
     # Intermediate (single comparison with baseline using moderate/high confidence thresholds):
     # 0 - No disturbance
     # 1 - Moderate confidence
     # 2 - High confidence
     # 255 - Nodata
-    disturbance_one_look_l = [
-        label_one_disturbance(mdist, moderate_confidence_threshold, high_confidence_threshold) for mdist in mdist_l
-    ]
+    intermediate_labels = label_one_disturbance(metric, moderate_confidence_threshold, high_confidence_threshold)
 
     # Translates intermediate labels to disturbance labels dictated in constants.py
-    disturbance_temporal_agg = aggregate_disturbance_over_time(disturbance_one_look_l, max_lookbacks=max_lookbacks)
+    alert_intermediate = label_alert_intermediate(
+        intermediate_labels, moderate_confidence_threshold, high_confidence_threshold
+    )
 
-    p_dist_ref = profs_copol[0].copy()
+    p_dist_ref = p_ref.copy()
     p_dist_ref['nodata'] = 255
     p_dist_ref['dtype'] = np.uint8
 
-    serialize_one_2d_ds(disturbance_temporal_agg, p_dist_ref, out_dist_path)
-    if out_metric_path is not None:
-        serialize_one_2d_ds(mdist_l[-1], profs_copol[0], out_metric_path)
+    p_metric_ref = p_ref.copy()
+    p_metric_ref['nodata'] = np.nan
+    p_metric_ref['dtype'] = np.float32
+
+    serialize_one_2d_ds(alert_intermediate, p_dist_ref, out_dist_path)
+    serialize_one_2d_ds(metric, p_metric_ref, out_metric_path)
 
 
-def aggregate_disturbance_over_lookbacks(X_delta_l: list[np.ndarray]) -> np.ndarray:
-    X_agg = np.zeros_like(X_delta_l[0])
-    # nodata is where any lookback group had nodata
-    nodata_mask = np.any(np.stack(X_delta_l, axis=0) == 255, axis=0)
-    # priority is to largest lookback where we can confirm disturbances
-    for X_delta in X_delta_l:
-        ind = ~np.isin(X_delta, [0, 255])
-        X_agg[ind] = X_delta[ind]
-    X_agg[nodata_mask] = 255
-    return X_agg
-
-
-def aggregate_burst_disturbance_over_lookbacks_and_serialize(
-    disturbance_paths: list[Path], out_path: Path, max_lookbacks: int
-) -> None:
-    stems = [Path(p).stem for p in disturbance_paths]
-    # Make sure the paths are in order of lookback, delta key is the last token
-    assert 'delta' in stems[0].split('_')[-1]
-    if sorted(stems, key=lambda x: x.split('_')[-1]) != stems:
-        raise ValueError('Disturbance paths must be supplied in order of lookback.')
-    if len(disturbance_paths) != max_lookbacks:
-        raise ValueError(f'Expected {max_lookbacks} disturbance paths, got {len(disturbance_paths)}.')
-
-    data = [open_one_ds(path) for path in disturbance_paths]
-    X_delta_l, profs = zip(*data)
-    for p in profs[1:]:
-        check_profiles_match(profs[0], p)
-
-    X_time_agg = aggregate_disturbance_over_lookbacks(X_delta_l)
-
-    p_ref = profs[0]
-    serialize_one_2d_ds(X_time_agg, p_ref, out_path)
-
-
-# insert here the new confirmation function
 def compute_tile_disturbance_using_previous_product_and_serialize(
     dist_metric_path: Path,
     dist_metric_date: Path,

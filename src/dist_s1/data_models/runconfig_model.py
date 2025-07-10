@@ -32,36 +32,6 @@ yaml.add_representer(PosixPath, posix_path_encoder)
 yaml.add_representer(type(None), none_encoder)
 
 
-def generate_burst_dist_paths(
-    row: pd.Series,
-    *,
-    top_level_data_dir: Path,
-    dst_dir_name: str,
-    lookback: int | None = 0,
-    path_token: str | None = None,
-    polarization_token: str | None = None,
-    date_lut: dict[str, list[pd.Timestamp]] | None = None,
-) -> Path:
-    if path_token is None:
-        path_token = dst_dir_name
-    data_dir = top_level_data_dir / dst_dir_name
-    if lookback is not None:
-        lookback_dir = data_dir / f'Delta_{lookback}'
-    else:
-        lookback_dir = data_dir
-    lookback_dir.mkdir(parents=True, exist_ok=True)
-    burst_id = row.jpl_burst_id
-    acq_date = row.acq_dt
-    acq_date_str = acq_date.date().strftime('%Y-%m-%d')
-    fn = f'{path_token}_{burst_id}_{acq_date_str}.tif'
-    if lookback is not None:
-        fn = fn.replace('.tif', f'_delta{lookback}.tif')
-    if polarization_token is not None:
-        fn = fn.replace(f'{path_token}', f'{path_token}_{polarization_token}')
-    out_path = lookback_dir / fn
-    return out_path
-
-
 def get_opera_id(opera_rtc_s1_tif_path: Path | str) -> str:
     stem = Path(opera_rtc_s1_tif_path).stem
     tokens = stem.split('_')
@@ -215,12 +185,16 @@ class RunConfigData(BaseModel):
     model_source: str | None = None
     model_cfg_path: Path | str | None = None
     model_wts_path: Path | str | None = None
+    # Use logit transform
+    use_logit: bool = Field(default=True)
+    # Use despeckling
+    use_despeckling: bool = Field(default=True)
 
     # Private attributes that are associated to properties
     _burst_ids: list[str] | None = None
     _df_inputs: pd.DataFrame | None = None
-    _df_pre_dist_products: pd.DataFrame | None = None
-    _df_burst_distmetric: pd.DataFrame | None = None
+    _df_prior_dist_products: pd.DataFrame | None = None
+    _df_burst_distmetrics: pd.DataFrame | None = None
     _df_mgrs_burst_lut: gpd.GeoDataFrame | None = None
     _product_name: ProductNameData | None = None
     _product_data_model: ProductDirectoryData | None = None
@@ -475,88 +449,35 @@ class RunConfigData(BaseModel):
             'dist_dur_path': pre_product_dir / 'dist_dur.tif',
             'dist_last_date_path': pre_product_dir / 'dist_last_date.tif',
         }
-        for lookback in range(self.n_lookbacks):
-            final_unformatted_tif_paths[f'alert_delta{lookback}_path'] = pre_product_dir / f'alert_delta{lookback}.tif'
 
         return final_unformatted_tif_paths
 
     @property
     def df_burst_distmetrics(self) -> pd.DataFrame:
-        if self._df_burst_distmetric is None:
-            normal_param_dir = self.dst_dir / 'normal_params'
-            normal_param_dir.mkdir(parents=True, exist_ok=True)
-
-            df_inputs = self.df_inputs.copy()
+        if self._df_burst_distmetrics is None:
+            df_inputs = self.df_inputs
             df_post = df_inputs[df_inputs.input_category == 'post'].reset_index(drop=True)
-            burst_ids = df_post.jpl_burst_id.unique()
-            df_dist_by_burst = pd.DataFrame({'jpl_burst_id': burst_ids})
-
-            df_date = df_inputs.groupby('jpl_burst_id')['acq_dt'].apply(np.maximum.reduce).reset_index(drop=False)
-            df_dist_by_burst = pd.merge(df_dist_by_burst, df_date, on='jpl_burst_id', how='left')
-
-            # Get the N_LOOKBACKS most recent dates before the current acquisition
-            df_pre = df_inputs[df_inputs.input_category == 'pre'].reset_index(drop=True)
-            df_pre.sort_values(by=['jpl_burst_id', 'acq_dt'], inplace=True, ascending=True)
-            df_date_pre = df_pre.groupby('jpl_burst_id')['acq_dt'].apply(
-                lambda x: sorted(x.nlargest(self.n_lookbacks).tolist())
-            )
-            burst2predates = df_date_pre.to_dict()
-
-            # Distribution Paths
-            for lookback in range(self.n_lookbacks):
-                for normal_param_token in ['mean', 'std']:
-                    for polarization_token in ['copol', 'crosspol']:
-                        df_dist_by_burst[
-                            f'loc_path_normal_{normal_param_token}_delta{lookback}_{polarization_token}'
-                        ] = df_dist_by_burst.apply(
-                            generate_burst_dist_paths,
-                            top_level_data_dir=self.dst_dir,
-                            dst_dir_name='normal_params',
-                            path_token=normal_param_token,
-                            polarization_token=polarization_token,
-                            lookback=lookback,
-                            date_lut=burst2predates,
-                            axis=1,
-                        )
-
-            # Metrics Paths
-            df_dist_by_burst['loc_path_metric_delta0'] = df_dist_by_burst.apply(
-                generate_burst_dist_paths,
-                top_level_data_dir=self.dst_dir,
-                dst_dir_name='metrics',
-                path_token='distmetric',
-                lookback=0,
-                date_lut=None,
-                axis=1,
-                n_lookbacks=self.n_lookbacks,
+            df_distmetrics = (
+                df_post.groupby('jpl_burst_id')
+                .agg({'opera_id': 'first', 'acq_dt': 'first', 'acq_date_for_mgrs_pass': 'first'})
+                .reset_index(drop=False)
             )
 
-            # Disturbance Paths for Each Lookback
-            for lookback in range(self.n_lookbacks):
-                df_dist_by_burst[f'loc_path_disturb_delta{lookback}'] = df_dist_by_burst.apply(
-                    generate_burst_dist_paths,
-                    top_level_data_dir=self.dst_dir,
-                    dst_dir_name='disturbance',
-                    path_token='disturb',
-                    lookback=lookback,
-                    date_lut=None,
-                    axis=1,
-                )
-
-            # Disturbance Paths Time Aggregated
-            df_dist_by_burst['loc_path_disturb_time_aggregated'] = df_dist_by_burst.apply(
-                generate_burst_dist_paths,
-                top_level_data_dir=self.dst_dir,
-                dst_dir_name='disturbance/time_aggregated',
-                path_token='disturb',
-                lookback=None,
-                date_lut=None,
-                axis=1,
+            # Metric Paths
+            metric_dir = self.dst_dir / 'metric'
+            metric_dir.mkdir(parents=True, exist_ok=True)
+            df_distmetrics['loc_path_metric'] = df_distmetrics.opera_id.map(
+                lambda id_: f'{metric_dir}/metric_{id_}.tif'
             )
+            # Dist Alert Intermediate
+            dist_alert_dir = self.dst_dir / 'dist_alert_intermediate'
+            dist_alert_dir.mkdir(parents=True, exist_ok=True)
+            df_distmetrics['loc_path_dist_alert_intermediate'] = df_distmetrics.opera_id.map(
+                lambda id_: f'{dist_alert_dir}/dist_alert_{id_}.tif'
+            )
+            self._df_burst_distmetrics = df_distmetrics
 
-            self._df_burst_distmetric = df_dist_by_burst
-
-        return self._df_burst_distmetric
+        return self._df_burst_distmetrics
 
     @property
     def df_inputs(self) -> pd.DataFrame:
@@ -596,7 +517,7 @@ class RunConfigData(BaseModel):
         return self._df_inputs.copy()
 
     @property
-    def df_pre_dist_products(self) -> pd.DataFrame:
+    def df_prior_dist_products(self) -> pd.DataFrame:
         VALID_SUFFIXES = (
             '_GEN-DIST-STATUS.tif',
             '_GEN-METRIC-MAX.tif',
@@ -608,10 +529,10 @@ class RunConfigData(BaseModel):
             '_GEN-DIST-LAST-DATE.tif',
         )
 
-        if self._df_pre_dist_products is None:
+        if self._df_prior_dist_products is None:
             if not self.prior_dist_s1_product:
-                self._df_pre_dist_products = pd.DataFrame()
-                return self._df_pre_dist_products.copy()
+                self._df_prior_dist_products = pd.DataFrame()
+                return self._df_prior_dist_products.copy()
 
             # Normalize paths
             paths = [Path(p) for p in self.prior_dist_s1_product]
@@ -653,8 +574,8 @@ class RunConfigData(BaseModel):
             df = pd.DataFrame(rows)
             df = df.rename(columns=column_mapping)
             df = df.sort_values(by='product_key').reset_index(drop=True)
-            self._df_pre_dist_products = df
-            return self._df_pre_dist_products.copy()
+            self._df_prior_dist_products = df
+            return self._df_prior_dist_products.copy()
 
     def model_post_init(self, __context: ValidationInfo) -> None:
         # Water mask control flow
