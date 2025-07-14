@@ -263,7 +263,6 @@ def run_sas_prep(
     bucket: str | None,
     bucket_prefix: str,
     n_workers_for_despeckling: int,
-    batch_size_for_despeckling: int,
     n_workers_for_norm_param_estimation: int,
     device: str,
     model_source: str | None,

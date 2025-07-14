@@ -4,7 +4,6 @@ from datetime import datetime
 from pathlib import Path, PosixPath
 
 import geopandas as gpd
-import numpy as np
 import pandas as pd
 import torch
 import yaml
@@ -142,10 +141,6 @@ class RunConfigData(BaseModel):
         ge=1,
         le=16,
     )
-    batch_size_for_despeckling: int = Field(
-        default=25,
-        ge=1,
-    )
     n_workers_for_despeckling: int = Field(
         default=8,
         ge=1,
@@ -186,9 +181,13 @@ class RunConfigData(BaseModel):
     model_cfg_path: Path | str | None = None
     model_wts_path: Path | str | None = None
     # Use logit transform
-    use_logit: bool = Field(default=True)
+    apply_logit_to_inputs: bool = Field(default=True)
     # Use despeckling
-    use_despeckling: bool = Field(default=True)
+    apply_despeckling: bool = Field(default=True)
+    interpolation_method: str = Field(
+        default='none',
+        pattern='^(nearest|bilinear|none)$',
+    )
 
     # Private attributes that are associated to properties
     _burst_ids: list[str] | None = None
@@ -389,6 +388,10 @@ class RunConfigData(BaseModel):
         confirmation: bool = True,
         lookback_strategy: str = 'multi_window',
         prior_dist_s1_product: ProductDirectoryData | None = None,
+        device: str = 'best',
+        interpolation_method: str = 'none',
+        apply_despeckling: bool = True,
+        apply_logit_to_inputs: bool = True,
     ) -> 'RunConfigData':
         """Transform input table from dist-s1-enumerator into RunConfigData object.
 
@@ -414,6 +417,10 @@ class RunConfigData(BaseModel):
             confirmation=confirmation,
             lookback_strategy=lookback_strategy,
             prior_dist_s1_product=prior_dist_s1_product,
+            device=device,
+            interpolation_method=interpolation_method,
+            apply_despeckling=apply_despeckling,
+            apply_logit_to_inputs=apply_logit_to_inputs,
         )
         return runconfig_data
 
@@ -434,20 +441,20 @@ class RunConfigData(BaseModel):
     @property
     def final_unformatted_tif_paths(self) -> dict:
         # We are going to have a directory without metadata, colorbar, tags, etc.
-        pre_product_dir = self.dst_dir / 'pre_product'
-        pre_product_dir.mkdir(parents=True, exist_ok=True)
+        product_no_confirmation_dir = self.dst_dir / 'product_without_confirmation'
+        product_no_confirmation_dir.mkdir(parents=True, exist_ok=True)
         final_unformatted_tif_paths = {
-            'alert_status_path': pre_product_dir / 'alert_status.tif',
-            'metric_status_path': pre_product_dir / 'metric_status.tif',
+            'alert_status_path': product_no_confirmation_dir / 'alert_status.tif',
+            'metric_status_path': product_no_confirmation_dir / 'metric_status.tif',
             # cofirmation db fields
-            'dist_status_path': pre_product_dir / 'dist_status.tif',
-            'dist_max_path': pre_product_dir / 'dist_max.tif',
-            'dist_conf_path': pre_product_dir / 'dist_conf.tif',
-            'dist_date_path': pre_product_dir / 'dist_date.tif',
-            'dist_count_path': pre_product_dir / 'dist_count.tif',
-            'dist_perc_path': pre_product_dir / 'dist_perc.tif',
-            'dist_dur_path': pre_product_dir / 'dist_dur.tif',
-            'dist_last_date_path': pre_product_dir / 'dist_last_date.tif',
+            'dist_status_path': product_no_confirmation_dir / 'dist_status.tif',
+            'dist_max_path': product_no_confirmation_dir / 'dist_max.tif',
+            'dist_conf_path': product_no_confirmation_dir / 'dist_conf.tif',
+            'dist_date_path': product_no_confirmation_dir / 'dist_date.tif',
+            'dist_count_path': product_no_confirmation_dir / 'dist_count.tif',
+            'dist_perc_path': product_no_confirmation_dir / 'dist_perc.tif',
+            'dist_dur_path': product_no_confirmation_dir / 'dist_dur.tif',
+            'dist_last_date_path': product_no_confirmation_dir / 'dist_last_date.tif',
         }
 
         return final_unformatted_tif_paths
@@ -464,15 +471,15 @@ class RunConfigData(BaseModel):
             )
 
             # Metric Paths
-            metric_dir = self.dst_dir / 'metric'
+            metric_dir = self.dst_dir / 'metric_burst'
             metric_dir.mkdir(parents=True, exist_ok=True)
             df_distmetrics['loc_path_metric'] = df_distmetrics.opera_id.map(
                 lambda id_: f'{metric_dir}/metric_{id_}.tif'
             )
-            # Dist Alert Intermediate
-            dist_alert_dir = self.dst_dir / 'dist_alert_intermediate'
+            # Dist Alert Intermediate by Burst
+            dist_alert_dir = self.dst_dir / 'dist_alert_burst'
             dist_alert_dir.mkdir(parents=True, exist_ok=True)
-            df_distmetrics['loc_path_dist_alert_intermediate'] = df_distmetrics.opera_id.map(
+            df_distmetrics['loc_path_dist_alert_burst'] = df_distmetrics.opera_id.map(
                 lambda id_: f'{dist_alert_dir}/dist_alert_{id_}.tif'
             )
             self._df_burst_distmetrics = df_distmetrics

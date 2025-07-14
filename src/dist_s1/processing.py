@@ -3,47 +3,12 @@ from pathlib import Path
 
 import numpy as np
 from dem_stitcher.rio_tools import reproject_arr_to_match_profile
-from distmetrics.despeckle import despeckle_rtc_arrs_with_tv
 from distmetrics.rio_tools import merge_categorical_arrays, merge_with_weighted_overlap
 from distmetrics.transformer import estimate_normal_params_of_logits, load_transformer_model
 from scipy.special import logit
-from tqdm import tqdm
 
-from dist_s1.constants import COLORBLIND_DIST_CMAP, DISTLABEL2VAL
+from dist_s1.constants import DISTLABEL2VAL, DIST_CMAP
 from dist_s1.rio_tools import check_profiles_match, get_mgrs_profile, open_one_ds, serialize_one_2d_ds
-
-
-def despeckle_and_serialize_rtc_s1(
-    rtc_s1_paths: list[Path],
-    dst_paths: list[Path],
-    batch_size: int = 100,
-    tqdm_enabled: bool = True,
-    n_workers: int = 5,
-) -> list[Path]:
-    # Cast to Path
-    dst_paths = list(map(Path, dst_paths))
-    # Make sure the parent directories exist
-    [p.parent.mkdir(exist_ok=True, parents=True) for p in dst_paths]
-
-    n_batches = int(np.ceil(len(rtc_s1_paths) / batch_size))
-    for k in tqdm(range(n_batches), desc='Despeckling batch', disable=not tqdm_enabled):
-        paths_subset = rtc_s1_paths[k * batch_size : (k + 1) * batch_size]
-        dst_paths_subset = dst_paths[k * batch_size : (k + 1) * batch_size]
-
-        # don't overwrite existing data
-        dst_paths_subset_to_create = [dst_p for dst_p in dst_paths_subset if not dst_p.exists()]
-        paths_subset_to_create = [src_p for (src_p, dst_p) in zip(paths_subset, dst_paths_subset) if not dst_p.exists()]
-
-        # open
-        if dst_paths_subset_to_create:
-            data = list(map(open_one_ds, paths_subset_to_create))
-            arrs, ps = zip(*data)
-            # despeckle
-            arrs_d = despeckle_rtc_arrs_with_tv(arrs, tqdm_enabled=tqdm_enabled, n_jobs=n_workers)
-            # serialize
-            [serialize_one_2d_ds(arr, prof, dst_path) for (arr, prof, dst_path) in zip(arrs_d, ps, dst_paths_subset)]
-
-    return dst_paths
 
 
 def compute_logit_mdist(arr_logit: np.ndarray, mean_logit: np.ndarray, sigma_logit: np.ndarray) -> np.ndarray:
@@ -54,42 +19,39 @@ def label_one_disturbance(
     mdist: np.ndarray, moderate_confidence_threshold: float, high_confidence_threshold: float
 ) -> np.ndarray:
     nodata_mask = np.isnan(mdist)
-    arr = np.zeros_like(mdist)
-    arr[mdist > moderate_confidence_threshold] = 1
-    arr[mdist > high_confidence_threshold] = 2
-    arr[nodata_mask] = 255
-    return arr
+    dist_labels = np.zeros_like(mdist)
+    dist_labels[mdist >= moderate_confidence_threshold] = 1
+    dist_labels[mdist >= high_confidence_threshold] = 2
+    dist_labels[nodata_mask] = 255
+    return dist_labels
 
 
 def label_alert_intermediate(
-    dist_arr: np.ndarray,
+    intermediate_labels: np.ndarray,
+    *,
     moderate_confidence_label: float,
     high_confidence_label: float,
-    nodata_value: int = 255,
 ) -> np.ndarray:
-    nodata_mask = np.isnan(dist_arr)
-
-    dist_labels = np.zeros_like(dist_arr, dtype=np.uint8)
-    dist_labels[dist_labels == moderate_confidence_label] = DISTLABEL2VAL['first_moderate_conf_disturbance']
-    dist_labels[dist_labels == high_confidence_label] = DISTLABEL2VAL['first_high_conf_disturbance']
-    dist_labels[nodata_mask] = nodata_value
-    dist_labels = dist_labels.astype(np.uint8)
+    # Note nodata is taken care of in the intermediate labels
+    dist_labels = np.zeros_like(intermediate_labels, dtype=np.uint8)
+    dist_labels[intermediate_labels == moderate_confidence_label] = DISTLABEL2VAL['first_moderate_conf_disturbance']
+    dist_labels[intermediate_labels == high_confidence_label] = DISTLABEL2VAL['first_high_conf_disturbance']
     return dist_labels
 
 
 def compute_burst_disturbance_and_serialize(
     *,
-    pre_copol_paths: list[Path],
-    pre_crosspol_paths: list[Path],
-    post_copol_path: Path,
-    post_crosspol_path: Path,
+    pre_copol_paths: list[Path | str],
+    pre_crosspol_paths: list[Path | str],
+    post_copol_path: Path | str,
+    post_crosspol_path: Path | str,
     acq_dts: list[datetime.datetime],
     out_dist_path: Path,
     moderate_confidence_threshold: float,
     high_confidence_threshold: float,
     out_metric_path: Path | None = None,
     utilize_acq_dts: bool = False,
-    use_logit: bool = True,
+    use_logits: bool = True,
     model_source: str | Path | None = None,
     model_cfg_path: str | Path | None = None,
     model_wts_path: str | Path | None = None,
@@ -98,6 +60,7 @@ def compute_burst_disturbance_and_serialize(
     batch_size: int = 32,
     device: str = 'best',
     model_compilation: bool = False,
+    fill_value: float = 1e-7,
 ) -> None:
     if model_source == 'external':
         model = load_transformer_model(
@@ -124,16 +87,28 @@ def compute_burst_disturbance_and_serialize(
     post_copol_arr, post_copol_prof = post_copol_data
     post_crosspol_arr, post_crosspol_prof = post_crosspol_data
 
-    if use_logit:
-        pre_copol_arrs = [logit(arr) for arr in pre_copol_arrs]
-        pre_crosspol_arrs = [logit(arr) for arr in pre_crosspol_arrs]
+    if fill_value <= 0:
+        fill_value = 1e-7
+
+    # Preserve nodata values for metric
+    mask_2d = np.isnan(post_copol_arr) | np.isnan(post_crosspol_arr)
+    # Fill nodata values with fill_value for model
+    pre_copol_arrs = [np.where(np.isnan(arr), fill_value, arr) for arr in pre_copol_arrs]
+    pre_crosspol_arrs = [np.where(np.isnan(arr), fill_value, arr) for arr in pre_crosspol_arrs]
+    post_copol_arr = np.where(np.isnan(post_copol_arr), fill_value, post_copol_arr)
+    post_crosspol_arr = np.where(np.isnan(post_crosspol_arr), fill_value, post_crosspol_arr)
+
+    if use_logits:
+        # TODO: Remove logit transformation from model application
+        pre_copol_arrs = [(arr) for arr in pre_copol_arrs]
+        pre_crosspol_arrs = [(arr) for arr in pre_crosspol_arrs]
         post_copol_arr = logit(post_copol_arr)
         post_crosspol_arr = logit(post_crosspol_arr)
 
     p_ref = pre_copol_profs[0].copy()
     [
         check_profiles_match(p_ref, p)
-        for p in pre_copol_profs + pre_crosspol_profs + [post_copol_prof] + [post_crosspol_prof]
+        for p in list(pre_copol_profs) + list(pre_crosspol_profs) + [post_copol_prof] + [post_crosspol_prof]
     ]
 
     mu_2d, sigma_2d = estimate_normal_params_of_logits(
@@ -147,8 +122,9 @@ def compute_burst_disturbance_and_serialize(
     )
 
     post_arr_2d = np.stack([post_copol_arr, post_crosspol_arr], axis=0)
-    z_score_2d = np.abs(post_arr_2d - mu_2d) / sigma_2d
-    metric = np.nanmax(z_score_2d, axis=0)
+    z_score_per_channel = np.abs(post_arr_2d - mu_2d) / sigma_2d
+    metric = np.nanmax(z_score_per_channel, axis=0)
+    metric[mask_2d] = np.nan
 
     # Intermediate (single comparison with baseline using moderate/high confidence thresholds):
     # 0 - No disturbance
@@ -158,8 +134,11 @@ def compute_burst_disturbance_and_serialize(
     intermediate_labels = label_one_disturbance(metric, moderate_confidence_threshold, high_confidence_threshold)
 
     # Translates intermediate labels to disturbance labels dictated in constants.py
+    # See labels (0, 1, 2) provided in previuos function
     alert_intermediate = label_alert_intermediate(
-        intermediate_labels, moderate_confidence_threshold, high_confidence_threshold
+        intermediate_labels,
+        moderate_confidence_label=1,
+        high_confidence_label=2,
     )
 
     p_dist_ref = p_ref.copy()
@@ -170,7 +149,7 @@ def compute_burst_disturbance_and_serialize(
     p_metric_ref['nodata'] = np.nan
     p_metric_ref['dtype'] = np.float32
 
-    serialize_one_2d_ds(alert_intermediate, p_dist_ref, out_dist_path)
+    serialize_one_2d_ds(alert_intermediate, p_dist_ref, out_dist_path, colormap=DIST_CMAP)
     serialize_one_2d_ds(metric, p_metric_ref, out_metric_path)
 
 
@@ -361,7 +340,7 @@ def merge_burst_disturbances_and_serialize(
     X_dist_mgrs, p_dist_mgrs = reproject_arr_to_match_profile(X_merged, p_merged, p_mgrs, resampling='nearest')
     # From BIP back to 2D array
     X_dist_mgrs = X_dist_mgrs[0, ...]
-    serialize_one_2d_ds(X_dist_mgrs, p_dist_mgrs, dst_path, colormap=COLORBLIND_DIST_CMAP)
+    serialize_one_2d_ds(X_dist_mgrs, p_dist_mgrs, dst_path, colormap=DIST_CMAP)
 
 
 def merge_burst_metrics_and_serialize(burst_metrics_paths: list[Path], dst_path: Path, mgrs_tile_id: str) -> None:

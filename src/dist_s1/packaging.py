@@ -78,7 +78,6 @@ def update_tag_types(tags: dict) -> dict:
 
 def package_disturbance_tifs(run_config: RunConfigData) -> None:
     X_dist, p_dist = open_one_ds(run_config.final_unformatted_tif_paths['alert_status_path'])
-    X_dist_delta0, p_dist_delta0 = open_one_ds(run_config.final_unformatted_tif_paths['alert_delta0_path'])
     X_metric, p_metric = open_one_ds(run_config.final_unformatted_tif_paths['metric_status_path'])
 
     tags = run_config.get_public_attributes()
@@ -88,20 +87,12 @@ def package_disturbance_tifs(run_config: RunConfigData) -> None:
 
     if run_config.apply_water_mask:
         X_dist = apply_water_mask(X_dist, p_dist, run_config.water_mask_path)
-        X_dist_delta0 = apply_water_mask(X_dist_delta0, p_dist_delta0, run_config.water_mask_path)
         X_metric = apply_water_mask(X_metric, p_metric, run_config.water_mask_path)
 
     product_data = run_config.product_data_model
 
     serialize_one_2d_ds(X_dist, p_dist, product_data.layer_path_dict['GEN-DIST-STATUS'], colormap=DIST_CMAP, tags=tags)
-    serialize_one_2d_ds(
-        X_dist_delta0,
-        p_dist_delta0,
-        product_data.layer_path_dict['GEN-DIST-STATUS-ACQ'],
-        colormap=DIST_CMAP,
-        tags=tags,
-    )
-    serialize_one_2d_ds(X_metric, p_metric, product_data.layer_path_dict['GEN-METRIC'], colormap=DIST_CMAP, tags=tags)
+    serialize_one_2d_ds(X_metric, p_metric, product_data.layer_path_dict['GEN-METRIC'], tags=tags)
 
 
 def package_conf_db_disturbance_tifs(run_config: RunConfigData) -> None:

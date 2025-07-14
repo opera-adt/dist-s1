@@ -1,19 +1,17 @@
 from datetime import datetime
-from functools import partial
 from pathlib import Path
 
 import torch.multiprocessing as torch_mp
 from tqdm.auto import tqdm
 
 from dist_s1.aws import upload_product_to_s3
-from dist_s1.constants import MODEL_CONTEXT_LENGTH
 from dist_s1.data_models.runconfig_model import RunConfigData
+from dist_s1.despeckling import despeckle_and_serialize_rtc_s1
 from dist_s1.localize_rtc_s1 import localize_rtc_s1
 from dist_s1.packaging import generate_browse_image, package_conf_db_disturbance_tifs, package_disturbance_tifs
 from dist_s1.processing import (
     compute_burst_disturbance_and_serialize,
     compute_tile_disturbance_using_previous_product_and_serialize,
-    despeckle_and_serialize_rtc_s1,
     merge_burst_disturbances_and_serialize,
     merge_burst_metrics_and_serialize,
 )
@@ -35,6 +33,11 @@ def run_dist_s1_localization_workflow(
     input_data_dir: str | Path | None = None,
     apply_water_mask: bool = True,
     water_mask_path: str | Path | None = None,
+    confirmation: bool = True,
+    device: str = 'best',
+    interpolation_method: str = 'none',
+    apply_despeckling: bool = True,
+    apply_logit_to_inputs: bool = True,
 ) -> RunConfigData:
     # Localize inputs
     run_config = localize_rtc_s1(
@@ -49,6 +52,11 @@ def run_dist_s1_localization_workflow(
         input_data_dir=input_data_dir,
         apply_water_mask=apply_water_mask,
         water_mask_path=water_mask_path,
+        confirmation=confirmation,
+        device=device,
+        apply_despeckling=apply_despeckling,
+        apply_logit_to_inputs=apply_logit_to_inputs,
+        interpolation_method=interpolation_method,
     )
 
     return run_config
@@ -86,7 +94,7 @@ def run_despeckle_workflow(run_config: RunConfigData) -> None:
         rtc_paths,
         dst_paths,
         n_workers=run_config.n_workers_for_despeckling,
-        batch_size=run_config.batch_size_for_despeckling,
+        interpolation_method=run_config.interpolation_method,
     )
 
 
@@ -122,7 +130,7 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
 
         assert df_metric_burst.shape[0] == 1
 
-        dist_path_l = df_metric_burst['loc_path_disturb'].tolist()
+        dist_path_l = df_metric_burst['loc_path_dist_alert_burst'].tolist()
         assert len(dist_path_l) == 1
         output_dist_path = dist_path_l[0]
         output_metric_path = df_metric_burst['loc_path_metric'].iloc[0]
@@ -133,16 +141,14 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
         compute_burst_disturbance_and_serialize(
             pre_copol_paths=pre_copol_paths,
             pre_crosspol_paths=pre_crosspol_paths,
-            post_copol_paths=post_copol_paths[0],
-            post_crosspol_paths=post_crosspol_paths[0],
+            post_copol_path=post_copol_paths[0],
+            post_crosspol_path=post_crosspol_paths[0],
             acq_dts=acq_dts,
             out_dist_path=output_dist_path,
             out_metric_path=output_metric_path,
             moderate_confidence_threshold=run_config.moderate_confidence_threshold,
             high_confidence_threshold=run_config.high_confidence_threshold,
-            moderate_confidence_label=run_config.moderate_confidence_label,
-            high_confidence_label=run_config.high_confidence_label,
-            use_logit=run_config.use_logit,
+            use_logits=run_config.apply_logit_to_inputs,
             model_compilation=run_config.model_compilation,
             model_source=run_config.model_source,
             model_cfg_path=run_config.model_cfg_path,
@@ -157,20 +163,15 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
 def run_disturbance_merge_workflow(run_config: RunConfigData) -> None:
     dst_tif_paths = run_config.final_unformatted_tif_paths
 
-    # Metrics
-    metric_burst_paths = run_config.df_burst_distmetrics['loc_path_metric_delta0'].tolist()
+    # Metric
+    metric_burst_paths = run_config.df_burst_distmetrics['loc_path_metric'].tolist()
     dst_metric_path = dst_tif_paths['metric_status_path']
     merge_burst_metrics_and_serialize(metric_burst_paths, dst_metric_path, run_config.mgrs_tile_id)
 
     # Disturbance
-    dist_burst_paths = run_config.df_burst_distmetrics['loc_path_disturb_time_aggregated'].tolist()
+    dist_burst_paths = run_config.df_burst_distmetrics['loc_path_dist_alert_burst'].tolist()
     dst_dist_path = dst_tif_paths['alert_status_path']
     merge_burst_disturbances_and_serialize(dist_burst_paths, dst_dist_path, run_config.mgrs_tile_id)
-
-    for lookback in range(run_config.n_lookbacks):
-        dist_burst_paths_delta0 = run_config.df_burst_distmetrics[f'loc_path_disturb_delta{lookback}'].tolist()
-        dst_last_pass_path = dst_tif_paths[f'alert_delta{lookback}_path']
-        merge_burst_disturbances_and_serialize(dist_burst_paths_delta0, dst_last_pass_path, run_config.mgrs_tile_id)
 
 
 def run_disturbance_confirmation(run_config: RunConfigData) -> None:
@@ -215,7 +216,8 @@ def run_disturbance_confirmation(run_config: RunConfigData) -> None:
 
 def run_dist_s1_processing_workflow(run_config: RunConfigData) -> RunConfigData:
     # Despeckle by burst
-    run_despeckle_workflow(run_config)
+    if run_config.apply_despeckling:
+        run_despeckle_workflow(run_config)
 
     # Compute disturbance per burst and all possible lookbacks
     run_burst_disturbance_workflow(run_config)
@@ -286,6 +288,7 @@ def run_dist_s1_sas_prep_workflow(
         input_data_dir=input_data_dir,
         apply_water_mask=apply_water_mask,
         water_mask_path=water_mask_path,
+        device=device,
     )
     run_config.memory_strategy = memory_strategy
     run_config.tqdm_enabled = tqdm_enabled
@@ -351,6 +354,9 @@ def run_dist_s1_workflow(
     stride_for_norm_param_estimation: int = 16,
     batch_size_for_norm_param_estimation: int = 32,
     optimize: bool = True,
+    interpolation_method: str = 'none',
+    apply_despeckling: bool = True,
+    apply_logit_to_inputs: bool = True,
 ) -> Path:
     run_config = run_dist_s1_sas_prep_workflow(
         mgrs_tile_id,
@@ -382,6 +388,9 @@ def run_dist_s1_workflow(
         stride_for_norm_param_estimation=stride_for_norm_param_estimation,
         batch_size_for_norm_param_estimation=batch_size_for_norm_param_estimation,
         optimize=optimize,
+        interpolation_method=interpolation_method,
+        apply_despeckling=apply_despeckling,
+        apply_logit_to_inputs=apply_logit_to_inputs,
     )
     _ = run_dist_s1_sas_workflow(run_config)
 

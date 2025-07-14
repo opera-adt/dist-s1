@@ -237,3 +237,53 @@ def test_lookback_strategy_validation(test_dir: Path, test_data_dir: Path, chang
     assert config.lookback_strategy == 'multi_window'
 
     shutil.rmtree(tmp_dir)
+
+
+def test_device_resolution(test_dir: Path, test_data_dir: Path, change_local_dir: Callable) -> None:
+    """Test that device='best' gets properly resolved to the actual available device."""
+    import torch
+
+    change_local_dir(test_dir)
+
+    tmp_dir = test_dir / 'tmp'
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
+
+    # Test that device='best' gets resolved to an actual device
+    config = RunConfigData.from_product_df(
+        df_product,
+        apply_water_mask=False,
+        dst_dir=tmp_dir,
+        confirmation=False,
+        prior_dist_s1_product=None,
+        device='best',
+    )
+
+    # Verify that 'best' was resolved to an actual device
+    assert config.device in ['cpu', 'cuda', 'mps'], (
+        f"Device should be one of ['cpu', 'cuda', 'mps'], got {config.device}"
+    )
+
+    # Test that explicit device values work correctly
+    for device in ['cpu', 'cuda', 'mps']:
+        try:
+            config = RunConfigData.from_product_df(
+                df_product,
+                apply_water_mask=False,
+                dst_dir=tmp_dir,
+                confirmation=False,
+                prior_dist_s1_product=None,
+                device=device,
+            )
+            assert config.device == device
+        except ValidationError as e:
+            # It's okay for cuda/mps to fail if not available
+            if device == 'cuda' and not torch.cuda.is_available():
+                assert 'CUDA is not available' in str(e)
+            elif device == 'mps' and not torch.backends.mps.is_available():
+                assert 'MPS is not available' in str(e)
+            else:
+                raise
+
+    shutil.rmtree(tmp_dir)
