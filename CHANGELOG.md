@@ -18,6 +18,9 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Fixed
 - All the tests with the updates above.
+## Changed
+- Now retrieve the umd distance to land and use a water mask that excluded 1 km from ocean.
+
 
 ## [1.0.1] - 2025-06-05
 
