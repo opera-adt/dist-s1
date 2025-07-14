@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 from dem_stitcher.rio_tools import reproject_arr_to_match_profile
 from distmetrics.rio_tools import merge_categorical_arrays, merge_with_weighted_overlap
-from distmetrics.transformer import estimate_normal_params_of_logits, load_transformer_model
+from distmetrics.transformer import estimate_normal_params, load_transformer_model
 from scipy.special import logit
 
 from dist_s1.constants import DISTLABEL2VAL, DIST_CMAP
@@ -100,8 +100,8 @@ def compute_burst_disturbance_and_serialize(
 
     if use_logits:
         # TODO: Remove logit transformation from model application
-        pre_copol_arrs = [(arr) for arr in pre_copol_arrs]
-        pre_crosspol_arrs = [(arr) for arr in pre_crosspol_arrs]
+        pre_copol_arrs = [logit(arr) for arr in pre_copol_arrs]
+        pre_crosspol_arrs = [logit(arr) for arr in pre_crosspol_arrs]
         post_copol_arr = logit(post_copol_arr)
         post_crosspol_arr = logit(post_crosspol_arr)
 
@@ -111,7 +111,7 @@ def compute_burst_disturbance_and_serialize(
         for p in list(pre_copol_profs) + list(pre_crosspol_profs) + [post_copol_prof] + [post_crosspol_prof]
     ]
 
-    mu_2d, sigma_2d = estimate_normal_params_of_logits(
+    mu_2d, sigma_2d = estimate_normal_params(
         model,
         pre_copol_arrs,
         pre_crosspol_arrs,

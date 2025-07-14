@@ -10,16 +10,19 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Removed
 - `n_lookbacks` (which should be called `n_baselines`) for computing confirmation within the SAS
-- ...
+   - No longer is there complicated accounting to keeping track of and confirming changes through baseline
 
 ## Changed
 - Multiwindow strategy is now the default
-- Confirmation_strategy is now `confirmation` and simply a boolean
+- Confirmation_strategy is now `confirmation` and simply a boolean indicating whether confirmation should be applied
+- Now retrieves the umd distance to land and use a water mask that excluded 1 km from ocean.
+
+## Added
+- Updated interface for despeckling to use interpolation to fill nan values within burst area.
+  - distmetrics>=1.0.0 - see more details there
 
 ## Fixed
 - All the tests with the updates above.
-## Changed
-- Now retrieve the umd distance to land and use a water mask that excluded 1 km from ocean.
 
 
 ## [1.0.1] - 2025-06-05
