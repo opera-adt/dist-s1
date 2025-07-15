@@ -3,8 +3,9 @@ from pathlib import Path
 
 import numpy as np
 from dem_stitcher.rio_tools import reproject_arr_to_match_profile
+from distmetrics.model_load import load_transformer_model
 from distmetrics.rio_tools import merge_categorical_arrays, merge_with_weighted_overlap
-from distmetrics.transformer import estimate_normal_params, load_transformer_model
+from distmetrics.tf_inference import estimate_normal_params
 from scipy.special import logit
 
 from dist_s1.constants import DISTLABEL2VAL, DIST_CMAP
@@ -68,11 +69,11 @@ def compute_burst_disturbance_and_serialize(
             model_cfg_path=model_cfg_path,
             model_wts_path=model_wts_path,
             device=device,
-            optimize=model_compilation,
+            model_compilation=model_compilation,
             batch_size=batch_size,
         )
     else:
-        model = load_transformer_model(device=device, optimize=model_compilation, batch_size=batch_size)
+        model = load_transformer_model(device=device, model_compilation=model_compilation, batch_size=batch_size)
 
     if utilize_acq_dts:
         print(f'Using acq_dts {acq_dts}')
