@@ -14,7 +14,11 @@ from dist_s1.dist_processing import (
     merge_burst_metrics_and_serialize,
 )
 from dist_s1.localize_rtc_s1 import localize_rtc_s1
-from dist_s1.packaging import generate_browse_image, package_conf_db_disturbance_tifs, package_disturbance_tifs
+from dist_s1.packaging import (
+    generate_browse_image,
+    package_conf_db_disturbance_tifs,
+    package_disturbance_tifs_no_confirmation,
+)
 
 
 # Use spawn for multiprocessing
@@ -231,7 +235,7 @@ def run_dist_s1_processing_workflow(run_config: RunConfigData) -> RunConfigData:
 def run_dist_s1_packaging_workflow(run_config: RunConfigData) -> Path:
     if not run_config.confirmation:
         print('No confirmation requested, skipping confirmation step')
-        package_disturbance_tifs(run_config)
+        package_disturbance_tifs_no_confirmation(run_config)
 
     if run_config.confirmation:
         print('Using previous product for confirmation')

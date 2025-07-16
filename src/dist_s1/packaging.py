@@ -6,10 +6,26 @@ from rasterio.enums import Resampling
 from rasterio.env import Env
 
 import dist_s1
-from dist_s1.constants import DIST_CMAP
+from dist_s1.constants import BASE_DATE, DIST_CMAP
 from dist_s1.data_models.runconfig_model import RunConfigData
 from dist_s1.rio_tools import open_one_ds, serialize_one_2d_ds
 from dist_s1.water_mask import apply_water_mask
+
+
+def generate_count_disturbed_no_confirmation(
+    dist_status_arr: np.ndarray, count_value: int = 1, dtype: np.dtype = np.uint8, nodata_value: int | float = 255
+) -> np.ndarray:
+    X_count = np.zeros_like(dist_status_arr, dtype=dtype)
+    X_count[dist_status_arr == 255] = nodata_value
+    X_count[dist_status_arr > 0] = count_value
+    return X_count
+
+
+def update_profile(src_profile: dict, dtype: np.dtype, nodata_value: int | float) -> dict:
+    profile = src_profile.copy()
+    profile['dtype'] = dtype
+    profile['nodata'] = nodata_value
+    return profile
 
 
 def convert_geotiff_to_png(
@@ -69,9 +85,53 @@ def update_tag_types(tags: dict) -> dict:
     return tags
 
 
-def package_disturbance_tifs(run_config: RunConfigData) -> None:
+def package_disturbance_tifs_no_confirmation(run_config: RunConfigData) -> None:
     X_dist, p_dist = open_one_ds(run_config.final_unformatted_tif_paths['alert_status_path'])
     X_metric, p_metric = open_one_ds(run_config.final_unformatted_tif_paths['metric_status_path'])
+
+    # GEN-DIST-COUNT
+    X_count = generate_count_disturbed_no_confirmation(X_dist, dtype=np.uint8, nodata_value=255)
+    # GEN-DIST-PERC
+    X_perc = generate_count_disturbed_no_confirmation(X_dist, count_value=100, dtype=np.uint8, nodata_value=255)
+    # GEN-DIST-DUR
+    X_dur = generate_count_disturbed_no_confirmation(X_dist, dtype=np.int16, nodata_value=-1)
+    # GEN-DIST-DATE - everything is pd.Timestamp
+    date_encoded = (run_config.min_acq_date.to_pydatetime() - BASE_DATE).days
+    X_date = generate_count_disturbed_no_confirmation(X_dist, dtype=np.int16, nodata_value=-1, count_value=date_encoded)
+    # GEN-DIST-LAST-DATE - last date of valid observation
+    X_last_date = X_dur.copy()
+    X_last_date[X_dist != 255] = date_encoded
+    # GEN-DIST-CONF
+    X_conf = X_metric.copy()
+    X_conf[X_conf < 3.5] = 0
+    # GEN-DIST-STATUS-ACQ
+    X_status_acq = X_dist.copy()
+    # GEN-METRIC-MAX
+    X_metric_max = X_metric.copy()
+
+    product_data = run_config.product_data_model
+    serialization_inputs = [
+        (X_dist, p_dist, product_data.layer_path_dict['GEN-DIST-STATUS'], DIST_CMAP),
+        (X_metric, p_metric, product_data.layer_path_dict['GEN-METRIC'], None),
+        (X_count, update_profile(p_dist, np.uint8, 255), product_data.layer_path_dict['GEN-DIST-COUNT'], None),
+        (X_perc, update_profile(p_dist, np.uint8, 255), product_data.layer_path_dict['GEN-DIST-PERC'], None),
+        (X_dur, update_profile(p_dist, np.int16, -1), product_data.layer_path_dict['GEN-DIST-DUR'], None),
+        (X_date, update_profile(p_dist, np.int16, -1), product_data.layer_path_dict['GEN-DIST-DATE'], None),
+        (X_last_date, update_profile(p_dist, np.int16, -1), product_data.layer_path_dict['GEN-DIST-LAST-DATE'], None),
+        (X_conf, update_profile(p_metric, np.int16, -1), product_data.layer_path_dict['GEN-DIST-CONF'], None),
+        (
+            X_status_acq,
+            update_profile(p_dist, np.uint8, 255),
+            product_data.layer_path_dict['GEN-DIST-STATUS-ACQ'],
+            DIST_CMAP,
+        ),
+        (
+            X_metric_max,
+            update_profile(p_metric, np.float32, np.nan),
+            product_data.layer_path_dict['GEN-METRIC-MAX'],
+            None,
+        ),
+    ]
 
     tags = run_config.get_public_attributes()
     tags['version'] = dist_s1.__version__
@@ -79,13 +139,13 @@ def package_disturbance_tifs(run_config: RunConfigData) -> None:
     tags = update_tag_types(tags)
 
     if run_config.apply_water_mask:
-        X_dist = apply_water_mask(X_dist, p_dist, run_config.water_mask_path)
-        X_metric = apply_water_mask(X_metric, p_metric, run_config.water_mask_path)
+        serialization_inputs = [
+            (apply_water_mask(arr, prof, run_config.water_mask_path), prof, path, cmap)
+            for (arr, prof, path, cmap) in serialization_inputs
+        ]
 
-    product_data = run_config.product_data_model
-
-    serialize_one_2d_ds(X_dist, p_dist, product_data.layer_path_dict['GEN-DIST-STATUS'], colormap=DIST_CMAP, tags=tags)
-    serialize_one_2d_ds(X_metric, p_metric, product_data.layer_path_dict['GEN-METRIC'], tags=tags)
+    for arr, prof, path, cmap in serialization_inputs:
+        serialize_one_2d_ds(arr, prof, path, colormap=cmap, tags=tags)
 
 
 def package_conf_db_disturbance_tifs(run_config: RunConfigData) -> None:
