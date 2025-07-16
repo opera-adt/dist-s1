@@ -49,7 +49,7 @@ def test_dist_s1_sas_main(
     # Limit workers for CI environment
     runconfig_data.n_workers_for_despeckling = 4
     # Use confirmation = True for now while better tests added
-    runconfig_data.confirmation = True
+    runconfig_data.confirmation = False
     # We have a different product_dst_dir than the dst_dir called `tmp2`
     product_dst_dir = (test_dir / 'tmp2').resolve()
     runconfig_data.product_dst_dir = str(product_dst_dir)
@@ -102,8 +102,9 @@ def test_dist_s1_main_interface(
     monkeypatch.setenv('EARTHDATA_PASSWORD', 'bar')
 
     df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
-    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, apply_water_mask=False)
+    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, apply_water_mask=False, confirmation=False)
 
+    breakpoint()
     # We don't need credentials because we mock the data.
     mocker.patch('dist_s1.localize_rtc_s1.enumerate_one_dist_s1_product', return_value=df_product)
     mocker.patch('dist_s1.localize_rtc_s1.localize_rtc_s1_ts', return_value=df_product)
@@ -134,6 +135,8 @@ def test_dist_s1_main_interface(
             str(tmp_dir),
             '--device',
             device,
+            '--confirmation',
+            'false',
         ],
     )
     assert result.exit_code == 0

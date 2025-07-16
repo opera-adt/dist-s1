@@ -151,13 +151,6 @@ def common_options(func: Callable) -> Callable:
         help='Device to use for transformer model inference of normal parameters.',
     )
     @click.option(
-        '--batch_size_for_despeckling',
-        type=int,
-        default=25,
-        required=False,
-        help='Batch size for despeckling the bursts; i.e. how many arrays are loaded into CPU memory at once.',
-    )
-    @click.option(
         '--n_workers_for_norm_param_estimation',
         type=int,
         default=8,
@@ -294,7 +287,6 @@ def run_sas_prep(
         bucket=bucket,
         bucket_prefix=bucket_prefix,
         n_workers_for_despeckling=n_workers_for_despeckling,
-        batch_size_for_despeckling=batch_size_for_despeckling,
         n_workers_for_norm_param_estimation=n_workers_for_norm_param_estimation,
         device=device,
         model_source=model_source,
@@ -340,7 +332,6 @@ def run(
     bucket: str | None,
     bucket_prefix: str,
     n_workers_for_despeckling: int,
-    batch_size_for_despeckling: int,
     n_workers_for_norm_param_estimation: int,
     device: str,
     model_source: str | None,
@@ -372,7 +363,6 @@ def run(
         bucket=bucket,
         bucket_prefix=bucket_prefix,
         n_workers_for_despeckling=n_workers_for_despeckling,
-        batch_size_for_despeckling=batch_size_for_despeckling,
         n_workers_for_norm_param_estimation=n_workers_for_norm_param_estimation,
         device=device,
         model_source=model_source,

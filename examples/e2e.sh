@@ -6,7 +6,6 @@ dist-s1 run \
     --memory_strategy 'low' \
     --device 'cpu' \
     --n_workers_for_norm_param_estimation 5 \
-    --batch_size_for_despeckling 100 \
     --optimize false \
     --confirmation 'false' \
     --apply_water_mask true \

@@ -275,13 +275,15 @@ def run_dist_s1_sas_prep_workflow(
     bucket_prefix: str = '',
     n_workers_for_despeckling: int = 5,
     device: str = 'best',
-    batch_size_for_despeckling: int = 25,
     n_workers_for_norm_param_estimation: int = 1,
     model_source: str | None = None,
     model_cfg_path: str | Path | None = None,
     model_wts_path: str | Path | None = None,
     stride_for_norm_param_estimation: int = 16,
     batch_size_for_norm_param_estimation: int = 32,
+    interpolation_method: str = 'none',
+    apply_despeckling: bool = True,
+    apply_logit_to_inputs: bool = True,
     optimize: bool = True,
 ) -> RunConfigData:
     run_config = run_dist_s1_localization_workflow(
@@ -292,6 +294,7 @@ def run_dist_s1_sas_prep_workflow(
         post_date_buffer_days,
         max_pre_imgs_per_burst_mw,
         delta_lookback_days_mw,
+        confirmation=confirmation,
         dst_dir=dst_dir,
         input_data_dir=input_data_dir,
         apply_water_mask=apply_water_mask,
@@ -310,7 +313,6 @@ def run_dist_s1_sas_prep_workflow(
     run_config.bucket = bucket
     run_config.bucket_prefix = bucket_prefix
     run_config.n_workers_for_despeckling = n_workers_for_despeckling
-    run_config.batch_size_for_despeckling = batch_size_for_despeckling
     run_config.n_workers_for_norm_param_estimation = n_workers_for_norm_param_estimation
     run_config.device = device
     run_config.model_source = model_source
@@ -319,6 +321,9 @@ def run_dist_s1_sas_prep_workflow(
     run_config.stride_for_norm_param_estimation = stride_for_norm_param_estimation
     run_config.batch_size_for_norm_param_estimation = batch_size_for_norm_param_estimation
     run_config.model_compilation = optimize
+    run_config.interpolation_method = interpolation_method
+    run_config.apply_despeckling = apply_despeckling
+    run_config.apply_logit_to_inputs = apply_logit_to_inputs
     return run_config
 
 
@@ -353,7 +358,6 @@ def run_dist_s1_workflow(
     bucket: str | None = None,
     bucket_prefix: str = '',
     n_workers_for_despeckling: int = 5,
-    batch_size_for_despeckling: int = 25,
     n_workers_for_norm_param_estimation: int = 1,
     device: str = 'best',
     model_source: str | None = None,
@@ -387,7 +391,6 @@ def run_dist_s1_workflow(
         bucket=bucket,
         bucket_prefix=bucket_prefix,
         n_workers_for_despeckling=n_workers_for_despeckling,
-        batch_size_for_despeckling=batch_size_for_despeckling,
         n_workers_for_norm_param_estimation=n_workers_for_norm_param_estimation,
         device=device,
         model_source=model_source,
