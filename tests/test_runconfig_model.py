@@ -131,7 +131,7 @@ def test_input_data_model_from_cropped_dataset(test_dir: Path, test_data_dir: Pa
 
 
 def test_confirmation_and_prior_product_validation(
-    test_dir: Path, test_data_dir: Path, change_local_dir: Callable
+    test_dir: Path, test_data_dir: Path, test_opera_golden_dummy_dataset: Path, change_local_dir: Callable
 ) -> None:
     """Test that confirmation and prior_dist_s1_product validation works correctly."""
     change_local_dir(test_dir)
@@ -140,12 +140,8 @@ def test_confirmation_and_prior_product_validation(
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
     df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
-    product_dir = ProductDirectoryData.from_product_path(
-        test_data_dir
-        / 'golden_datasets'
-        / '10SGD'
-        / 'OPERA_L3_DIST-ALERT-S1_T10SGD_20250102T015857Z_20250304T163015Z_S1_30_v0.1'
-    )
+    product_dir = ProductDirectoryData.from_product_path(test_opera_golden_dummy_dataset)
+
     # Test 1: confirmation=True without prior_dist_s1_product should fail
     with pytest.raises(ValidationError, match='prior_dist_s1_product must be provided when confirmation is True'):
         config = RunConfigData.from_product_df(
