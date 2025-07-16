@@ -1,7 +1,10 @@
 import shutil
+import tempfile
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
+import pytest
 import rasterio
 
 from dist_s1.data_models.output_models import ProductDirectoryData
@@ -58,3 +61,65 @@ def test_product_directory_data_from_product_path(test_dir: Path, test_opera_gol
     assert golden_data != copied_data
 
     shutil.rmtree(tmp_dir)
+
+
+def test_generate_product_path_with_placeholders(test_dir: Path) -> None:
+    """Test the generate_product_path_with_placeholders function."""
+    # Test parameters
+    mgrs_tile_id = '10SGD'
+    acq_datetime = datetime(2024, 1, 15, 12, 0, 0)
+
+    # Create tmp directory in test directory
+    tmp_dir = test_dir / 'tmp'
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    # Generate product with placeholders
+    product_data = ProductDirectoryData.generate_product_path_with_placeholders(
+        mgrs_tile_id=mgrs_tile_id,
+        acq_datetime=acq_datetime,
+        dst_dir=tmp_dir,
+        water_mask_path=None,  # No water mask for this test
+        overwrite=True,
+    )
+
+    # Check that product directory was created
+    assert product_data.product_dir_path.exists()
+    assert product_data.product_dir_path.is_dir()
+
+    # Check that all TIF layers were created
+    for layer_name, layer_path in product_data.layer_path_dict.items():
+        if layer_path.suffix == '.tif':
+            assert layer_path.exists(), f'Layer {layer_name} was not created: {layer_path}'
+
+            # Check that the file has the correct data type
+            with rasterio.open(layer_path) as src:
+                expected_dtype = product_data.tif_layer_dtypes[layer_name]
+                actual_dtype = src.dtypes[0]
+                assert actual_dtype == expected_dtype, (
+                    f'Layer {layer_name} has wrong dtype: {actual_dtype} != {expected_dtype}'
+                )
+
+                # Check that the array contains only zeros
+                data = src.read(1)
+                assert np.all(data == 0), f'Layer {layer_name} contains non-zero values'
+
+    # Validate the product using existing validation methods
+    assert product_data.validate_layer_paths(), 'Layer paths validation failed'
+    assert product_data.validate_tif_layer_dtypes(), 'Data types validation failed'
+
+    # Test with water mask path (should raise error for invalid path)
+    invalid_water_mask = tmp_dir / 'nonexistent_water_mask.tif'
+
+    # This should raise a FileNotFoundError
+    with pytest.raises(FileNotFoundError):
+        ProductDirectoryData.generate_product_path_with_placeholders(
+            mgrs_tile_id=mgrs_tile_id,
+            acq_datetime=acq_datetime,
+            dst_dir=tmp_dir,
+            water_mask_path=invalid_water_mask,
+            overwrite=True,
+        )
+
+    # Clean up
+    if tmp_dir.exists():
+        shutil.rmtree(tmp_dir)

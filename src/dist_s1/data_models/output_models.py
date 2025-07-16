@@ -1,5 +1,6 @@
 from datetime import datetime
 from pathlib import Path
+from typing import ClassVar
 from warnings import warn
 
 import numpy as np
@@ -7,6 +8,8 @@ import rasterio
 from pydantic import BaseModel, field_validator, model_validator
 
 from dist_s1.constants import PRODUCT_VERSION
+from dist_s1.rio_tools import get_mgrs_profile
+from dist_s1.water_mask import apply_water_mask
 
 
 TIF_LAYER_DTYPES = {
@@ -178,6 +181,7 @@ class ProductFileData(BaseModel):
 class ProductDirectoryData(BaseModel):
     product_name: str
     dst_dir: Path | str
+    tif_layer_dtypes: ClassVar[dict[str, str]] = dict(TIF_LAYER_DTYPES)
 
     @property
     def product_dir_path(self) -> Path:
@@ -383,3 +387,93 @@ class ProductDirectoryData(BaseModel):
             raise ValueError(f'Product directory contains layers with incorrect dtypes: {product_dir_path}')
 
         return obj
+
+    @classmethod
+    def generate_product_path_with_placeholders(
+        cls,
+        mgrs_tile_id: str,
+        acq_datetime: datetime,
+        dst_dir: Path | str,
+        water_mask_path: Path | str | None = None,
+        overwrite: bool = False,
+    ) -> 'ProductDirectoryData':
+        """Generate a product directory with placeholder GeoTIFF files containing zeros.
+
+        Parameters
+        ----------
+        mgrs_tile_id : str
+            MGRS tile ID for the product
+        acq_datetime : datetime
+            Acquisition datetime for the product
+        dst_dir : Path | str
+            Directory where the product will be created
+        water_mask_path : Path | str | None, optional
+            Path to water mask file. If provided, water mask will be validated and applied to all layers.
+            If None, no water mask is applied.
+        overwrite : bool, optional
+            If True, overwrite existing files. If False, skip if files exist.
+
+        Returns
+        -------
+        ProductDirectoryData
+            Instance of ProductDirectoryData with generated placeholder files
+
+        Raises
+        ------
+        FileNotFoundError
+            If water_mask_path is provided but the file doesn't exist
+        ValueError
+            If product name validation fails, water mask doesn't cover the MGRS tile, or water mask application fails
+        """
+        # Create processing datetime (current time)
+        processing_datetime = datetime.now()
+
+        # Create product name data
+        product_name_data = ProductNameData(
+            mgrs_tile_id=mgrs_tile_id, acq_date_time=acq_datetime, processing_date_time=processing_datetime
+        )
+
+        # Create product directory data
+        product_dir_data = cls(product_name=str(product_name_data), dst_dir=dst_dir)
+
+        # Validate water mask if provided
+        if water_mask_path is not None:
+            water_mask_path = Path(water_mask_path)
+            if not water_mask_path.exists():
+                raise FileNotFoundError(f'Water mask file does not exist: {water_mask_path}')
+
+        # Create placeholder arrays for each layer
+        for layer_name in TIF_LAYERS:
+            layer_path = product_dir_data.layer_path_dict[layer_name]
+
+            # Skip if file exists and overwrite is False
+            if layer_path.exists() and not overwrite:
+                continue
+
+            # Get dtype for this layer
+            dtype_str = cls.tif_layer_dtypes[layer_name]
+            dtype = np.dtype(dtype_str)
+
+            # Set nodata value based on dtype
+            if np.issubdtype(dtype, np.floating):
+                nodata_value = np.nan
+            else:
+                nodata_value = 255
+
+            # Get MGRS profile for the tile with correct dtype and nodata
+            mgrs_profile = get_mgrs_profile(mgrs_tile_id, dtype=dtype, nodata=nodata_value)
+
+            # Create zero array with correct shape and dtype
+            height = mgrs_profile['height']
+            width = mgrs_profile['width']
+            zero_array = np.zeros((height, width), dtype=dtype)
+
+            # Apply water mask if provided
+            if water_mask_path is not None:
+                zero_array = apply_water_mask(zero_array, mgrs_profile, water_mask_path)
+
+            # Write the GeoTIFF file
+            with rasterio.open(layer_path, 'w', **mgrs_profile) as dst:
+                dst.write(zero_array, 1)
+
+        return product_dir_data

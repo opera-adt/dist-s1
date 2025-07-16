@@ -53,7 +53,7 @@ def compute_burst_disturbance_and_serialize(
     out_metric_path: Path | None = None,
     utilize_acq_dts: bool = False,
     use_logits: bool = True,
-    model_source: str | Path | None = None,
+    model_source: str | Path | None = 'transformer_optimized',
     model_cfg_path: str | Path | None = None,
     model_wts_path: str | Path | None = None,
     memory_strategy: str = 'high',
@@ -62,18 +62,17 @@ def compute_burst_disturbance_and_serialize(
     device: str = 'best',
     model_compilation: bool = False,
     fill_value: float = 1e-7,
+    dtype: np.dtype = 'float32',
 ) -> None:
-    if model_source == 'external':
-        model = load_transformer_model(
-            model_token=model_source,
-            model_cfg_path=model_cfg_path,
-            model_wts_path=model_wts_path,
-            device=device,
-            model_compilation=model_compilation,
-            batch_size=batch_size,
-        )
-    else:
-        model = load_transformer_model(device=device, model_compilation=model_compilation, batch_size=batch_size)
+    model = load_transformer_model(
+        model_token=model_source,
+        dtype=dtype,
+        model_cfg_path=model_cfg_path,
+        model_wts_path=model_wts_path,
+        device=device,
+        model_compilation=model_compilation,
+        batch_size=batch_size,
+    )
 
     if utilize_acq_dts:
         print(f'Using acq_dts {acq_dts}')

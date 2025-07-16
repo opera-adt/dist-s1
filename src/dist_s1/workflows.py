@@ -7,14 +7,14 @@ from tqdm.auto import tqdm
 from dist_s1.aws import upload_product_to_s3
 from dist_s1.data_models.runconfig_model import RunConfigData
 from dist_s1.despeckling import despeckle_and_serialize_rtc_s1
-from dist_s1.localize_rtc_s1 import localize_rtc_s1
-from dist_s1.packaging import generate_browse_image, package_conf_db_disturbance_tifs, package_disturbance_tifs
-from dist_s1.processing import (
+from dist_s1.dist_processing import (
     compute_burst_disturbance_and_serialize,
     compute_tile_disturbance_using_previous_product_and_serialize,
     merge_burst_disturbances_and_serialize,
     merge_burst_metrics_and_serialize,
 )
+from dist_s1.localize_rtc_s1 import localize_rtc_s1
+from dist_s1.packaging import generate_browse_image, package_conf_db_disturbance_tifs, package_disturbance_tifs
 
 
 # Use spawn for multiprocessing

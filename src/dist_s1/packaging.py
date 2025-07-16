@@ -9,14 +9,7 @@ import dist_s1
 from dist_s1.constants import DIST_CMAP
 from dist_s1.data_models.runconfig_model import RunConfigData
 from dist_s1.rio_tools import open_one_ds, serialize_one_2d_ds
-from dist_s1.water_mask import check_water_mask_profile
-
-
-def apply_water_mask(band_src: np.ndarray, profile_src: dict, water_mask_path: Path | str | None = None) -> np.ndarray:
-    X_wm, p_wm = open_one_ds(water_mask_path)
-    check_water_mask_profile(p_wm, profile_src)
-    band_src[X_wm == 1] = profile_src['nodata']
-    return band_src
+from dist_s1.water_mask import apply_water_mask
 
 
 def convert_geotiff_to_png(
