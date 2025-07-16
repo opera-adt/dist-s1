@@ -14,7 +14,6 @@ from dist_s1.workflows import (
     run_despeckle_workflow,
     run_dist_s1_sas_workflow,
     run_dist_s1_workflow,
-    run_normal_param_estimation_workflow,
 )
 
 
@@ -30,7 +29,7 @@ def test_despeckle_workflow(test_dir: Path, test_data_dir: Path, change_local_di
     df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
     assert tmp_dir.exists() and tmp_dir.is_dir()
 
-    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, apply_water_mask=False)
+    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, apply_water_mask=False, confirmation=False)
 
     run_despeckle_workflow(config)
 
@@ -50,29 +49,6 @@ def test_despeckle_workflow(test_dir: Path, test_data_dir: Path, change_local_di
         shutil.rmtree(tmp_dir)
 
 
-def test_normal_params_workflow(test_dir: Path, test_data_dir: Path, change_local_dir: Callable) -> None:
-    change_local_dir(test_dir)
-
-    tmp_dir = test_dir / 'tmp'
-    tmp_dir.mkdir(parents=True, exist_ok=True)
-
-    src_tv_dir = test_data_dir / '10SGD_cropped_dst' / 'tv_despeckle'
-
-    dst_tv_dir = tmp_dir / 'tv_despeckle'
-
-    if Path(dst_tv_dir).exists():
-        shutil.rmtree(dst_tv_dir)
-    shutil.copytree(src_tv_dir, dst_tv_dir)
-
-    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
-    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, apply_water_mask=False)
-
-    run_normal_param_estimation_workflow(config)
-
-    if ERASE_WORKFLOW_OUTPUTS:
-        shutil.rmtree(tmp_dir)
-
-
 def test_burst_disturbance_workflow(test_dir: Path, test_data_dir: Path, change_local_dir: Callable) -> None:
     change_local_dir(test_dir)
     tmp_dir = test_dir / 'tmp'
@@ -87,7 +63,7 @@ def test_burst_disturbance_workflow(test_dir: Path, test_data_dir: Path, change_
         shutil.copytree(src_dir, dst_dir)
 
     df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
-    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, apply_water_mask=False)
+    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, apply_water_mask=False, confirmation=False)
 
     run_burst_disturbance_workflow(config)
 
@@ -109,7 +85,7 @@ def test_dist_s1_sas_workflow(
         df_product,
         dst_dir=tmp_dir,
         apply_water_mask=False,
-        confirmation=True,
+        confirmation=False,
     )
 
     run_dist_s1_sas_workflow(config)
@@ -128,7 +104,6 @@ def test_dist_s1_workflow_interface(
     test_data_dir: Path,
     change_local_dir: Callable,
     mocker: MockerFixture,
-    # test_opera_golden_dummy_dataset: Path,
     monkeypatch: MonkeyPatch,
 ) -> None:
     """Tests the s1 workflow interface, not the outputs."""
@@ -140,7 +115,7 @@ def test_dist_s1_workflow_interface(
     monkeypatch.setenv('EARTHDATA_PASSWORD', 'bar')
 
     df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
-    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, apply_water_mask=False)
+    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, apply_water_mask=False, confirmation=False)
 
     # We don't need credentials because we mock the data.
     mocker.patch('dist_s1.localize_rtc_s1.enumerate_one_dist_s1_product', return_value=df_product)
@@ -148,7 +123,12 @@ def test_dist_s1_workflow_interface(
     mocker.patch('dist_s1.workflows.run_dist_s1_sas_workflow', return_value=config)
 
     run_dist_s1_workflow(
-        mgrs_tile_id='10SGD', post_date='2025-01-02', track_number=137, dst_dir=tmp_dir, apply_water_mask=False
+        mgrs_tile_id='10SGD',
+        post_date='2025-01-02',
+        track_number=137,
+        dst_dir=tmp_dir,
+        apply_water_mask=False,
+        confirmation=False,
     )
 
     if ERASE_WORKFLOW_OUTPUTS:

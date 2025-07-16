@@ -16,7 +16,7 @@ TIF_LAYER_DTYPES = {
     'GEN-DIST-STATUS': 'uint8',
     'GEN-METRIC': 'float32',
     'GEN-DIST-STATUS-ACQ': 'uint8',
-    'GEN-METRIC-MAX': 'int16',
+    'GEN-METRIC-MAX': 'float32',
     'GEN-DIST-CONF': 'int16',
     'GEN-DIST-DATE': 'int16',
     'GEN-DIST-COUNT': 'uint8',

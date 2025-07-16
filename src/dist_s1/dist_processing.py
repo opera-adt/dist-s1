@@ -65,7 +65,7 @@ def compute_burst_disturbance_and_serialize(
     dtype: np.dtype = 'float32',
 ) -> None:
     model = load_transformer_model(
-        model_token=model_source,
+        lib_model_token=model_source,
         dtype=dtype,
         model_cfg_path=model_cfg_path,
         model_wts_path=model_wts_path,

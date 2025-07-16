@@ -177,7 +177,7 @@ class RunConfigData(BaseModel):
     bucket_prefix: str = ''
     # model_source of None means use internal model
     # model_source == "external" means use externally supplied paths
-    model_source: str | None = None
+    model_source: str | None = 'transformer_optimized'
     model_cfg_path: Path | str | None = None
     model_wts_path: Path | str | None = None
     # Use logit transform

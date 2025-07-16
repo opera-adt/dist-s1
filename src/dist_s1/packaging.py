@@ -110,6 +110,7 @@ def package_disturbance_tifs_no_confirmation(run_config: RunConfigData) -> None:
     X_metric_max = X_metric.copy()
 
     product_data = run_config.product_data_model
+    # array, profile, path, colormap
     serialization_inputs = [
         (X_dist, p_dist, product_data.layer_path_dict['GEN-DIST-STATUS'], DIST_CMAP),
         (X_metric, p_metric, product_data.layer_path_dict['GEN-METRIC'], None),
@@ -206,14 +207,10 @@ def package_conf_db_disturbance_tifs(run_config: RunConfigData) -> None:
 
 
 def generate_browse_image(run_config: RunConfigData) -> None:
-    if not run_config.confirmation:
-        final_tif2plot = 'alert_status_path'
-    else:
-        final_tif2plot = 'dist_status_path'
     product_data = run_config.product_data_model
     with Env(GDAL_PAM_ENABLED='NO'):
         convert_geotiff_to_png(
-            run_config.final_unformatted_tif_paths[final_tif2plot],
+            product_data.layer_path_dict['GEN-DIST-STATUS'],
             product_data.layer_path_dict['browse'],
             colormap=DIST_CMAP,
             water_mask_path=run_config.water_mask_path,
