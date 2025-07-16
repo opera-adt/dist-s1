@@ -139,6 +139,9 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
         output_dist_path = dist_path_l[0]
         output_metric_path = df_metric_burst['loc_path_metric'].iloc[0]
 
+        # Use the original copol post path to compute the nodata mask
+        copol_post_path = df_post['loc_path_copol'].iloc[0]
+
         # Computes the disturbance for a a single baseline and serlialize.
         # Labels will be 0 for no disturbance, 1 for moderate confidence disturbance,
         # 2 for high confidence disturbance, and 255 for nodata
@@ -161,6 +164,7 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
             stride=run_config.stride_for_norm_param_estimation,
             batch_size=run_config.batch_size_for_norm_param_estimation,
             device=run_config.device,
+            raw_data_for_nodata_mask=copol_post_path,
         )
 
 

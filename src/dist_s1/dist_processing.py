@@ -62,11 +62,12 @@ def compute_burst_disturbance_and_serialize(
     device: str = 'best',
     model_compilation: bool = False,
     fill_value: float = 1e-7,
-    dtype: np.dtype = 'float32',
+    model_dtype: np.dtype = 'float32',
+    raw_data_for_nodata_mask: Path | str | None = None,
 ) -> None:
     model = load_transformer_model(
         lib_model_token=model_source,
-        dtype=dtype,
+        dtype=model_dtype,
         model_cfg_path=model_cfg_path,
         model_wts_path=model_wts_path,
         device=device,
@@ -87,11 +88,16 @@ def compute_burst_disturbance_and_serialize(
     post_copol_arr, post_copol_prof = post_copol_data
     post_crosspol_arr, post_crosspol_prof = post_crosspol_data
 
+    if raw_data_for_nodata_mask is not None:
+        arr, _ = open_one_ds(raw_data_for_nodata_mask)
+        mask_2d = np.isnan(arr)
+    else:
+        mask_2d = np.isnan(post_copol_arr) | np.isnan(post_crosspol_arr)
+
     if fill_value <= 0:
         fill_value = 1e-7
 
     # Preserve nodata values for metric
-    mask_2d = np.isnan(post_copol_arr) | np.isnan(post_crosspol_arr)
     # Fill nodata values with fill_value for model
     pre_copol_arrs = [np.where(np.isnan(arr), fill_value, arr) for arr in pre_copol_arrs]
     pre_crosspol_arrs = [np.where(np.isnan(arr), fill_value, arr) for arr in pre_crosspol_arrs]
@@ -99,7 +105,6 @@ def compute_burst_disturbance_and_serialize(
     post_crosspol_arr = np.where(np.isnan(post_crosspol_arr), fill_value, post_crosspol_arr)
 
     if use_logits:
-        # TODO: Remove logit transformation from model application
         pre_copol_arrs = [logit(arr) for arr in pre_copol_arrs]
         pre_crosspol_arrs = [logit(arr) for arr in pre_crosspol_arrs]
         post_copol_arr = logit(post_copol_arr)
@@ -119,6 +124,7 @@ def compute_burst_disturbance_and_serialize(
         device=device,
         stride=stride,
         batch_size=batch_size,
+        dtype=model_dtype,
     )
 
     post_arr_2d = np.stack([post_copol_arr, post_crosspol_arr], axis=0)
