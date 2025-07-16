@@ -1,5 +1,6 @@
 import pandas as pd
 
+
 PRODUCT_VERSION = '0.1'
 
 MODEL_CONTEXT_LENGTH = 10
