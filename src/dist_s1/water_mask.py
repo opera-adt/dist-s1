@@ -10,7 +10,14 @@ from rasterio.warp import transform_bounds as transform_bounds_into_crs
 from shapely.geometry import box
 from tile_mate import get_raster_from_tiles
 
-from dist_s1.rio_tools import get_mgrs_profile
+from dist_s1.rio_tools import get_mgrs_profile, open_one_ds
+
+
+def apply_water_mask(band_src: np.ndarray, profile_src: dict, water_mask_path: Path | str | None = None) -> np.ndarray:
+    X_wm, p_wm = open_one_ds(water_mask_path)
+    check_water_mask_profile(p_wm, profile_src)
+    band_src[X_wm == 1] = profile_src['nodata']
+    return band_src
 
 
 def check_water_mask_profile(water_mask_profile: dict, ref_profile: dict) -> None:

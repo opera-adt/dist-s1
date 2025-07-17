@@ -1,6 +1,15 @@
+import pandas as pd
+
+
 PRODUCT_VERSION = '0.1'
 
 MODEL_CONTEXT_LENGTH = 10
+
+# Base date for date encoding
+
+BASE_DATE = pd.Timestamp('2020-12-31', tz='UTC')
+
+# Disturbance labels
 
 DISTLABEL2VAL = {
     'nodata': 255,
@@ -13,6 +22,9 @@ DISTLABEL2VAL = {
     'confirmed_high_conf_disturbance': 6,
 }
 DISTVAL2LABEL = {v: k for k, v in DISTLABEL2VAL.items()}
+
+
+# Colormaps
 
 COLORBLIND_DIST_CMAP = {
     0: (255, 255, 255, 255),  # No disturbance (White)

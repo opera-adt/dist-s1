@@ -4,16 +4,15 @@ from datetime import datetime
 from pathlib import Path, PosixPath
 
 import geopandas as gpd
-import numpy as np
 import pandas as pd
 import torch
 import yaml
 from dist_s1_enumerator.asf import append_pass_data, extract_pass_id
 from dist_s1_enumerator.data_models import dist_s1_loc_input_schema
 from dist_s1_enumerator.mgrs_burst_data import get_lut_by_mgrs_tile_ids
-from distmetrics.transformer import get_device
+from distmetrics import get_device
 from pandera.pandas import check_input
-from pydantic import BaseModel, Field, ValidationError, ValidationInfo, field_validator
+from pydantic import BaseModel, Field, ValidationError, ValidationInfo, field_validator, model_validator
 from yaml import Dumper
 
 from dist_s1.data_models.output_models import ProductDirectoryData, ProductNameData
@@ -30,40 +29,6 @@ def none_encoder(dumper: Dumper, _: None) -> yaml.Node:
 
 yaml.add_representer(PosixPath, posix_path_encoder)
 yaml.add_representer(type(None), none_encoder)
-
-
-def generate_burst_dist_paths(
-    row: pd.Series,
-    *,
-    top_level_data_dir: Path,
-    dst_dir_name: str,
-    lookback: int | None = 0,
-    path_token: str | None = None,
-    polarization_token: str | None = None,
-    date_lut: dict[str, list[pd.Timestamp]] | None = None,
-    n_lookbacks: int | None = None,
-) -> Path:
-    if path_token is None:
-        path_token = dst_dir_name
-    data_dir = top_level_data_dir / dst_dir_name
-    if lookback is not None:
-        lookback_dir = data_dir / f'Delta_{lookback}'
-    else:
-        lookback_dir = data_dir
-    lookback_dir.mkdir(parents=True, exist_ok=True)
-    burst_id = row.jpl_burst_id
-    if date_lut is not None and lookback is not None:
-        acq_date = date_lut[burst_id][n_lookbacks - lookback - 1]
-    else:
-        acq_date = row.acq_dt
-    acq_date_str = acq_date.date().strftime('%Y-%m-%d')
-    fn = f'{path_token}_{burst_id}_{acq_date_str}.tif'
-    if lookback is not None:
-        fn = fn.replace('.tif', f'_delta{lookback}.tif')
-    if polarization_token is not None:
-        fn = fn.replace(f'{path_token}', f'{path_token}_{polarization_token}')
-    out_path = lookback_dir / fn
-    return out_path
 
 
 def get_opera_id(opera_rtc_s1_tif_path: Path | str) -> str:
@@ -146,7 +111,7 @@ class RunConfigData(BaseModel):
     pre_rtc_crosspol: list[Path | str]
     post_rtc_copol: list[Path | str]
     post_rtc_crosspol: list[Path | str]
-    pre_dist_s1_product: list[Path | str] | None = None
+    prior_dist_s1_product: ProductDirectoryData | None = None
     mgrs_tile_id: str
     dst_dir: Path | str = Path('out')
     water_mask_path: Path | str | None = None
@@ -176,33 +141,25 @@ class RunConfigData(BaseModel):
         ge=1,
         le=16,
     )
-    batch_size_for_despeckling: int = Field(
-        default=25,
-        ge=1,
-    )
     n_workers_for_despeckling: int = Field(
         default=8,
         ge=1,
     )
     lookback_strategy: str = Field(
-        default='immediate_lookback',
+        default='multi_window',
         pattern='^(multi_window|immediate_lookback)$',
     )
-    confirmation_strategy: str = Field(
-        default='compute_baseline',
-        pattern='^(compute_baseline|use_prev_product)$',
-    )
+    confirmation: bool = Field(default=False)
     # Flag to enable optimizations. False, load the model and use it.
     # True, load the model and compile for CPU or GPU
-    optimize: bool = Field(default=False)
-    n_lookbacks: int = Field(default=1, ge=1, le=3)
+    model_compilation: bool = Field(default=False)
     max_pre_imgs_per_burst_mw: list[int] = Field(
         default=[5, 5],
-        description='Max number of pre-images per burst for multi-window lookback strategy',
+        description='Max number of pre-images per burst within each window',
     )
     delta_lookback_days_mw: list[int] = Field(
         default=[730, 365],
-        description='Delta lookback days for multi-window lookback strategy',
+        description='Delta lookback days for each window relative to post-image acquisition date',
     )
     # This is where default thresholds are set!
     moderate_confidence_threshold: float = Field(default=3.5, ge=0.0, le=15.0)
@@ -220,17 +177,23 @@ class RunConfigData(BaseModel):
     bucket_prefix: str = ''
     # model_source of None means use internal model
     # model_source == "external" means use externally supplied paths
-    #   (paths supplied in model_cfg_path and model_wts_path)
-    # Other string values mean use internal model
-    model_source: str | None = None
+    model_source: str | None = 'transformer_optimized'
     model_cfg_path: Path | str | None = None
     model_wts_path: Path | str | None = None
+    # Use logit transform
+    apply_logit_to_inputs: bool = Field(default=True)
+    # Use despeckling
+    apply_despeckling: bool = Field(default=True)
+    interpolation_method: str = Field(
+        default='none',
+        pattern='^(nearest|bilinear|none)$',
+    )
 
     # Private attributes that are associated to properties
     _burst_ids: list[str] | None = None
     _df_inputs: pd.DataFrame | None = None
-    _df_pre_dist_products: pd.DataFrame | None = None
-    _df_burst_distmetric: pd.DataFrame | None = None
+    _df_prior_dist_products: pd.DataFrame | None = None
+    _df_burst_distmetrics: pd.DataFrame | None = None
     _df_mgrs_burst_lut: gpd.GeoDataFrame | None = None
     _product_name: ProductNameData | None = None
     _product_data_model: ProductDirectoryData | None = None
@@ -253,18 +216,6 @@ class RunConfigData(BaseModel):
         if memory_strategy not in ['high', 'low']:
             raise ValueError("Memory strategy must be in ['high', 'low']")
         return memory_strategy
-
-    @field_validator('lookback_strategy')
-    def validate_lookback_strategy(cls, lookback_strategy: str) -> str:
-        if lookback_strategy not in ['multi_window', 'immediate_lookback']:
-            raise ValueError("Confirmation strategy must be in ['multi_window', 'immediate_lookback']")
-        return lookback_strategy
-
-    @field_validator('confirmation_strategy')
-    def validate_confirmation_strategy(cls, confirmation_strategy: str) -> str:
-        if confirmation_strategy not in ['compute_baseline', 'use_prev_product']:
-            raise ValueError("Confirmation strategy must be in ['compute_baseline', 'use_prev_product']")
-        return confirmation_strategy
 
     @field_validator('device', mode='before')
     def validate_device(cls, device: str) -> str:
@@ -291,20 +242,6 @@ class RunConfigData(BaseModel):
             if bad_paths:
                 bad_paths_str = 'The following paths do not exist: ' + ', '.join(str(path) for path in bad_paths)
                 raise ValueError(bad_paths_str)
-        return paths
-
-    @field_validator('pre_dist_s1_product', mode='before')
-    def convert_pre_dist_s1_product_to_paths(
-        cls, values: list[Path | str] | None, info: ValidationInfo
-    ) -> list[Path] | None:
-        """Convert all values in pre_dist_s1_product to Path objects, if not None."""
-        if values is None:
-            return None
-        paths = [Path(value) if isinstance(value, str) else value for value in values]
-        if info.data.get('check_input_paths', True):
-            bad_paths = [path for path in paths if not path.exists()]
-            if bad_paths:
-                raise ValueError(f'The following paths do not exist: {", ".join(str(p) for p in bad_paths)}')
         return paths
 
     @field_validator('dst_dir', mode='before')
@@ -347,27 +284,11 @@ class RunConfigData(BaseModel):
             raise ValueError("The lists 'pre_rtc_copol' and 'pre_rtc_crosspol' must have the same length.")
         return rtc_crosspol
 
-    @field_validator('pre_dist_s1_product')
-    def validate_pre_dist_s1_product_length(cls, values: list | None, info: ValidationInfo) -> list | None:
-        """If pre_dist_s1_product is not None, ensure it has exactly 8 elements."""
-        if values is not None and len(values) != 8:
-            raise ValueError(f'pre_dist_s1_product must have exactly 8 elements, got {len(values)}.')
-        return values
-
     @field_validator('pre_rtc_copol', 'pre_rtc_crosspol', 'post_rtc_copol', 'post_rtc_crosspol')
     def check_filename_format(cls, values: Path, field: ValidationInfo) -> None:
         """Check the filename format to ensure correct structure and tokens."""
         for file_path in values:
             check_filename_format(file_path.name, field.field_name.split('_')[-1])
-        return values
-
-    @field_validator('pre_dist_s1_product')
-    def check_dist_product_filename_format(cls, values: Path, field: ValidationInfo) -> None:
-        """Check the previous DIST-S1 filename format to ensure correct structure and tokens."""
-        if not values:
-            return values
-        for file_path in values:
-            check_dist_product_filename_format(file_path.name)
         return values
 
     @field_validator('mgrs_tile_id')
@@ -388,6 +309,15 @@ class RunConfigData(BaseModel):
                 f'high_confidence_threshold ({high_threshold})'
             )
         return moderate_threshold
+
+    @model_validator(mode='after')
+    def validate_confirmation_and_prior_product_consistency(self) -> 'RunConfigData':
+        """Validate that confirmation and prior_dist_s1_product are used together consistently."""
+        if self.confirmation and self.prior_dist_s1_product is None:
+            raise ValueError('prior_dist_s1_product must be provided when confirmation is True')
+        if self.prior_dist_s1_product is not None and not self.confirmation:
+            raise ValueError('confirmation must be True when prior_dist_s1_product is provided')
+        return self
 
     @property
     def processing_datetime(self) -> datetime:
@@ -455,7 +385,13 @@ class RunConfigData(BaseModel):
         water_mask_path: Path | str | None = None,
         max_pre_imgs_per_burst_mw: list[int] | None = None,
         delta_lookback_days_mw: list[int] | None = None,
-        confirmation_strategy: str = 'compute_baseline',
+        confirmation: bool = True,
+        lookback_strategy: str = 'multi_window',
+        prior_dist_s1_product: ProductDirectoryData | None = None,
+        device: str = 'best',
+        interpolation_method: str = 'none',
+        apply_despeckling: bool = True,
+        apply_logit_to_inputs: bool = True,
     ) -> 'RunConfigData':
         """Transform input table from dist-s1-enumerator into RunConfigData object.
 
@@ -478,7 +414,13 @@ class RunConfigData(BaseModel):
             water_mask_path=water_mask_path,
             max_pre_imgs_per_burst_mw=max_pre_imgs_per_burst_mw,
             delta_lookback_days_mw=delta_lookback_days_mw,
-            confirmation_strategy=confirmation_strategy,
+            confirmation=confirmation,
+            lookback_strategy=lookback_strategy,
+            prior_dist_s1_product=prior_dist_s1_product,
+            device=device,
+            interpolation_method=interpolation_method,
+            apply_despeckling=apply_despeckling,
+            apply_logit_to_inputs=apply_logit_to_inputs,
         )
         return runconfig_data
 
@@ -499,106 +441,50 @@ class RunConfigData(BaseModel):
     @property
     def final_unformatted_tif_paths(self) -> dict:
         # We are going to have a directory without metadata, colorbar, tags, etc.
-        pre_product_dir = self.dst_dir / 'pre_product'
-        pre_product_dir.mkdir(parents=True, exist_ok=True)
+        product_no_confirmation_dir = self.dst_dir / 'product_without_confirmation'
+        product_no_confirmation_dir.mkdir(parents=True, exist_ok=True)
         final_unformatted_tif_paths = {
-            'alert_status_path': pre_product_dir / 'alert_status.tif',
-            'metric_status_path': pre_product_dir / 'metric_status.tif',
+            'alert_status_path': product_no_confirmation_dir / 'alert_status.tif',
+            'metric_status_path': product_no_confirmation_dir / 'metric_status.tif',
             # cofirmation db fields
-            'dist_status_path': pre_product_dir / 'dist_status.tif',
-            'dist_max_path': pre_product_dir / 'dist_max.tif',
-            'dist_conf_path': pre_product_dir / 'dist_conf.tif',
-            'dist_date_path': pre_product_dir / 'dist_date.tif',
-            'dist_count_path': pre_product_dir / 'dist_count.tif',
-            'dist_perc_path': pre_product_dir / 'dist_perc.tif',
-            'dist_dur_path': pre_product_dir / 'dist_dur.tif',
-            'dist_last_date_path': pre_product_dir / 'dist_last_date.tif',
+            'dist_status_path': product_no_confirmation_dir / 'dist_status.tif',
+            'dist_max_path': product_no_confirmation_dir / 'dist_max.tif',
+            'dist_conf_path': product_no_confirmation_dir / 'dist_conf.tif',
+            'dist_date_path': product_no_confirmation_dir / 'dist_date.tif',
+            'dist_count_path': product_no_confirmation_dir / 'dist_count.tif',
+            'dist_perc_path': product_no_confirmation_dir / 'dist_perc.tif',
+            'dist_dur_path': product_no_confirmation_dir / 'dist_dur.tif',
+            'dist_last_date_path': product_no_confirmation_dir / 'dist_last_date.tif',
         }
-        for lookback in range(self.n_lookbacks):
-            final_unformatted_tif_paths[f'alert_delta{lookback}_path'] = pre_product_dir / f'alert_delta{lookback}.tif'
 
         return final_unformatted_tif_paths
 
     @property
     def df_burst_distmetrics(self) -> pd.DataFrame:
-        if self._df_burst_distmetric is None:
-            normal_param_dir = self.dst_dir / 'normal_params'
-            normal_param_dir.mkdir(parents=True, exist_ok=True)
-
-            df_inputs = self.df_inputs.copy()
+        if self._df_burst_distmetrics is None:
+            df_inputs = self.df_inputs
             df_post = df_inputs[df_inputs.input_category == 'post'].reset_index(drop=True)
-            burst_ids = df_post.jpl_burst_id.unique()
-            df_dist_by_burst = pd.DataFrame({'jpl_burst_id': burst_ids})
-
-            df_date = df_inputs.groupby('jpl_burst_id')['acq_dt'].apply(np.maximum.reduce).reset_index(drop=False)
-            df_dist_by_burst = pd.merge(df_dist_by_burst, df_date, on='jpl_burst_id', how='left')
-
-            # Get the N_LOOKBACKS most recent dates before the current acquisition
-            df_pre = df_inputs[df_inputs.input_category == 'pre'].reset_index(drop=True)
-            df_pre.sort_values(by=['jpl_burst_id', 'acq_dt'], inplace=True, ascending=True)
-            df_date_pre = df_pre.groupby('jpl_burst_id')['acq_dt'].apply(
-                lambda x: sorted(x.nlargest(self.n_lookbacks).tolist())
-            )
-            burst2predates = df_date_pre.to_dict()
-
-            # Distribution Paths
-            for lookback in range(self.n_lookbacks):
-                for normal_param_token in ['mean', 'std']:
-                    for polarization_token in ['copol', 'crosspol']:
-                        df_dist_by_burst[
-                            f'loc_path_normal_{normal_param_token}_delta{lookback}_{polarization_token}'
-                        ] = df_dist_by_burst.apply(
-                            generate_burst_dist_paths,
-                            top_level_data_dir=self.dst_dir,
-                            dst_dir_name='normal_params',
-                            path_token=normal_param_token,
-                            polarization_token=polarization_token,
-                            lookback=lookback,
-                            date_lut=burst2predates,
-                            axis=1,
-                            n_lookbacks=self.n_lookbacks,
-                        )
-
-            # Metrics Paths
-            df_dist_by_burst['loc_path_metric_delta0'] = df_dist_by_burst.apply(
-                generate_burst_dist_paths,
-                top_level_data_dir=self.dst_dir,
-                dst_dir_name='metrics',
-                path_token='distmetric',
-                lookback=0,
-                date_lut=None,
-                axis=1,
-                n_lookbacks=self.n_lookbacks,
+            df_distmetrics = (
+                df_post.groupby('jpl_burst_id')
+                .agg({'opera_id': 'first', 'acq_dt': 'first', 'acq_date_for_mgrs_pass': 'first'})
+                .reset_index(drop=False)
             )
 
-            # Disturbance Paths for Each Lookback
-            for lookback in range(self.n_lookbacks):
-                df_dist_by_burst[f'loc_path_disturb_delta{lookback}'] = df_dist_by_burst.apply(
-                    generate_burst_dist_paths,
-                    top_level_data_dir=self.dst_dir,
-                    dst_dir_name='disturbance',
-                    path_token='disturb',
-                    lookback=lookback,
-                    date_lut=None,
-                    axis=1,
-                    n_lookbacks=self.n_lookbacks,
-                )
-
-            # Disturbance Paths Time Aggregated
-            df_dist_by_burst['loc_path_disturb_time_aggregated'] = df_dist_by_burst.apply(
-                generate_burst_dist_paths,
-                top_level_data_dir=self.dst_dir,
-                dst_dir_name='disturbance/time_aggregated',
-                path_token='disturb',
-                lookback=None,
-                date_lut=None,
-                axis=1,
-                n_lookbacks=self.n_lookbacks,
+            # Metric Paths
+            metric_dir = self.dst_dir / 'metric_burst'
+            metric_dir.mkdir(parents=True, exist_ok=True)
+            df_distmetrics['loc_path_metric'] = df_distmetrics.opera_id.map(
+                lambda id_: f'{metric_dir}/metric_{id_}.tif'
             )
+            # Dist Alert Intermediate by Burst
+            dist_alert_dir = self.dst_dir / 'dist_alert_burst'
+            dist_alert_dir.mkdir(parents=True, exist_ok=True)
+            df_distmetrics['loc_path_dist_alert_burst'] = df_distmetrics.opera_id.map(
+                lambda id_: f'{dist_alert_dir}/dist_alert_{id_}.tif'
+            )
+            self._df_burst_distmetrics = df_distmetrics
 
-            self._df_burst_distmetric = df_dist_by_burst
-
-        return self._df_burst_distmetric
+        return self._df_burst_distmetrics
 
     @property
     def df_inputs(self) -> pd.DataFrame:
@@ -638,7 +524,7 @@ class RunConfigData(BaseModel):
         return self._df_inputs.copy()
 
     @property
-    def df_pre_dist_products(self) -> pd.DataFrame:
+    def df_prior_dist_products(self) -> pd.DataFrame:
         VALID_SUFFIXES = (
             '_GEN-DIST-STATUS.tif',
             '_GEN-METRIC-MAX.tif',
@@ -650,13 +536,13 @@ class RunConfigData(BaseModel):
             '_GEN-DIST-LAST-DATE.tif',
         )
 
-        if self._df_pre_dist_products is None:
-            if not self.pre_dist_s1_product:
-                self._df_pre_dist_products = pd.DataFrame()
-                return self._df_pre_dist_products.copy()
+        if self._df_prior_dist_products is None:
+            if not self.prior_dist_s1_product:
+                self._df_prior_dist_products = pd.DataFrame()
+                return self._df_prior_dist_products.copy()
 
             # Normalize paths
-            paths = [Path(p) for p in self.pre_dist_s1_product]
+            paths = [Path(p) for p in self.prior_dist_s1_product]
 
             # Group by base name (everything before the DIST suffix)
             grouped = {}
@@ -695,8 +581,8 @@ class RunConfigData(BaseModel):
             df = pd.DataFrame(rows)
             df = df.rename(columns=column_mapping)
             df = df.sort_values(by='product_key').reset_index(drop=True)
-            self._df_pre_dist_products = df
-            return self._df_pre_dist_products.copy()
+            self._df_prior_dist_products = df
+            return self._df_prior_dist_products.copy()
 
     def model_post_init(self, __context: ValidationInfo) -> None:
         # Water mask control flow

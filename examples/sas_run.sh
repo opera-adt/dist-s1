@@ -7,7 +7,6 @@ dist-s1 run_sas_prep --mgrs_tile_id '11SLT' \
     --high_confidence_threshold 5.5 \
     --post_date_buffer_days 1 \
     --apply_water_mask true \
-    --n_lookbacks 3 \
     --water_mask_path '../notebooks/los-angeles/water_mask.tif' \
     --product_dst_dir '../notebooks/los-angeles'  && \
 dist-s1 run_sas --runconfig_yml_path run_config.yml

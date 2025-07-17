@@ -10,7 +10,7 @@ dependencies:
  - compilers
  - dem_stitcher
  - dist_s1_enumerator
- - distmetrics>=0.0.12
+ - distmetrics>=1.0.0
  - flake8
  - flake8-blind-except
  - flake8-builtins

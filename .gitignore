@@ -110,3 +110,6 @@ tests/out/
 # Temporary directories for tests
 tests/tmp/
 tests/tmp2/
+
+# Testing notebooks
+_testing

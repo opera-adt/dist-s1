@@ -13,7 +13,7 @@ def localize_rtc_s1(
     mgrs_tile_id: str,
     post_date: str | datetime | pd.Timestamp,
     track_number: int,
-    lookback_strategy: str = 'immediate_lookback',
+    lookback_strategy: str = 'multi_window',
     post_date_buffer_days: int = 1,
     max_pre_imgs_per_burst_mw: list[int] = [5, 5],
     delta_lookback_days_mw: list[int] = [730, 365],
@@ -22,6 +22,11 @@ def localize_rtc_s1(
     tqdm_enabled: bool = True,
     apply_water_mask: bool = True,
     water_mask_path: Path | str | None = None,
+    confirmation: bool = True,
+    device: str = 'best',
+    interpolation_method: str = 'none',
+    apply_despeckling: bool = True,
+    apply_logit_to_inputs: bool = True,
 ) -> RunConfigData:
     df_product = enumerate_one_dist_s1_product(
         mgrs_tile_id,
@@ -47,5 +52,10 @@ def localize_rtc_s1(
         water_mask_path=water_mask_path,
         max_pre_imgs_per_burst_mw=max_pre_imgs_per_burst_mw,
         delta_lookback_days_mw=delta_lookback_days_mw,
+        confirmation=confirmation,
+        device=device,
+        interpolation_method=interpolation_method,
+        apply_despeckling=apply_despeckling,
+        apply_logit_to_inputs=apply_logit_to_inputs,
     )
     return runconfig

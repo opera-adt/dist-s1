@@ -9,7 +9,6 @@ from .workflows import (
     run_dist_s1_sas_workflow,
     run_dist_s1_workflow,
     run_disturbance_merge_workflow,
-    run_normal_param_estimation_workflow,
 )
 
 
@@ -30,7 +29,6 @@ __all__ = [
     'run_dist_s1_workflow',
     'run_dist_s1_sas_workflow',
     'run_dist_s1_localization_workflow',
-    'run_normal_param_estimation_workflow',
     'run_burst_disturbance_workflow',
     'run_despeckle_workflow',
     'run_disturbance_merge_workflow',

@@ -339,7 +339,6 @@ run_config:
     apply_water_mask: false
     memory_strategy: high
     tqdm_enabled: true
-    n_lookbacks: 3
     moderate_confidence_threshold: 3.5
     high_confidence_threshold: 5.5
     product_dst_dir: tmp2  # want to check this is separate directory

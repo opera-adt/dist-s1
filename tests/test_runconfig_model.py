@@ -4,7 +4,10 @@ from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
+import pytest
+from pydantic import ValidationError
 
+from dist_s1.data_models.output_models import ProductDirectoryData
 from dist_s1.data_models.runconfig_model import RunConfigData
 
 
@@ -16,7 +19,9 @@ def test_input_data_model_from_cropped_dataset(test_dir: Path, test_data_dir: Pa
 
     df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
 
-    config = RunConfigData.from_product_df(df_product, apply_water_mask=False, dst_dir=tmp_dir)
+    config = RunConfigData.from_product_df(
+        df_product, apply_water_mask=False, dst_dir=tmp_dir, confirmation=False, prior_dist_s1_product=None
+    )
 
     df = config.df_inputs
 
@@ -121,5 +126,160 @@ def test_input_data_model_from_cropped_dataset(test_dir: Path, test_data_dir: Pa
 
     assert pre_acq_dts_str_actual == pre_acq_dts_str_expected
     assert post_acq_dts_str_actual == post_acq_dts_str_expected
+
+    shutil.rmtree(tmp_dir)
+
+
+def test_confirmation_and_prior_product_validation(
+    test_dir: Path, test_data_dir: Path, test_opera_golden_dummy_dataset: Path, change_local_dir: Callable
+) -> None:
+    """Test that confirmation and prior_dist_s1_product validation works correctly."""
+    change_local_dir(test_dir)
+
+    tmp_dir = test_dir / 'tmp'
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
+    product_dir = ProductDirectoryData.from_product_path(test_opera_golden_dummy_dataset)
+
+    # Test 1: confirmation=True without prior_dist_s1_product should fail
+    with pytest.raises(ValidationError, match='prior_dist_s1_product must be provided when confirmation is True'):
+        config = RunConfigData.from_product_df(
+            df_product,
+            apply_water_mask=False,
+            dst_dir=tmp_dir,
+            confirmation=True,
+            prior_dist_s1_product=None,
+        )
+
+    # Test 2: prior_dist_s1_product provided without confirmation=True should fail
+    with pytest.raises(ValidationError, match='confirmation must be True when prior_dist_s1_product is provided'):
+        config = RunConfigData.from_product_df(
+            df_product,
+            apply_water_mask=False,
+            dst_dir=tmp_dir,
+            confirmation=False,
+            prior_dist_s1_product=product_dir,
+        )
+
+    # Test 3: Both confirmation=True and prior_dist_s1_product provided should succeed
+    config = RunConfigData.from_product_df(
+        df_product,
+        apply_water_mask=False,
+        dst_dir=tmp_dir,
+        confirmation=True,
+        prior_dist_s1_product=product_dir,
+    )
+    assert config.confirmation is True
+    assert config.prior_dist_s1_product == product_dir
+
+    # Test 4: Both confirmation=False and prior_dist_s1_product=None should succeed
+    config = RunConfigData.from_product_df(
+        df_product,
+        apply_water_mask=False,
+        dst_dir=tmp_dir,
+        confirmation=False,
+        prior_dist_s1_product=None,
+    )
+    assert config.confirmation is False
+    assert config.prior_dist_s1_product is None
+
+    shutil.rmtree(tmp_dir)
+
+
+def test_lookback_strategy_validation(test_dir: Path, test_data_dir: Path, change_local_dir: Callable) -> None:
+    """Test that lookback_strategy only accepts 'multi_window' and 'immediate_lookback' values."""
+    change_local_dir(test_dir)
+
+    tmp_dir = test_dir / 'tmp'
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
+
+    # Test 1: Valid lookback_strategy values should succeed
+    valid_strategies = ['multi_window', 'immediate_lookback']
+    for strategy in valid_strategies:
+        config = RunConfigData.from_product_df(
+            df_product,
+            apply_water_mask=False,
+            dst_dir=tmp_dir,
+            lookback_strategy=strategy,
+            confirmation=False,
+            prior_dist_s1_product=None,
+        )
+        assert config.lookback_strategy == strategy
+
+    # Test 2: Invalid lookback_strategy values should fail
+    invalid_strategies = ['invalid_strategy', 'single_window', 'delayed_lookback', 'multi', 'immediate']
+    for strategy in invalid_strategies:
+        with pytest.raises(ValidationError, match='String should match pattern'):
+            RunConfigData.from_product_df(
+                df_product,
+                apply_water_mask=False,
+                dst_dir=tmp_dir,
+                lookback_strategy=strategy,
+                confirmation=False,
+                prior_dist_s1_product=None,
+            )
+
+    # Test 3: Default value should be 'multi_window'
+    config = RunConfigData.from_product_df(
+        df_product,
+        apply_water_mask=False,
+        dst_dir=tmp_dir,
+        confirmation=False,
+        prior_dist_s1_product=None,
+    )
+    assert config.lookback_strategy == 'multi_window'
+
+    shutil.rmtree(tmp_dir)
+
+
+def test_device_resolution(test_dir: Path, test_data_dir: Path, change_local_dir: Callable) -> None:
+    """Test that device='best' gets properly resolved to the actual available device."""
+    import torch
+
+    change_local_dir(test_dir)
+
+    tmp_dir = test_dir / 'tmp'
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
+
+    # Test that device='best' gets resolved to an actual device
+    config = RunConfigData.from_product_df(
+        df_product,
+        apply_water_mask=False,
+        dst_dir=tmp_dir,
+        confirmation=False,
+        prior_dist_s1_product=None,
+        device='best',
+    )
+
+    # Verify that 'best' was resolved to an actual device
+    assert config.device in ['cpu', 'cuda', 'mps'], (
+        f"Device should be one of ['cpu', 'cuda', 'mps'], got {config.device}"
+    )
+
+    # Test that explicit device values work correctly
+    for device in ['cpu', 'cuda', 'mps']:
+        try:
+            config = RunConfigData.from_product_df(
+                df_product,
+                apply_water_mask=False,
+                dst_dir=tmp_dir,
+                confirmation=False,
+                prior_dist_s1_product=None,
+                device=device,
+            )
+            assert config.device == device
+        except ValidationError as e:
+            # It's okay for cuda/mps to fail if not available
+            if device == 'cuda' and not torch.cuda.is_available():
+                assert 'CUDA is not available' in str(e)
+            elif device == 'mps' and not torch.backends.mps.is_available():
+                assert 'MPS is not available' in str(e)
+            else:
+                raise
 
     shutil.rmtree(tmp_dir)
