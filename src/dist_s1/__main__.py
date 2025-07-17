@@ -204,6 +204,13 @@ def common_options(func: Callable) -> Callable:
         required=False,
         help='Flag to enable compilation duringe execution.',
     )
+    @click.option(
+        '--algo_config_path',
+        type=str,
+        default=None,
+        required=False,
+        help='Path to external algorithm configuration YAML file.',
+    )
     @functools.wraps(func)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         return func(*args, **kwargs)
@@ -264,6 +271,7 @@ def run_sas_prep(
     stride_for_norm_param_estimation: int = 16,
     batch_size_for_norm_param_estimation: int = 32,
     optimize: bool = True,
+    algo_config_path: str | Path | None = None,
 ) -> None:
     """Run SAS prep workflow."""
     run_config = run_dist_s1_sas_prep_workflow(
@@ -295,6 +303,7 @@ def run_sas_prep(
         stride_for_norm_param_estimation=stride_for_norm_param_estimation,
         batch_size_for_norm_param_estimation=batch_size_for_norm_param_estimation,
         optimize=optimize,
+        algo_config_path=algo_config_path,
     )
     run_config.to_yaml(runconfig_path)
 
@@ -340,6 +349,7 @@ def run(
     stride_for_norm_param_estimation: int = 16,
     batch_size_for_norm_param_estimation: int = 32,
     optimize: bool = True,
+    algo_config_path: str | Path | None = None,
 ) -> str:
     """Localize data and run dist_s1_workflow."""
     return run_dist_s1_workflow(
@@ -371,6 +381,7 @@ def run(
         stride_for_norm_param_estimation=stride_for_norm_param_estimation,
         batch_size_for_norm_param_estimation=batch_size_for_norm_param_estimation,
         optimize=optimize,
+        algo_config_path=algo_config_path,
     )
 
 

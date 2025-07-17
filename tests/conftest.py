@@ -84,3 +84,52 @@ def antimeridian_water_mask_path_for_01VCK() -> Path:
     test_dir = Path(__file__)
     water_mask_path = test_dir.parent / 'test_data' / 'water_mask_samples' / '01VCK_water_mask_antimeridian.tif'
     return water_mask_path
+
+
+@pytest.fixture
+def test_algo_config_path() -> Path:
+    """Fixture to provide the path to the test algorithm config YAML file."""
+    test_dir = Path(__file__)
+    algo_config_path = test_dir.parent / 'test_data' / 'algorithm_config_ymls' / 'test_algo_config.yml'
+    return algo_config_path
+
+
+@pytest.fixture
+def test_algo_config_conflicts_path() -> Path:
+    """Fixture to provide the path to the test algorithm config YAML file for testing conflicts."""
+    test_dir = Path(__file__)
+    algo_config_path = test_dir.parent / 'test_data' / 'algorithm_config_ymls' / 'test_algo_config_conflicts.yml'
+    return algo_config_path
+
+
+@pytest.fixture
+def test_algo_config_direct_path() -> Path:
+    """Fixture to provide the path to the test algorithm config YAML file for direct loading tests."""
+    test_dir = Path(__file__)
+    algo_config_path = test_dir.parent / 'test_data' / 'algorithm_config_ymls' / 'test_algo_config_direct.yml'
+    return algo_config_path
+
+
+@pytest.fixture
+def test_algo_config_invalid_path() -> Path:
+    """Fixture to provide the path to the test algorithm config YAML file with invalid parameters for validation testing."""
+    test_dir = Path(__file__)
+    algo_config_path = test_dir.parent / 'test_data' / 'algorithm_config_ymls' / 'test_algo_config_invalid.yml'
+    return algo_config_path
+
+
+@pytest.fixture
+def runconfig_yaml_template() -> str:
+    """Fixture to provide a template string for generating runconfig YAML files in tests."""
+    return """run_config:
+  pre_rtc_copol: {pre_rtc_copol}
+  pre_rtc_crosspol: {pre_rtc_crosspol}
+  post_rtc_copol: {post_rtc_copol}
+  post_rtc_crosspol: {post_rtc_crosspol}
+  mgrs_tile_id: "10SGD"
+  dst_dir: "{dst_dir}"
+  apply_water_mask: false
+  check_input_paths: false
+  confirmation: false
+  algo_config_path: "{algo_config_path}"{additional_params}
+"""

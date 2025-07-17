@@ -285,6 +285,7 @@ def run_dist_s1_sas_prep_workflow(
     apply_despeckling: bool = True,
     apply_logit_to_inputs: bool = True,
     optimize: bool = True,
+    algo_config_path: str | Path | None = None,
 ) -> RunConfigData:
     run_config = run_dist_s1_localization_workflow(
         mgrs_tile_id,
@@ -324,6 +325,7 @@ def run_dist_s1_sas_prep_workflow(
     run_config.interpolation_method = interpolation_method
     run_config.apply_despeckling = apply_despeckling
     run_config.apply_logit_to_inputs = apply_logit_to_inputs
+    run_config.algo_config_path = algo_config_path
     return run_config
 
 
@@ -369,6 +371,7 @@ def run_dist_s1_workflow(
     interpolation_method: str = 'none',
     apply_despeckling: bool = True,
     apply_logit_to_inputs: bool = True,
+    algo_config_path: str | Path | None = None,
 ) -> Path:
     run_config = run_dist_s1_sas_prep_workflow(
         mgrs_tile_id,
@@ -402,6 +405,7 @@ def run_dist_s1_workflow(
         interpolation_method=interpolation_method,
         apply_despeckling=apply_despeckling,
         apply_logit_to_inputs=apply_logit_to_inputs,
+        algo_config_path=algo_config_path,
     )
     _ = run_dist_s1_sas_workflow(run_config)
 

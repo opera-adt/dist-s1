@@ -1,4 +1,5 @@
 import shutil
+import warnings
 from collections.abc import Callable
 from pathlib import Path
 
@@ -8,7 +9,7 @@ import pytest
 from pydantic import ValidationError
 
 from dist_s1.data_models.output_models import ProductDirectoryData
-from dist_s1.data_models.runconfig_model import RunConfigData
+from dist_s1.data_models.runconfig_model import RunConfigData, AlgoConfigData
 
 
 def test_input_data_model_from_cropped_dataset(test_dir: Path, test_data_dir: Path, change_local_dir: Callable) -> None:
@@ -281,5 +282,255 @@ def test_device_resolution(test_dir: Path, test_data_dir: Path, change_local_dir
                 assert 'MPS is not available' in str(e)
             else:
                 raise
+
+    shutil.rmtree(tmp_dir)
+
+
+def test_algorithm_config_from_yaml(
+    test_dir: Path,
+    test_data_dir: Path,
+    test_algo_config_path: Path,
+    runconfig_yaml_template: str,
+    change_local_dir: Callable,
+) -> None:
+    """Test that algorithm parameters are properly loaded from external YAML file."""
+    change_local_dir(test_dir)
+
+    tmp_dir = test_dir / 'tmp'
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create a main runconfig YAML file that references the algorithm config
+    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
+
+    main_config_path = tmp_dir / 'test_main_config.yml'
+    main_config_content = runconfig_yaml_template.format(
+        pre_rtc_copol=df_product[df_product.input_category == 'pre'].loc_path_copol.tolist(),
+        pre_rtc_crosspol=df_product[df_product.input_category == 'pre'].loc_path_crosspol.tolist(),
+        post_rtc_copol=df_product[df_product.input_category == 'post'].loc_path_copol.tolist(),
+        post_rtc_crosspol=df_product[df_product.input_category == 'post'].loc_path_crosspol.tolist(),
+        dst_dir=tmp_dir,
+        algo_config_path=test_algo_config_path,
+        additional_params='',
+    )
+    with Path.open(main_config_path, 'w') as f:
+        f.write(main_config_content)
+
+    # Test that warnings are issued for algorithm parameters loaded from file
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter('always')
+        config = RunConfigData.from_yaml(str(main_config_path))
+
+        # Check that warnings were issued for algorithm parameters
+        warning_messages = [str(warning.message) for warning in w]
+        algorithm_warnings = [
+            msg for msg in warning_messages if 'Algorithm parameter' in msg and 'inherited from external config' in msg
+        ]
+
+        # Should have warnings for each algorithm parameter that was inherited
+        assert len(algorithm_warnings) > 0, 'Expected warnings for inherited algorithm parameters'
+
+        # Check that specific parameters have warnings
+        expected_params = ['interpolation_method', 'moderate_confidence_threshold', 'device', 'apply_despeckling']
+        for param in expected_params:
+            param_warnings = [msg for msg in algorithm_warnings if f"'{param}'" in msg]
+            assert len(param_warnings) > 0, f"Expected warning for parameter '{param}'"
+
+    # Verify that the algorithm parameters were actually applied
+    assert config.interpolation_method == 'bilinear'
+    assert config.moderate_confidence_threshold == 4.2
+    assert config.high_confidence_threshold == 6.8
+    assert config.device == 'cpu'
+    assert config.apply_despeckling is False
+    assert config.apply_logit_to_inputs is False
+    assert config.memory_strategy == 'low'
+    assert config.batch_size_for_norm_param_estimation == 64
+
+    shutil.rmtree(tmp_dir)
+
+
+def test_algorithm_config_parameter_conflicts(
+    test_dir: Path,
+    test_data_dir: Path,
+    test_algo_config_conflicts_path: Path,
+    runconfig_yaml_template: str,
+    change_local_dir: Callable,
+) -> None:
+    """Test that main config parameters override algorithm config parameters and warnings are issued appropriately."""
+    change_local_dir(test_dir)
+
+    tmp_dir = test_dir / 'tmp'
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create a main runconfig YAML file that has some conflicting parameters
+    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
+
+    # Additional parameters that conflict with the algorithm config
+    additional_params = """
+  # These parameters conflict with the algorithm config
+  interpolation_method: nearest
+  moderate_confidence_threshold: 5.0
+  device: best"""
+
+    main_config_path = tmp_dir / 'test_main_config.yml'
+    main_config_content = runconfig_yaml_template.format(
+        pre_rtc_copol=df_product[df_product.input_category == 'pre'].loc_path_copol.tolist(),
+        pre_rtc_crosspol=df_product[df_product.input_category == 'pre'].loc_path_crosspol.tolist(),
+        post_rtc_copol=df_product[df_product.input_category == 'post'].loc_path_copol.tolist(),
+        post_rtc_crosspol=df_product[df_product.input_category == 'post'].loc_path_crosspol.tolist(),
+        dst_dir=tmp_dir,
+        algo_config_path=test_algo_config_conflicts_path,
+        additional_params=additional_params,
+    )
+    with Path.open(main_config_path, 'w') as f:
+        f.write(main_config_content)
+
+    # Test that the main config parameters take precedence
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter('always')
+        config = RunConfigData.from_yaml(str(main_config_path))
+
+        # Check that warnings were issued only for non-conflicting parameters
+        warning_messages = [str(warning.message) for warning in w]
+        algorithm_warnings = [
+            msg for msg in warning_messages if 'Algorithm parameter' in msg and 'inherited from external config' in msg
+        ]
+
+        # Should have warnings for parameters that were inherited (not overridden)
+        inherited_params = ['apply_despeckling', 'memory_strategy']
+        for param in inherited_params:
+            param_warnings = [msg for msg in algorithm_warnings if f"'{param}'" in msg]
+            assert len(param_warnings) > 0, f"Expected warning for inherited parameter '{param}'"
+
+        # Should NOT have warnings for parameters that were overridden in main config
+        overridden_params = ['interpolation_method', 'moderate_confidence_threshold', 'device']
+        for param in overridden_params:
+            param_warnings = [msg for msg in algorithm_warnings if f"'{param}'" in msg]
+            assert len(param_warnings) == 0, f"Should not have warning for overridden parameter '{param}'"
+
+    # Verify that main config parameters take precedence
+    assert config.interpolation_method == 'nearest'  # From main config
+    assert config.moderate_confidence_threshold == 5.0  # From main config
+    assert config.device in ['cpu', 'cuda', 'mps']  # 'best' gets resolved, from main config
+
+    # Verify that non-conflicting algorithm parameters were applied
+    assert config.apply_despeckling is False  # From algorithm config
+    assert config.memory_strategy == 'low'  # From algorithm config
+
+    shutil.rmtree(tmp_dir)
+
+
+def test_algo_config_direct_yaml_loading_with_warnings(
+    test_dir: Path, test_algo_config_direct_path: Path, change_local_dir: Callable
+) -> None:
+    """Test that AlgoConfigData.from_yaml issues warnings for all loaded parameters."""
+    change_local_dir(test_dir)
+
+    tmp_dir = test_dir / 'tmp'
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    # Test that warnings are issued for all loaded parameters
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter('always')
+        algo_config = AlgoConfigData.from_yaml(test_algo_config_direct_path)
+
+        # Check that warnings were issued for algorithm parameters
+        warning_messages = [str(warning.message) for warning in w]
+        algorithm_warnings = [
+            msg for msg in warning_messages if 'Algorithm parameter' in msg and 'from external config file' in msg
+        ]
+
+        # Should have warnings for each algorithm parameter that was loaded
+        assert len(algorithm_warnings) > 0, 'Expected warnings for loaded algorithm parameters'
+
+        # Check that specific parameters have warnings
+        expected_params = [
+            'interpolation_method',
+            'moderate_confidence_threshold',
+            'high_confidence_threshold',
+            'device',
+            'apply_despeckling',
+            'apply_logit_to_inputs',
+            'memory_strategy',
+            'batch_size_for_norm_param_estimation',
+            'stride_for_norm_param_estimation',
+            'n_workers_for_despeckling',
+            'tqdm_enabled',
+            'model_compilation',
+        ]
+
+        for param in expected_params:
+            param_warnings = [msg for msg in algorithm_warnings if f"'{param}'" in msg]
+            assert len(param_warnings) == 1, (
+                f"Expected exactly one warning for parameter '{param}', got {len(param_warnings)}"
+            )
+
+    # Verify that all the algorithm parameters were correctly loaded
+    assert algo_config.interpolation_method == 'bilinear'
+    assert algo_config.moderate_confidence_threshold == 3.8
+    assert algo_config.high_confidence_threshold == 6.2
+    assert algo_config.device == 'cpu'
+    assert algo_config.apply_despeckling is False
+    assert algo_config.apply_logit_to_inputs is True
+    assert algo_config.memory_strategy == 'high'
+    assert algo_config.batch_size_for_norm_param_estimation == 128
+    assert algo_config.stride_for_norm_param_estimation == 8
+    assert algo_config.n_workers_for_despeckling == 4
+    assert algo_config.tqdm_enabled is False
+    assert algo_config.model_compilation is True
+
+    shutil.rmtree(tmp_dir)
+
+
+def test_algorithm_config_validation_errors(
+    test_dir: Path,
+    test_data_dir: Path,
+    test_algo_config_invalid_path: Path,
+    runconfig_yaml_template: str,
+    change_local_dir: Callable,
+) -> None:
+    """Test that validation errors are properly raised when invalid algorithm parameter values are provided."""
+    change_local_dir(test_dir)
+
+    tmp_dir = test_dir / 'tmp'
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    # Test 1: Direct AlgoConfigData loading should fail with invalid parameters
+    with pytest.raises(ValidationError, match=r'(device|interpolation_method|memory_strategy)'):
+        AlgoConfigData.from_yaml(test_algo_config_invalid_path)
+
+    # Test 2: RunConfigData loading should also fail when using an invalid algorithm config
+    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
+
+    main_config_path = tmp_dir / 'test_main_config.yml'
+    main_config_content = runconfig_yaml_template.format(
+        pre_rtc_copol=df_product[df_product.input_category == 'pre'].loc_path_copol.tolist(),
+        pre_rtc_crosspol=df_product[df_product.input_category == 'pre'].loc_path_crosspol.tolist(),
+        post_rtc_copol=df_product[df_product.input_category == 'post'].loc_path_copol.tolist(),
+        post_rtc_crosspol=df_product[df_product.input_category == 'post'].loc_path_crosspol.tolist(),
+        dst_dir=tmp_dir,
+        algo_config_path=test_algo_config_invalid_path,
+        additional_params='',
+    )
+    with Path.open(main_config_path, 'w') as f:
+        f.write(main_config_content)
+
+    # Should raise ValidationError when trying to load RunConfigData with invalid algorithm config
+    with pytest.raises(ValidationError, match=r'(device|interpolation_method|memory_strategy)'):
+        RunConfigData.from_yaml(str(main_config_path))
+
+    # Test 3: Verify specific field validation messages using match patterns
+    # Test individual invalid field values by creating minimal config objects
+
+    # Test invalid device - matches "device" field and the invalid value
+    with pytest.raises(ValidationError, match=r'device'):
+        AlgoConfigData(device='invalid_device')
+
+    # Test invalid interpolation_method - matches field name
+    with pytest.raises(ValidationError, match=r'interpolation_method'):
+        AlgoConfigData(interpolation_method='invalid_method')
+
+    # Test invalid memory_strategy - matches field name
+    with pytest.raises(ValidationError, match=r'memory_strategy'):
+        AlgoConfigData(memory_strategy='invalid_strategy')
 
     shutil.rmtree(tmp_dir)
