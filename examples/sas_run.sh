@@ -8,6 +8,7 @@ dist-s1 run_sas_prep --mgrs_tile_id '11SLT' \
     --post_date_buffer_days 1 \
     --apply_water_mask true \
     --product_dst_dir '../notebooks/los-angeles' \
+    --model_source 'transformer_orginal' \
     --algo_config_path algo_config.yml \
     --run_config_path run_config.yml
 dist-s1 run_sas --run_config_path run_config.yml 
