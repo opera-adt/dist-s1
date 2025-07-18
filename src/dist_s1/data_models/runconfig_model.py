@@ -268,7 +268,7 @@ class AlgoConfigData(BaseModel):
     @field_validator('model_dtype')
     def validate_model_dtype(cls, model_dtype: str) -> str:
         """Validate that model_dtype is a supported data type."""
-        valid_dtypes = ['float32', 'bfloat16', 'float16']
+        valid_dtypes = ['float32', 'bfloat16', 'float']
         if model_dtype not in valid_dtypes:
             raise ValueError(f"model_dtype '{model_dtype}' must be one of: {valid_dtypes}")
         return model_dtype
