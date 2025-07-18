@@ -681,16 +681,22 @@ class RunConfigData(AlgoConfigData):
             self._df_prior_dist_products = df
             return self._df_prior_dist_products.copy()
 
-    def model_post_init(self, __context: ValidationInfo) -> None:
-        # Water mask control flow
-        self.water_mask_path = water_mask_control_flow(
-            water_mask_path=self.water_mask_path,
-            mgrs_tile_id=self.mgrs_tile_id,
-            apply_water_mask=self.apply_water_mask,
-            dst_dir=self.dst_dir,
-            overwrite=True,
-        )
+    @model_validator(mode='after')
+    def handle_water_mask_control_flow(self) -> 'RunConfigData':
+        """Trigger water mask control flow when apply_water_mask is True."""
+        if self.apply_water_mask and self.water_mask_path is None:
+            self.water_mask_path = water_mask_control_flow(
+                water_mask_path=self.water_mask_path,
+                mgrs_tile_id=self.mgrs_tile_id,
+                apply_water_mask=self.apply_water_mask,
+                dst_dir=self.dst_dir,
+                overwrite=True,
+            )
+        return self
 
+    @model_validator(mode='after')
+    def handle_device_specific_validations(self) -> 'RunConfigData':
+        """Handle device-specific validations and adjustments."""
         # Device-specific validations
         if self.device in ['cuda', 'mps'] and self.n_workers_for_norm_param_estimation > 1:
             warnings.warn(
@@ -698,3 +704,4 @@ class RunConfigData(AlgoConfigData):
                 UserWarning,
             )
             self.n_workers_for_norm_param_estimation = 1
+        return self
