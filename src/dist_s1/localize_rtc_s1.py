@@ -66,10 +66,8 @@ def localize_rtc_s1(
         max_pre_imgs_per_burst_mw=[item for item in max_pre_imgs_per_burst_mw],
         delta_lookback_days_mw=delta_lookback_days_mw,
     )
-    # Ensure earthdata Credentials
     ensure_earthdata_credentials()
 
-    # The function will create the out_dir if it doesn't exist
     if input_data_dir is None:
         input_data_dir = dst_dir
     df_product_loc = localize_rtc_s1_ts(df_product, input_data_dir, max_workers=5, tqdm_enabled=tqdm_enabled)

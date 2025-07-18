@@ -12,7 +12,7 @@ from dist_s1_enumerator.data_models import dist_s1_loc_input_schema
 from dist_s1_enumerator.mgrs_burst_data import get_lut_by_mgrs_tile_ids
 from distmetrics import get_device
 from pandera.pandas import check_input
-from pydantic import BaseModel, Field, ValidationError, ValidationInfo, field_validator, model_validator, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, ValidationInfo, field_validator, model_validator
 from yaml import Dumper
 
 from dist_s1.data_models.output_models import ProductDirectoryData, ProductNameData
@@ -180,7 +180,7 @@ class AlgoConfigData(BaseModel):
     model_config = ConfigDict(validate_assignment=True)
 
     @field_validator('model_source', mode='before')
-    def validate_model_source(cls, v):
+    def validate_model_source(cls, v: str | None) -> str:
         if v is None:
             return 'transformer_optimized'
         return v

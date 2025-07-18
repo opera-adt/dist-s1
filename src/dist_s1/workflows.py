@@ -234,14 +234,11 @@ def run_disturbance_confirmation(run_config: RunConfigData) -> None:
 
 
 def run_dist_s1_processing_workflow(run_config: RunConfigData) -> RunConfigData:
-    # Despeckle by burst
     if run_config.apply_despeckling:
         run_despeckle_workflow(run_config)
 
-    # Compute disturbance per burst and all possible lookbacks
     run_burst_disturbance_workflow(run_config)
 
-    # Merge the burst-wise products
     run_disturbance_merge_workflow(run_config)
 
     return run_config
