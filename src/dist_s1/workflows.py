@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
@@ -25,6 +26,60 @@ from dist_s1.packaging import (
 torch_mp.set_start_method('spawn', force=True)
 
 
+@dataclass
+class BurstProcessingArgs:
+    """Container for burst processing arguments to make multiprocessing more readable."""
+
+    pre_copol_paths: list[str]
+    pre_crosspol_paths: list[str]
+    post_copol_path: str
+    post_crosspol_path: str
+    acq_dts: list
+    out_dist_path: str
+    out_metric_path: str
+    moderate_confidence_threshold: float
+    high_confidence_threshold: float
+    use_logits: bool
+    model_compilation: bool
+    model_source: str
+    model_cfg_path: str | None
+    model_wts_path: str | None
+    memory_strategy: str
+    stride_for_norm_param_estimation: int
+    batch_size_for_norm_param_estimation: int
+    device: str
+    raw_data_for_nodata_mask: str
+    model_dtype: str
+    use_date_encoding: bool
+
+
+def _dist_processing_one_burst_wrapper(args: BurstProcessingArgs) -> str:
+    compute_burst_disturbance_and_serialize(
+        pre_copol_paths=args.pre_copol_paths,
+        pre_crosspol_paths=args.pre_crosspol_paths,
+        post_copol_path=args.post_copol_path,
+        post_crosspol_path=args.post_crosspol_path,
+        acq_dts=args.acq_dts,
+        out_dist_path=args.out_dist_path,
+        out_metric_path=args.out_metric_path,
+        moderate_confidence_threshold=args.moderate_confidence_threshold,
+        high_confidence_threshold=args.high_confidence_threshold,
+        use_logits=args.use_logits,
+        model_compilation=args.model_compilation,
+        model_source=args.model_source,
+        model_cfg_path=args.model_cfg_path,
+        model_wts_path=args.model_wts_path,
+        memory_strategy=args.memory_strategy,
+        stride=args.stride_for_norm_param_estimation,
+        batch_size=args.batch_size_for_norm_param_estimation,
+        device=args.device,
+        raw_data_for_nodata_mask=args.raw_data_for_nodata_mask,
+        model_dtype=args.model_dtype,
+        use_date_encoding=args.use_date_encoding,
+    )
+    return args.out_dist_path  # Return something to track completion
+
+
 def run_dist_s1_localization_workflow(
     mgrs_tile_id: str,
     post_date: str | datetime,
@@ -37,13 +92,17 @@ def run_dist_s1_localization_workflow(
     input_data_dir: str | Path | None = None,
     apply_water_mask: bool = True,
     water_mask_path: str | Path | None = None,
-    confirmation: bool = True,
     device: str = 'best',
     interpolation_method: str = 'none',
     apply_despeckling: bool = True,
     apply_logit_to_inputs: bool = True,
 ) -> RunConfigData:
-    # Localize inputs
+    """Run the DIST-S1 localization workflow.
+
+    This function handles both data localization and algorithm parameter assignment.
+    It separates the core data localization from algorithm parameter configuration
+    for better maintainability.
+    """
     run_config = localize_rtc_s1(
         mgrs_tile_id,
         post_date,
@@ -54,14 +113,16 @@ def run_dist_s1_localization_workflow(
         delta_lookback_days_mw=delta_lookback_days_mw,
         dst_dir=dst_dir,
         input_data_dir=input_data_dir,
-        apply_water_mask=apply_water_mask,
-        water_mask_path=water_mask_path,
-        confirmation=confirmation,
-        device=device,
-        apply_despeckling=apply_despeckling,
-        apply_logit_to_inputs=apply_logit_to_inputs,
-        interpolation_method=interpolation_method,
     )
+
+    # Assign configuration parameters after localization
+    # These assignments will trigger validation due to validate_assignment=True
+    run_config.apply_water_mask = apply_water_mask
+    run_config.water_mask_path = water_mask_path
+    run_config.device = device
+    run_config.interpolation_method = interpolation_method
+    run_config.apply_despeckling = apply_despeckling
+    run_config.apply_logit_to_inputs = apply_logit_to_inputs
 
     return run_config
 
@@ -106,11 +167,14 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
     df_inputs = run_config.df_inputs
     df_burst_distmetrics = run_config.df_burst_distmetrics
 
-    tqdm_disable = not run_config.tqdm_enabled
-    for burst_id in tqdm(df_inputs.jpl_burst_id.unique(), disable=tqdm_disable, desc='Burst disturbance'):
+    # Collect all burst processing arguments for potential parallel processing
+    burst_args_list = []
+
+    for burst_id in df_inputs.jpl_burst_id.unique():
         df_burst_input_data = df_inputs[df_inputs.jpl_burst_id == burst_id].reset_index(drop=True)
         df_burst_input_data.sort_values(by='acq_dt', inplace=True, ascending=True)
         df_metric_burst = df_burst_distmetrics[df_burst_distmetrics.jpl_burst_id == burst_id].reset_index(drop=True)
+
         if run_config.apply_despeckling:
             copol_path_column = 'loc_path_copol_dspkl'
             crosspol_path_column = 'loc_path_crosspol_dspkl'
@@ -125,6 +189,7 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
         post_copol_paths = df_post[copol_path_column].tolist()
         post_crosspol_paths = df_post[crosspol_path_column].tolist()
         acq_dts = df_pre['acq_dt'].tolist() + df_post['acq_dt'].tolist()
+
         # Assert the number of copol and crosspol paths are the same and are 1
         assert len(post_copol_paths) == len(post_crosspol_paths) == 1
         # Assert the number of paths is the same as the number of dates
@@ -142,10 +207,8 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
         # Use the original copol post path to compute the nodata mask
         copol_post_path = df_post['loc_path_copol'].iloc[0]
 
-        # Computes the disturbance for a a single baseline and serlialize.
-        # Labels will be 0 for no disturbance, 1 for moderate confidence disturbance,
-        # 2 for high confidence disturbance, and 255 for nodata
-        compute_burst_disturbance_and_serialize(
+        # Create BurstProcessingArgs object for this burst
+        burst_args = BurstProcessingArgs(
             pre_copol_paths=pre_copol_paths,
             pre_crosspol_paths=pre_crosspol_paths,
             post_copol_path=post_copol_paths[0],
@@ -161,11 +224,31 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
             model_cfg_path=run_config.model_cfg_path,
             model_wts_path=run_config.model_wts_path,
             memory_strategy=run_config.memory_strategy,
-            stride=run_config.stride_for_norm_param_estimation,
-            batch_size=run_config.batch_size_for_norm_param_estimation,
+            stride_for_norm_param_estimation=run_config.stride_for_norm_param_estimation,
+            batch_size_for_norm_param_estimation=run_config.batch_size_for_norm_param_estimation,
             device=run_config.device,
             raw_data_for_nodata_mask=copol_post_path,
+            model_dtype=run_config.model_dtype,
+            use_date_encoding=run_config.use_date_encoding,
         )
+        burst_args_list.append(burst_args)
+
+    # Process bursts in parallel or sequentially based on configuration
+    tqdm_disable = not run_config.tqdm_enabled
+
+    if run_config.n_workers_for_norm_param_estimation == 1 or len(burst_args_list) == 1:
+        for args in tqdm(burst_args_list, disable=tqdm_disable, desc='Burst disturbance'):
+            _dist_processing_one_burst_wrapper(args)
+    else:
+        with torch_mp.Pool(processes=run_config.n_workers_for_norm_param_estimation) as pool:
+            list(
+                tqdm(
+                    pool.imap(_dist_processing_one_burst_wrapper, burst_args_list),
+                    total=len(burst_args_list),
+                    disable=tqdm_disable,
+                    desc='Burst disturbance',
+                )
+            )
 
 
 def run_disturbance_merge_workflow(run_config: RunConfigData) -> None:
@@ -223,14 +306,11 @@ def run_disturbance_confirmation(run_config: RunConfigData) -> None:
 
 
 def run_dist_s1_processing_workflow(run_config: RunConfigData) -> RunConfigData:
-    # Despeckle by burst
     if run_config.apply_despeckling:
         run_despeckle_workflow(run_config)
 
-    # Compute disturbance per burst and all possible lookbacks
     run_burst_disturbance_workflow(run_config)
 
-    # Merge the burst-wise products
     run_disturbance_merge_workflow(run_config)
 
     return run_config
@@ -268,7 +348,6 @@ def run_dist_s1_sas_prep_workflow(
     lookback_strategy: str = 'multi_window',
     max_pre_imgs_per_burst_mw: list[int] = [5, 5],
     delta_lookback_days_mw: list[int] = [730, 365],
-    confirmation: bool = True,
     water_mask_path: str | Path | None = None,
     product_dst_dir: str | Path | None = None,
     bucket: str | None = None,
@@ -281,10 +360,15 @@ def run_dist_s1_sas_prep_workflow(
     model_wts_path: str | Path | None = None,
     stride_for_norm_param_estimation: int = 16,
     batch_size_for_norm_param_estimation: int = 32,
-    interpolation_method: str = 'none',
+    interpolation_method: str = 'bilinear',
     apply_despeckling: bool = True,
     apply_logit_to_inputs: bool = True,
-    optimize: bool = True,
+    model_compilation: bool = False,
+    algo_config_path: str | Path | None = None,
+    prior_dist_s1_product: str | Path | None = None,
+    run_config_path: str | Path | None = None,
+    model_dtype: str = 'float32',
+    use_date_encoding: bool = False,
 ) -> RunConfigData:
     run_config = run_dist_s1_localization_workflow(
         mgrs_tile_id,
@@ -294,7 +378,6 @@ def run_dist_s1_sas_prep_workflow(
         post_date_buffer_days,
         max_pre_imgs_per_burst_mw,
         delta_lookback_days_mw,
-        confirmation=confirmation,
         dst_dir=dst_dir,
         input_data_dir=input_data_dir,
         apply_water_mask=apply_water_mask,
@@ -307,7 +390,6 @@ def run_dist_s1_sas_prep_workflow(
     run_config.moderate_confidence_threshold = moderate_confidence_threshold
     run_config.high_confidence_threshold = high_confidence_threshold
     run_config.lookback_strategy = lookback_strategy
-    run_config.confirmation = confirmation
     run_config.water_mask_path = water_mask_path
     run_config.product_dst_dir = product_dst_dir
     run_config.bucket = bucket
@@ -320,10 +402,18 @@ def run_dist_s1_sas_prep_workflow(
     run_config.model_wts_path = model_wts_path
     run_config.stride_for_norm_param_estimation = stride_for_norm_param_estimation
     run_config.batch_size_for_norm_param_estimation = batch_size_for_norm_param_estimation
-    run_config.model_compilation = optimize
+    run_config.model_compilation = model_compilation
     run_config.interpolation_method = interpolation_method
     run_config.apply_despeckling = apply_despeckling
     run_config.apply_logit_to_inputs = apply_logit_to_inputs
+    run_config.algo_config_path = algo_config_path
+    run_config.prior_dist_s1_product = prior_dist_s1_product
+    run_config.model_dtype = model_dtype
+    run_config.use_date_encoding = use_date_encoding
+
+    if run_config_path is not None:
+        run_config.to_yaml(run_config_path, algo_param_path=algo_config_path)
+
     return run_config
 
 
@@ -353,7 +443,6 @@ def run_dist_s1_workflow(
     lookback_strategy: str = 'multi_window',
     max_pre_imgs_per_burst_mw: list[int] = [5, 5],
     delta_lookback_days_mw: list[int] = [730, 365],
-    confirmation: bool = True,
     product_dst_dir: str | Path | None = None,
     bucket: str | None = None,
     bucket_prefix: str = '',
@@ -365,10 +454,14 @@ def run_dist_s1_workflow(
     model_wts_path: str | Path | None = None,
     stride_for_norm_param_estimation: int = 16,
     batch_size_for_norm_param_estimation: int = 32,
-    optimize: bool = True,
+    model_compilation: bool = False,
     interpolation_method: str = 'none',
     apply_despeckling: bool = True,
     apply_logit_to_inputs: bool = True,
+    algo_config_path: str | Path | None = None,
+    prior_dist_s1_product: str | Path | None = None,
+    model_dtype: str = 'float32',
+    use_date_encoding: bool = False,
 ) -> Path:
     run_config = run_dist_s1_sas_prep_workflow(
         mgrs_tile_id,
@@ -385,7 +478,6 @@ def run_dist_s1_workflow(
         lookback_strategy=lookback_strategy,
         max_pre_imgs_per_burst_mw=max_pre_imgs_per_burst_mw,
         delta_lookback_days_mw=delta_lookback_days_mw,
-        confirmation=confirmation,
         water_mask_path=water_mask_path,
         product_dst_dir=product_dst_dir,
         bucket=bucket,
@@ -398,10 +490,14 @@ def run_dist_s1_workflow(
         model_wts_path=model_wts_path,
         stride_for_norm_param_estimation=stride_for_norm_param_estimation,
         batch_size_for_norm_param_estimation=batch_size_for_norm_param_estimation,
-        optimize=optimize,
+        model_compilation=model_compilation,
         interpolation_method=interpolation_method,
         apply_despeckling=apply_despeckling,
         apply_logit_to_inputs=apply_logit_to_inputs,
+        algo_config_path=algo_config_path,
+        prior_dist_s1_product=prior_dist_s1_product,
+        model_dtype=model_dtype,
+        use_date_encoding=use_date_encoding,
     )
     _ = run_dist_s1_sas_workflow(run_config)
 

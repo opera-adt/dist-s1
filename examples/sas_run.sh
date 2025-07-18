@@ -7,6 +7,14 @@ dist-s1 run_sas_prep --mgrs_tile_id '11SLT' \
     --high_confidence_threshold 5.5 \
     --post_date_buffer_days 1 \
     --apply_water_mask true \
-    --water_mask_path '../notebooks/los-angeles/water_mask.tif' \
-    --product_dst_dir '../notebooks/los-angeles'  && \
-dist-s1 run_sas --runconfig_yml_path run_config.yml
+    --device 'cpu' \
+    --product_dst_dir '../notebooks/los-angeles' \
+    --model_source 'transformer_original' \
+    --use_date_encoding false \
+    --model_dtype 'float32' \
+    --n_workers_for_norm_param_estimation 4 \
+    --batch_size_for_norm_param_estimation 32 \
+    --stride_for_norm_param_estimation 8 \
+    --algo_config_path algo_config.yml \
+    --run_config_path run_config.yml && \
+dist-s1 run_sas --run_config_path run_config.yml 

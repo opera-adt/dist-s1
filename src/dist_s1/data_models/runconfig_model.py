@@ -12,7 +12,7 @@ from dist_s1_enumerator.data_models import dist_s1_loc_input_schema
 from dist_s1_enumerator.mgrs_burst_data import get_lut_by_mgrs_tile_ids
 from distmetrics import get_device
 from pandera.pandas import check_input
-from pydantic import BaseModel, Field, ValidationError, ValidationInfo, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, ValidationInfo, field_validator, model_validator
 from yaml import Dumper
 
 from dist_s1.data_models.output_models import ProductDirectoryData, ProductNameData
@@ -106,19 +106,11 @@ def check_dist_product_filename_format(filename: str) -> None:
     return True
 
 
-class RunConfigData(BaseModel):
-    pre_rtc_copol: list[Path | str]
-    pre_rtc_crosspol: list[Path | str]
-    post_rtc_copol: list[Path | str]
-    post_rtc_crosspol: list[Path | str]
-    prior_dist_s1_product: ProductDirectoryData | None = None
-    mgrs_tile_id: str
-    dst_dir: Path | str = Path('out')
-    water_mask_path: Path | str | None = None
-    apply_water_mask: bool = Field(default=True)
-    check_input_paths: bool = True
+class AlgoConfigData(BaseModel):
+    """Base class containing algorithm configuration parameters."""
+
     device: str = Field(
-        default='best',
+        default='cpu',
         pattern='^(best|cuda|mps|cpu)$',
     )
     memory_strategy: str | None = Field(
@@ -149,7 +141,6 @@ class RunConfigData(BaseModel):
         default='multi_window',
         pattern='^(multi_window|immediate_lookback)$',
     )
-    confirmation: bool = Field(default=False)
     # Flag to enable optimizations. False, load the model and use it.
     # True, load the model and compile for CPU or GPU
     model_compilation: bool = Field(default=False)
@@ -170,13 +161,11 @@ class RunConfigData(BaseModel):
     conf_thresh: float = Field(default=3**2 * 3.5, description='Confidence threshold')
     metric_value_upper_lim: float = Field(default=100, description='Metric upper limit')
     base_date: datetime = Field(
-        default=datetime(2020, 12, 31), description='Reference date used to calculate the number of days'
+        default=datetime(2020, 12, 31),
+        description='Reference date used to calculate the number of days in confirmation process',
     )
-    product_dst_dir: Path | str | None = None
-    bucket: str | None = None
-    bucket_prefix: str = ''
-    # model_source of None means use internal model
-    # model_source == "external" means use externally supplied paths
+    # model_source == "external" means use externally supplied paths for weights and config
+    # otherwise use distmetrics.model_load.ALLOWED_MODELS for other models
     model_source: str | None = 'transformer_optimized'
     model_cfg_path: Path | str | None = None
     model_wts_path: Path | str | None = None
@@ -185,30 +174,52 @@ class RunConfigData(BaseModel):
     # Use despeckling
     apply_despeckling: bool = Field(default=True)
     interpolation_method: str = Field(
-        default='none',
+        default='bilinear',
         pattern='^(nearest|bilinear|none)$',
     )
+    # Model data type for inference
+    model_dtype: str = Field(
+        default='float32',
+        pattern='^(float32|bfloat16|float16)$',
+        description='Data type for model inference',
+    )
+    # Use date encoding in processing
+    use_date_encoding: bool = Field(
+        default=False,
+        description='Whether to use acquisition date encoding in processing',
+    )
+    # Validate assignments to all fields
+    model_config = ConfigDict(validate_assignment=True)
 
-    # Private attributes that are associated to properties
-    _burst_ids: list[str] | None = None
-    _df_inputs: pd.DataFrame | None = None
-    _df_prior_dist_products: pd.DataFrame | None = None
-    _df_burst_distmetrics: pd.DataFrame | None = None
-    _df_mgrs_burst_lut: gpd.GeoDataFrame | None = None
-    _product_name: ProductNameData | None = None
-    _product_data_model: ProductDirectoryData | None = None
-    _min_acq_date: datetime | None = None
-    _processing_datetime: datetime | None = None
+    @field_validator('model_source', mode='before')
+    def validate_model_source(cls, v: str | None) -> str:
+        if v is None:
+            return 'transformer_optimized'
+        return v
 
     @classmethod
-    def from_yaml(cls, yaml_file: str, fields_to_overwrite: dict | None = None) -> 'RunConfigData':
-        """Load configuration from a YAML file and initialize RunConfigModel."""
-        with Path.open(yaml_file) as file:
+    def from_yaml(cls, yaml_file: str | Path) -> 'AlgoConfigData':
+        """Load algorithm configuration from a YAML file."""
+        yaml_file = Path(yaml_file)
+        with yaml_file.open() as file:
             data = yaml.safe_load(file)
-            runconfig_data = data['run_config']
-        if fields_to_overwrite is not None:
-            runconfig_data.update(fields_to_overwrite)
-        obj = cls(**runconfig_data)
+            if 'algo_config' in data:
+                algo_data = data['algo_config']
+            else:
+                algo_data = data.get('algorithm_config', data)
+
+        # Create instance and warn about loaded parameters
+        obj = cls(**algo_data)
+
+        # Issue warnings for all parameters that were loaded from file
+        for field_name, field_value in algo_data.items():
+            if hasattr(obj, field_name):
+                warnings.warn(
+                    f"Algorithm parameter '{field_name}' set to {field_value} from external config file: {yaml_file}",
+                    UserWarning,
+                    stacklevel=2,
+                )
+
         return obj
 
     @field_validator('memory_strategy')
@@ -229,6 +240,115 @@ class RunConfigData(BaseModel):
         if device not in ['cpu', 'cuda', 'mps']:
             raise ValueError(f"Device '{device}' must be one of: cpu, cuda, mps")
         return device
+
+    @field_validator(
+        'n_workers_for_despeckling',
+        'n_workers_for_norm_param_estimation',
+    )
+    def validate_n_workers(cls, n_workers: int, info: ValidationInfo) -> int:
+        if n_workers > mp.cpu_count():
+            warnings.warn(
+                f'{info.field_name} ({n_workers}) is greater than the number of CPUs ({mp.cpu_count()}), using latter.',
+                UserWarning,
+            )
+            n_workers = mp.cpu_count()
+        return n_workers
+
+    @field_validator('moderate_confidence_threshold')
+    def validate_moderate_threshold(cls, moderate_threshold: float, info: ValidationInfo) -> float:
+        """Validate that moderate_confidence_threshold is less than high_confidence_threshold."""
+        high_threshold = info.data.get('high_confidence_threshold')
+        if high_threshold is not None and moderate_threshold >= high_threshold:
+            raise ValueError(
+                f'moderate_confidence_threshold ({moderate_threshold}) must be less than '
+                f'high_confidence_threshold ({high_threshold})'
+            )
+        return moderate_threshold
+
+    @field_validator('model_dtype')
+    def validate_model_dtype(cls, model_dtype: str) -> str:
+        """Validate that model_dtype is a supported data type."""
+        valid_dtypes = ['float32', 'bfloat16', 'float']
+        if model_dtype not in valid_dtypes:
+            raise ValueError(f"model_dtype '{model_dtype}' must be one of: {valid_dtypes}")
+        return model_dtype
+
+    @model_validator(mode='after')
+    def validate_model_compilation_device_compatibility(self) -> 'AlgoConfigData':
+        """Validate that model_compilation is not True when device is 'mps'."""
+        if self.model_compilation is True and self.device == 'mps':
+            raise ValueError('model_compilation cannot be True when device is set to mps')
+        return self
+
+    def to_yml(self, yaml_file: str | Path) -> None:
+        """Save algorithm configuration to a YAML file."""
+        config_dict = self.model_dump()
+        yml_dict = {'algo_config': config_dict}
+
+        # Write to YAML file
+        yaml_file = Path(yaml_file)
+        with yaml_file.open('w') as f:
+            yaml.dump(yml_dict, f, default_flow_style=False, indent=4, sort_keys=False)
+
+
+class RunConfigData(AlgoConfigData):
+    pre_rtc_copol: list[Path | str]
+    pre_rtc_crosspol: list[Path | str]
+    post_rtc_copol: list[Path | str]
+    post_rtc_crosspol: list[Path | str]
+    prior_dist_s1_product: ProductDirectoryData | None = None
+    mgrs_tile_id: str
+    dst_dir: Path | str = Path('out')
+    water_mask_path: Path | str | None = None
+    apply_water_mask: bool = Field(default=True)
+    check_input_paths: bool = True
+    product_dst_dir: Path | str | None = None
+    bucket: str | None = None
+    bucket_prefix: str | None = None
+    # Path to external algorithm config file
+    algo_config_path: Path | str | None = None
+
+    # Private attributes that are associated to properties
+    _burst_ids: list[str] | None = None
+    _df_inputs: pd.DataFrame | None = None
+    _df_prior_dist_products: pd.DataFrame | None = None
+    _df_burst_distmetrics: pd.DataFrame | None = None
+    _df_mgrs_burst_lut: gpd.GeoDataFrame | None = None
+    _product_name: ProductNameData | None = None
+    _product_data_model: ProductDirectoryData | None = None
+    _min_acq_date: datetime | None = None
+    _processing_datetime: datetime | None = None
+    # Validate assignments to all fields
+    model_config = ConfigDict(validate_assignment=True)
+
+    @classmethod
+    def from_yaml(cls, yaml_file: str, fields_to_overwrite: dict | None = None) -> 'RunConfigData':
+        """Load configuration from a YAML file and initialize RunConfigModel."""
+        with Path.open(yaml_file) as file:
+            data = yaml.safe_load(file)
+            runconfig_data = data['run_config']
+        if fields_to_overwrite is not None:
+            runconfig_data.update(fields_to_overwrite)
+
+        # Handle algorithm config if specified
+        algo_config_path = runconfig_data.get('algo_config_path')
+        if algo_config_path is not None:
+            algo_config = AlgoConfigData.from_yaml(algo_config_path)
+
+            # Override algorithm parameters with those from external file
+            # Only override if the parameter is not explicitly set in the main config
+            algo_dict = algo_config.model_dump()
+            for field_name, field_value in algo_dict.items():
+                if field_name not in runconfig_data:
+                    runconfig_data[field_name] = field_value
+                    warnings.warn(
+                        f"Algorithm parameter '{field_name}' inherited from external config: {algo_config_path}",
+                        UserWarning,
+                        stacklevel=2,
+                    )
+
+        obj = cls(**runconfig_data)
+        return obj
 
     @field_validator('pre_rtc_copol', 'pre_rtc_crosspol', 'post_rtc_copol', 'post_rtc_crosspol', mode='before')
     def convert_to_paths(cls, values: list[Path | str], info: ValidationInfo) -> list[Path]:
@@ -263,16 +383,6 @@ class RunConfigData(BaseModel):
         product_dst_dir.mkdir(parents=True, exist_ok=True)
         return product_dst_dir.resolve()
 
-    @field_validator('n_workers_for_despeckling', 'n_workers_for_norm_param_estimation')
-    def validate_n_workers(cls, n_workers: int, info: ValidationInfo) -> int:
-        if n_workers > mp.cpu_count():
-            warnings.warn(
-                f'{info.field_name} ({n_workers}) is greater than the number of CPUs ({mp.cpu_count()}), using latter.',
-                UserWarning,
-            )
-            n_workers = mp.cpu_count()
-        return n_workers
-
     @field_validator('pre_rtc_crosspol', 'post_rtc_crosspol')
     def check_matching_lengths_copol_and_crosspol(
         cls: type['RunConfigData'], rtc_crosspol: list[Path], info: ValidationInfo
@@ -299,25 +409,10 @@ class RunConfigData(BaseModel):
             raise ValueError('The MGRS tile specified is not processed by DIST-S1')
         return mgrs_tile_id
 
-    @field_validator('moderate_confidence_threshold')
-    def validate_moderate_threshold(cls, moderate_threshold: float, info: ValidationInfo) -> float:
-        """Validate that moderate_confidence_threshold is less than high_confidence_threshold."""
-        high_threshold = info.data.get('high_confidence_threshold')
-        if high_threshold is not None and moderate_threshold >= high_threshold:
-            raise ValueError(
-                f'moderate_confidence_threshold ({moderate_threshold}) must be less than '
-                f'high_confidence_threshold ({high_threshold})'
-            )
-        return moderate_threshold
-
-    @model_validator(mode='after')
-    def validate_confirmation_and_prior_product_consistency(self) -> 'RunConfigData':
-        """Validate that confirmation and prior_dist_s1_product are used together consistently."""
-        if self.confirmation and self.prior_dist_s1_product is None:
-            raise ValueError('prior_dist_s1_product must be provided when confirmation is True')
-        if self.prior_dist_s1_product is not None and not self.confirmation:
-            raise ValueError('confirmation must be True when prior_dist_s1_product is provided')
-        return self
+    @property
+    def confirmation(self) -> bool:
+        """Returns True if prior_dist_s1_product is not None."""
+        return self.prior_dist_s1_product is not None
 
     @property
     def processing_datetime(self) -> datetime:
@@ -364,14 +459,45 @@ class RunConfigData(BaseModel):
         config_dict.pop('check_input_paths', None)
         return config_dict
 
-    def to_yaml(self, yaml_file: str | Path) -> None:
-        """Save configuration to a YAML file."""
-        # Get only the non-private attributes (those that don't start with _)
-        config_dict = self.get_public_attributes()
-        yml_dict = {'run_config': config_dict}
+    def to_yaml(self, yaml_file: str | Path, algo_param_path: str | Path | None = None) -> None:
+        """Save configuration to a YAML file.
 
-        # Write to YAML file
+        Parameters
+        ----------
+        yaml_file : str | Path
+            Path to save the main configuration YAML file
+        algo_param_path : str | Path | None, default None
+            If provided, save algorithm parameters to this separate YAML file and reference it
+            in the main config. If None, save all parameters in one file.
+        """
         yaml_file = Path(yaml_file)
+
+        if algo_param_path is not None:
+            algo_param_path = Path(algo_param_path)
+
+            # Get algorithm parameters (fields defined in AlgoConfigData)
+            algo_field_names = set(AlgoConfigData.model_fields.keys())
+
+            # Get all public attributes
+            config_dict = self.get_public_attributes()
+
+            # Separate algorithm and run config parameters
+            algo_dict = {k: v for k, v in config_dict.items() if k in algo_field_names}
+            run_dict = {k: v for k, v in config_dict.items() if k not in algo_field_names}
+
+            # Save algorithm config to specified file
+            algo_config = AlgoConfigData(**algo_dict)
+            algo_config.to_yml(algo_param_path)
+
+            # Add reference to algorithm config file in main config
+            run_dict['algo_config_path'] = str(algo_param_path)
+            yml_dict = {'run_config': run_dict}
+        else:
+            # Save everything in one file
+            config_dict = self.get_public_attributes()
+            yml_dict = {'run_config': config_dict}
+
+        # Write main configuration to YAML file
         with yaml_file.open('w') as f:
             yaml.dump(yml_dict, f, default_flow_style=False, indent=4, sort_keys=False)
 
@@ -385,17 +511,14 @@ class RunConfigData(BaseModel):
         water_mask_path: Path | str | None = None,
         max_pre_imgs_per_burst_mw: list[int] | None = None,
         delta_lookback_days_mw: list[int] | None = None,
-        confirmation: bool = True,
         lookback_strategy: str = 'multi_window',
         prior_dist_s1_product: ProductDirectoryData | None = None,
-        device: str = 'best',
-        interpolation_method: str = 'none',
-        apply_despeckling: bool = True,
-        apply_logit_to_inputs: bool = True,
+        # Removed algorithm parameters that can be assigned later:
+        # device, interpolation_method, apply_despeckling, apply_logit_to_inputs
     ) -> 'RunConfigData':
         """Transform input table from dist-s1-enumerator into RunConfigData object.
 
-        Additional runconfig parameters should be assigned via attributes.
+        Algorithm parameters should be assigned via attributes after creation.
         """
         df_pre = product_df[product_df.input_category == 'pre'].reset_index(drop=True)
         df_post = product_df[product_df.input_category == 'post'].reset_index(drop=True)
@@ -414,13 +537,9 @@ class RunConfigData(BaseModel):
             water_mask_path=water_mask_path,
             max_pre_imgs_per_burst_mw=max_pre_imgs_per_burst_mw,
             delta_lookback_days_mw=delta_lookback_days_mw,
-            confirmation=confirmation,
             lookback_strategy=lookback_strategy,
             prior_dist_s1_product=prior_dist_s1_product,
-            device=device,
-            interpolation_method=interpolation_method,
-            apply_despeckling=apply_despeckling,
-            apply_logit_to_inputs=apply_logit_to_inputs,
+            # Algorithm parameters removed - set via assignment
         )
         return runconfig_data
 
@@ -584,20 +703,36 @@ class RunConfigData(BaseModel):
             self._df_prior_dist_products = df
             return self._df_prior_dist_products.copy()
 
-    def model_post_init(self, __context: ValidationInfo) -> None:
-        # Water mask control flow
-        self.water_mask_path = water_mask_control_flow(
-            water_mask_path=self.water_mask_path,
-            mgrs_tile_id=self.mgrs_tile_id,
-            apply_water_mask=self.apply_water_mask,
-            dst_dir=self.dst_dir,
-            overwrite=True,
-        )
+    @model_validator(mode='after')
+    def handle_water_mask_control_flow(self) -> 'RunConfigData':
+        """Trigger water mask control flow when apply_water_mask is True."""
+        if self.apply_water_mask and self.water_mask_path is None:
+            self.water_mask_path = water_mask_control_flow(
+                water_mask_path=self.water_mask_path,
+                mgrs_tile_id=self.mgrs_tile_id,
+                apply_water_mask=self.apply_water_mask,
+                dst_dir=self.dst_dir,
+                overwrite=True,
+            )
+        return self
 
+    @model_validator(mode='after')
+    def handle_device_specific_validations(self) -> 'RunConfigData':
+        """Handle device-specific validations and adjustments."""
         # Device-specific validations
         if self.device in ['cuda', 'mps'] and self.n_workers_for_norm_param_estimation > 1:
-            warnings.warn(
-                'CUDA and mps do not support multiprocessing; setting n_workers_for_norm_param_estimation to 1',
-                UserWarning,
+            raise ValueError(
+                f'CUDA and MPS devices do not support multiprocessing. '
+                f'When device="{self.device}", n_workers_for_norm_param_estimation must be 1, '
+                f'but got {self.n_workers_for_norm_param_estimation}. '
+                f'Either set device="cpu" to use multiprocessing or set n_workers_for_norm_param_estimation=1.'
             )
-            self.n_workers_for_norm_param_estimation = 1
+        if self.device in ['cuda', 'mps'] and self.model_compilation:
+            raise ValueError(
+                f'Model compilation with CUDA/MPS devices requires single-threaded processing. '
+                f'When device="{self.device}" and model_compilation=True, '
+                f'n_workers_for_norm_param_estimation must be 1, '
+                f'but got {self.n_workers_for_norm_param_estimation}. '
+                f'Either set device="cpu", model_compilation=False, or n_workers_for_norm_param_estimation=1.'
+            )
+        return self

@@ -6,20 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.2] - 2025-07-07
+## [2.0.0] - 2025-07-16
 
 ## Removed
 - `n_lookbacks` (which should be called `n_baselines`) for computing confirmation within the SAS
    - No longer is there complicated accounting to keeping track of and confirming changes through baseline
 
 ## Changed
-- Multiwindow strategy is now the default
-- Confirmation_strategy is now `confirmation` and simply a boolean indicating whether confirmation should be applied
+- Multiwindow strategy is now the default in both python API and CLI
+- Confirmation_strategy is now simply determined with respect to `prior_dist_s1_product`. If it is `None`, then no confirmation is performed. If it is a path, then it uses this directory and it's tiffs to perform confirmation.
 - Now retrieves the umd distance to land and use a water mask that excluded 1 km from ocean.
+- `optimize` is now `model_compilation`; also does not work with `device` that is `mps`
+- Update validation to occur at assignment and remove algorithm parameters being assigned within localization workflow.
 
 ## Added
+- Ability to use algorithm parameters to supplement runconfig for SDS operations.
+  - It's now a base class to `RunConfigData` and if an external 
 - Updated interface for despeckling to use interpolation to fill nan values within burst area.
   - distmetrics>=1.0.0 - see more details there
+- Allows for serialization of yml files during `run_sas_prep_workflow` and associated CLI
+  - Also allows for serialization of algorithm parameters to serparate file as well.
 
 ## Fixed
 - All the tests with the updates above.

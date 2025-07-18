@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import ParamSpec, TypeVar
 
 import click
+from distmetrics.model_load import ALLOWED_MODELS
 
 from .data_models.runconfig_model import RunConfigData
 from .workflows import run_dist_s1_sas_prep_workflow, run_dist_s1_sas_workflow, run_dist_s1_workflow
@@ -88,7 +89,7 @@ def common_options(func: Callable) -> Callable:
         '--lookback_strategy',
         type=click.Choice(['multi_window', 'immediate_lookback']),
         required=False,
-        default='immediate_lookback',
+        default='multi_window',
         help='Options to use for lookback strategy.',
     )
     @click.option(
@@ -107,13 +108,6 @@ def common_options(func: Callable) -> Callable:
         show_default=True,
         help='Comma-separated list of integers (e.g., --delta_lookback_days_mw 730,365,0). '
         'Provide list values in order of older to recent lookback days.',
-    )
-    @click.option(
-        '--confirmation',
-        type=bool,
-        required=False,
-        default=False,
-        help='Whether to apply confirmation or not',
     )
     @click.option(
         '--product_dst_dir',
@@ -139,7 +133,7 @@ def common_options(func: Callable) -> Callable:
     @click.option(
         '--bucket_prefix',
         type=str,
-        default='',
+        default=None,
         required=False,
         help='S3 bucket prefix to upload the final products to.',
     )
@@ -160,12 +154,10 @@ def common_options(func: Callable) -> Callable:
     )
     @click.option(
         '--model_source',
-        type=click.Choice(['internal', 'external']),
+        type=click.Choice(['external'] + ALLOWED_MODELS),
         required=False,
-        help='Where to load Transformer model from;'
-        ' internal means load model stored inside docker image,'
-        ' external means load model from cfg'
-        ' and wts paths specified in parameters',
+        help='What model to load; external means load model from cfg and wts paths specified in parameters;'
+        'see distmetrics.model_load.ALLOWED_MODELS for available models.',
     )
     @click.option(
         '--model_cfg_path',
@@ -198,11 +190,32 @@ def common_options(func: Callable) -> Callable:
         help='Batch size for norm param estimation; Tune it according to resouces i.e. memory.',
     )
     @click.option(
-        '--optimize',
+        '--model_compilation',
         type=bool,
-        default=True,
+        default=False,
         required=False,
         help='Flag to enable compilation duringe execution.',
+    )
+    @click.option(
+        '--algo_config_path',
+        type=str,
+        default=None,
+        required=False,
+        help='Path to external algorithm configuration YAML file.',
+    )
+    @click.option(
+        '--model_dtype',
+        type=click.Choice(['float32', 'bfloat16', 'float16']),
+        required=False,
+        default='float32',
+        help='Data type for model inference. Options: float32, bfloat16, float16.',
+    )
+    @click.option(
+        '--use_date_encoding',
+        type=bool,
+        default=False,
+        required=False,
+        help='Whether to use acquisition date encoding in processing.',
     )
     @functools.wraps(func)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
@@ -227,11 +240,21 @@ def parse_delta_lookback_days_mw(delta_lookback_days_mw: list[int], **kwargs: di
 # SAS Prep Workflow (No Internet Access)
 @cli.command(name='run_sas_prep')
 @click.option(
-    '--runconfig_path',
+    '--run_config_path',
     type=str,
-    default='run_config.yml',
+    default=None,
     required=False,
-    help='Path to yaml runconfig file that will be created.',
+    help='Path to yaml runconfig file that will be created. If not provided, no file will be created.',
+)
+@click.option(
+    '--algo_config_path',
+    type=str,
+    default=None,
+    required=False,
+    help=(
+        'Path to save algorithm parameters to a separate yml file. '
+        'If provided, the main config will reference this file.'
+    ),
 )
 @common_options
 def run_sas_prep(
@@ -245,11 +268,10 @@ def run_sas_prep(
     high_confidence_threshold: float,
     tqdm_enabled: bool,
     input_data_dir: str | Path | None,
-    runconfig_path: str | Path,
+    run_config_path: str | Path,
     lookback_strategy: str,
     delta_lookback_days_mw: list[int],
     max_pre_imgs_per_burst_mw: list[int],
-    confirmation: bool,
     dst_dir: str | Path,
     water_mask_path: str | Path | None,
     product_dst_dir: str | Path | None,
@@ -263,10 +285,13 @@ def run_sas_prep(
     model_wts_path: str | Path | None,
     stride_for_norm_param_estimation: int = 16,
     batch_size_for_norm_param_estimation: int = 32,
-    optimize: bool = True,
+    model_compilation: bool = False,
+    algo_config_path: str | Path | None = None,
+    model_dtype: str = 'float32',
+    use_date_encoding: bool = False,
 ) -> None:
     """Run SAS prep workflow."""
-    run_config = run_dist_s1_sas_prep_workflow(
+    run_dist_s1_sas_prep_workflow(
         mgrs_tile_id,
         post_date,
         track_number,
@@ -282,7 +307,6 @@ def run_sas_prep(
         lookback_strategy=lookback_strategy,
         max_pre_imgs_per_burst_mw=max_pre_imgs_per_burst_mw,
         delta_lookback_days_mw=delta_lookback_days_mw,
-        confirmation=confirmation,
         product_dst_dir=product_dst_dir,
         bucket=bucket,
         bucket_prefix=bucket_prefix,
@@ -294,17 +318,20 @@ def run_sas_prep(
         model_wts_path=model_wts_path,
         stride_for_norm_param_estimation=stride_for_norm_param_estimation,
         batch_size_for_norm_param_estimation=batch_size_for_norm_param_estimation,
-        optimize=optimize,
+        model_compilation=model_compilation,
+        algo_config_path=algo_config_path,
+        run_config_path=run_config_path,
+        model_dtype=model_dtype,
+        use_date_encoding=use_date_encoding,
     )
-    run_config.to_yaml(runconfig_path)
 
 
 # SAS Workflow (No Internet Access)
 @cli.command(name='run_sas')
-@click.option('--runconfig_yml_path', required=True, help='Path to YAML runconfig file', type=click.Path(exists=True))
-def run_sas(runconfig_yml_path: str | Path) -> None:
+@click.option('--run_config_path', required=True, help='Path to YAML runconfig file', type=click.Path(exists=True))
+def run_sas(run_config_path: str | Path, algo_config_path: str | Path | None = None) -> None:
     """Run SAS workflow."""
-    run_config = RunConfigData.from_yaml(runconfig_yml_path)
+    run_config = RunConfigData.from_yaml(run_config_path)
     run_dist_s1_sas_workflow(run_config)
 
 
@@ -327,7 +354,6 @@ def run(
     lookback_strategy: str,
     delta_lookback_days_mw: list[int],
     max_pre_imgs_per_burst_mw: list[int],
-    confirmation: bool,
     product_dst_dir: str | Path | None,
     bucket: str | None,
     bucket_prefix: str,
@@ -339,7 +365,10 @@ def run(
     model_wts_path: str | Path | None,
     stride_for_norm_param_estimation: int = 16,
     batch_size_for_norm_param_estimation: int = 32,
-    optimize: bool = True,
+    model_compilation: bool = False,
+    algo_config_path: str | Path | None = None,
+    model_dtype: str = 'float32',
+    use_date_encoding: bool = False,
 ) -> str:
     """Localize data and run dist_s1_workflow."""
     return run_dist_s1_workflow(
@@ -358,7 +387,6 @@ def run(
         lookback_strategy=lookback_strategy,
         max_pre_imgs_per_burst_mw=max_pre_imgs_per_burst_mw,
         delta_lookback_days_mw=delta_lookback_days_mw,
-        confirmation=confirmation,
         product_dst_dir=product_dst_dir,
         bucket=bucket,
         bucket_prefix=bucket_prefix,
@@ -370,7 +398,10 @@ def run(
         model_wts_path=model_wts_path,
         stride_for_norm_param_estimation=stride_for_norm_param_estimation,
         batch_size_for_norm_param_estimation=batch_size_for_norm_param_estimation,
-        optimize=optimize,
+        model_compilation=model_compilation,
+        algo_config_path=algo_config_path,
+        model_dtype=model_dtype,
+        use_date_encoding=use_date_encoding,
     )
 
 

@@ -15,7 +15,7 @@ def main() -> None:
     water_mask_path = None  # Path('../notebooks/los-angeles/water_mask.tif')  # path to an existing water mask file
     device = 'cpu'  # can be cpu, cuda, mps or best
     n_workers_for_norm_param_estimation = 4  # number of workers for normal parameter estimation
-    n_workers_for_despeckling = 1  # number of workers for despeckling
+    n_workers_for_despeckling = 10  # number of workers for despeckling
 
     # Run the workflow
     run_dist_s1_workflow(
