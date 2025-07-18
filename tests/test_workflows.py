@@ -29,7 +29,9 @@ def test_despeckle_workflow(test_dir: Path, test_data_dir: Path, change_local_di
     df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
     assert tmp_dir.exists() and tmp_dir.is_dir()
 
-    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, apply_water_mask=False, confirmation=False)
+    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir)
+    config.apply_water_mask = False
+    config.confirmation = False
 
     run_despeckle_workflow(config)
 
@@ -63,7 +65,10 @@ def test_burst_disturbance_workflow(test_dir: Path, test_data_dir: Path, change_
         shutil.copytree(src_dir, dst_dir)
 
     df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
-    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, apply_water_mask=False, confirmation=False)
+    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir)
+    config.apply_water_mask = False
+    config.confirmation = False
+    config.device = 'cpu'
 
     run_burst_disturbance_workflow(config)
 
@@ -84,9 +89,10 @@ def test_dist_s1_sas_workflow(
     config = RunConfigData.from_product_df(
         df_product,
         dst_dir=tmp_dir,
-        apply_water_mask=False,
-        confirmation=False,
     )
+    config.apply_water_mask = False
+    config.confirmation = False
+    config.device = 'cpu'
 
     run_dist_s1_sas_workflow(config)
 
@@ -115,7 +121,9 @@ def test_dist_s1_workflow_interface(
     monkeypatch.setenv('EARTHDATA_PASSWORD', 'bar')
 
     df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
-    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, apply_water_mask=False, confirmation=False)
+    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir)
+    config.apply_water_mask = False
+    config.confirmation = False
 
     # We don't need credentials because we mock the data.
     mocker.patch('dist_s1.localize_rtc_s1.enumerate_one_dist_s1_product', return_value=df_product)

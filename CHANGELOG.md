@@ -13,9 +13,11 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
    - No longer is there complicated accounting to keeping track of and confirming changes through baseline
 
 ## Changed
-- Multiwindow strategy is now the default
-- Confirmation_strategy is now `confirmation` and simply a boolean indicating whether confirmation should be applied
+- Multiwindow strategy is now the default in both python API and CLI
+- Confirmation_strategy is now `confirmation` and simply a boolean indicating whether confirmation should be applied. By default is set to False
 - Now retrieves the umd distance to land and use a water mask that excluded 1 km from ocean.
+- `optimize` is now `model_compilation`; also does not work with `device` that is `mps`
+- Update validation to occur at assignment and remove algorithm parameters being assigned within localization workflow.
 
 ## Added
 - Ability to use algorithm parameters to supplement runconfig for SDS operations.

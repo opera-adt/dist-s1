@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import ParamSpec, TypeVar
 
 import click
+from distmetrics.model_load import ALLOWED_MODELS
 
 from .data_models.runconfig_model import RunConfigData
 from .workflows import run_dist_s1_sas_prep_workflow, run_dist_s1_sas_workflow, run_dist_s1_workflow
@@ -88,7 +89,7 @@ def common_options(func: Callable) -> Callable:
         '--lookback_strategy',
         type=click.Choice(['multi_window', 'immediate_lookback']),
         required=False,
-        default='immediate_lookback',
+        default='multi_window',
         help='Options to use for lookback strategy.',
     )
     @click.option(
@@ -160,12 +161,10 @@ def common_options(func: Callable) -> Callable:
     )
     @click.option(
         '--model_source',
-        type=click.Choice(['internal', 'external']),
+        type=click.Choice(['external'] + ALLOWED_MODELS),
         required=False,
-        help='Where to load Transformer model from;'
-        ' internal means load model stored inside docker image,'
-        ' external means load model from cfg'
-        ' and wts paths specified in parameters',
+        help='What model to load; external means load model from cfg and wts paths specified in parameters;'
+        'see distmetrics.model_load.ALLOWED_MODELS for available models.',
     )
     @click.option(
         '--model_cfg_path',
@@ -302,7 +301,7 @@ def run_sas_prep(
         model_wts_path=model_wts_path,
         stride_for_norm_param_estimation=stride_for_norm_param_estimation,
         batch_size_for_norm_param_estimation=batch_size_for_norm_param_estimation,
-        optimize=optimize,
+        model_compilation=optimize,
         algo_config_path=algo_config_path,
     )
     run_config.to_yaml(runconfig_path)
@@ -380,7 +379,7 @@ def run(
         model_wts_path=model_wts_path,
         stride_for_norm_param_estimation=stride_for_norm_param_estimation,
         batch_size_for_norm_param_estimation=batch_size_for_norm_param_estimation,
-        optimize=optimize,
+        model_compilation=optimize,
         algo_config_path=algo_config_path,
     )
 

@@ -112,7 +112,7 @@ def test_algo_config_direct_path() -> Path:
 
 @pytest.fixture
 def test_algo_config_invalid_path() -> Path:
-    """Fixture to provide the path to the test algorithm config YAML file with invalid parameters for validation testing."""
+    """Fixture to provide the path to the algorithm config YAML file with invalid parameters for validation testing."""
     test_dir = Path(__file__)
     algo_config_path = test_dir.parent / 'test_data' / 'algorithm_config_ymls' / 'test_algo_config_invalid.yml'
     return algo_config_path

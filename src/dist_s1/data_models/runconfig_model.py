@@ -12,7 +12,7 @@ from dist_s1_enumerator.data_models import dist_s1_loc_input_schema
 from dist_s1_enumerator.mgrs_burst_data import get_lut_by_mgrs_tile_ids
 from distmetrics import get_device
 from pandera.pandas import check_input
-from pydantic import BaseModel, Field, ValidationError, ValidationInfo, field_validator, model_validator
+from pydantic import BaseModel, Field, ValidationError, ValidationInfo, field_validator, model_validator, ConfigDict
 from yaml import Dumper
 
 from dist_s1.data_models.output_models import ProductDirectoryData, ProductNameData
@@ -141,7 +141,6 @@ class AlgoConfigData(BaseModel):
         default='multi_window',
         pattern='^(multi_window|immediate_lookback)$',
     )
-    confirmation: bool = Field(default=False)
     # Flag to enable optimizations. False, load the model and use it.
     # True, load the model and compile for CPU or GPU
     model_compilation: bool = Field(default=False)
@@ -164,8 +163,8 @@ class AlgoConfigData(BaseModel):
     base_date: datetime = Field(
         default=datetime(2020, 12, 31), description='Reference date used to calculate the number of days'
     )
-    # model_source of None means use internal model
-    # model_source == "external" means use externally supplied paths
+    # model_source == "external" means use externally supplied paths for weights and config
+    # otherwise use distmetrics.model_load.ALLOWED_MODELS for other models
     model_source: str | None = 'transformer_optimized'
     model_cfg_path: Path | str | None = None
     model_wts_path: Path | str | None = None
@@ -177,6 +176,14 @@ class AlgoConfigData(BaseModel):
         default='none',
         pattern='^(nearest|bilinear|none)$',
     )
+    # Validate assignments to all fields
+    model_config = ConfigDict(validate_assignment=True)
+
+    @field_validator('model_source', mode='before')
+    def validate_model_source(cls, v):
+        if v is None:
+            return 'transformer_optimized'
+        return v
 
     @classmethod
     def from_yaml(cls, yaml_file: str | Path) -> 'AlgoConfigData':
@@ -243,6 +250,13 @@ class AlgoConfigData(BaseModel):
             )
         return moderate_threshold
 
+    @model_validator(mode='after')
+    def validate_model_compilation_device_compatibility(self) -> 'AlgoConfigData':
+        """Validate that model_compilation is not True when device is 'mps'."""
+        if self.model_compilation is True and self.device == 'mps':
+            raise ValueError('model_compilation cannot be True when device is set to mps')
+        return self
+
 
 class RunConfigData(AlgoConfigData):
     pre_rtc_copol: list[Path | str]
@@ -258,6 +272,8 @@ class RunConfigData(AlgoConfigData):
     product_dst_dir: Path | str | None = None
     bucket: str | None = None
     bucket_prefix: str = ''
+    # Changed confirmation to default to None
+    confirmation: bool | None = Field(default=None)
     # Path to external algorithm config file
     algo_config_path: Path | str | None = None
 
@@ -271,6 +287,8 @@ class RunConfigData(AlgoConfigData):
     _product_data_model: ProductDirectoryData | None = None
     _min_acq_date: datetime | None = None
     _processing_datetime: datetime | None = None
+    # Validate assignments to all fields
+    model_config = ConfigDict(validate_assignment=True)
 
     @classmethod
     def from_yaml(cls, yaml_file: str, fields_to_overwrite: dict | None = None) -> 'RunConfigData':
@@ -363,10 +381,16 @@ class RunConfigData(AlgoConfigData):
     @model_validator(mode='after')
     def validate_confirmation_and_prior_product_consistency(self) -> 'RunConfigData':
         """Validate that confirmation and prior_dist_s1_product are used together consistently."""
-        if self.confirmation and self.prior_dist_s1_product is None:
-            raise ValueError('prior_dist_s1_product must be provided when confirmation is True')
-        if self.prior_dist_s1_product is not None and not self.confirmation:
-            raise ValueError('confirmation must be True when prior_dist_s1_product is provided')
+        # Only validate if confirmation is not None to avoid validation issues during assignment
+        if self.confirmation is not None:
+            # If confirmation is explicitly True, prior_dist_s1_product must be provided
+            if self.confirmation is True and self.prior_dist_s1_product is None:
+                raise ValueError('prior_dist_s1_product must be provided when confirmation is True')
+
+            # If prior_dist_s1_product is provided, confirmation must be explicitly True
+            if self.prior_dist_s1_product is not None and self.confirmation is not True:
+                raise ValueError('confirmation must be True when prior_dist_s1_product is provided')
+
         return self
 
     @property
@@ -435,17 +459,15 @@ class RunConfigData(AlgoConfigData):
         water_mask_path: Path | str | None = None,
         max_pre_imgs_per_burst_mw: list[int] | None = None,
         delta_lookback_days_mw: list[int] | None = None,
-        confirmation: bool = True,
+        confirmation: bool | None = None,
         lookback_strategy: str = 'multi_window',
         prior_dist_s1_product: ProductDirectoryData | None = None,
-        device: str = 'best',
-        interpolation_method: str = 'none',
-        apply_despeckling: bool = True,
-        apply_logit_to_inputs: bool = True,
+        # Removed algorithm parameters that can be assigned later:
+        # device, interpolation_method, apply_despeckling, apply_logit_to_inputs
     ) -> 'RunConfigData':
         """Transform input table from dist-s1-enumerator into RunConfigData object.
 
-        Additional runconfig parameters should be assigned via attributes.
+        Algorithm parameters should be assigned via attributes after creation.
         """
         df_pre = product_df[product_df.input_category == 'pre'].reset_index(drop=True)
         df_post = product_df[product_df.input_category == 'post'].reset_index(drop=True)
@@ -467,10 +489,7 @@ class RunConfigData(AlgoConfigData):
             confirmation=confirmation,
             lookback_strategy=lookback_strategy,
             prior_dist_s1_product=prior_dist_s1_product,
-            device=device,
-            interpolation_method=interpolation_method,
-            apply_despeckling=apply_despeckling,
-            apply_logit_to_inputs=apply_logit_to_inputs,
+            # Algorithm parameters removed - set via assignment
         )
         return runconfig_data
 

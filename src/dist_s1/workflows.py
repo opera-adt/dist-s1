@@ -43,7 +43,13 @@ def run_dist_s1_localization_workflow(
     apply_despeckling: bool = True,
     apply_logit_to_inputs: bool = True,
 ) -> RunConfigData:
-    # Localize inputs
+    """Run the DIST-S1 localization workflow.
+
+    This function handles both data localization and algorithm parameter assignment.
+    It separates the core data localization from algorithm parameter configuration
+    for better maintainability.
+    """
+    # Localize inputs - only passing essential parameters for data enumeration/localization
     run_config = localize_rtc_s1(
         mgrs_tile_id,
         post_date,
@@ -54,14 +60,21 @@ def run_dist_s1_localization_workflow(
         delta_lookback_days_mw=delta_lookback_days_mw,
         dst_dir=dst_dir,
         input_data_dir=input_data_dir,
-        apply_water_mask=apply_water_mask,
-        water_mask_path=water_mask_path,
-        confirmation=confirmation,
-        device=device,
-        apply_despeckling=apply_despeckling,
-        apply_logit_to_inputs=apply_logit_to_inputs,
-        interpolation_method=interpolation_method,
+        # Configuration and algorithm parameters removed from localize_rtc_s1
     )
+
+    # Assign configuration parameters after localization
+    # These assignments will trigger validation due to validate_assignment=True
+    run_config.apply_water_mask = apply_water_mask
+    run_config.water_mask_path = water_mask_path
+    run_config.confirmation = confirmation
+
+    # Assign algorithm parameters after localization
+    # These assignments will trigger validation due to validate_assignment=True
+    run_config.device = device
+    run_config.interpolation_method = interpolation_method
+    run_config.apply_despeckling = apply_despeckling
+    run_config.apply_logit_to_inputs = apply_logit_to_inputs
 
     return run_config
 
@@ -284,7 +297,7 @@ def run_dist_s1_sas_prep_workflow(
     interpolation_method: str = 'none',
     apply_despeckling: bool = True,
     apply_logit_to_inputs: bool = True,
-    optimize: bool = True,
+    model_compilation: bool = False,
     algo_config_path: str | Path | None = None,
 ) -> RunConfigData:
     run_config = run_dist_s1_localization_workflow(
@@ -321,7 +334,7 @@ def run_dist_s1_sas_prep_workflow(
     run_config.model_wts_path = model_wts_path
     run_config.stride_for_norm_param_estimation = stride_for_norm_param_estimation
     run_config.batch_size_for_norm_param_estimation = batch_size_for_norm_param_estimation
-    run_config.model_compilation = optimize
+    run_config.model_compilation = model_compilation
     run_config.interpolation_method = interpolation_method
     run_config.apply_despeckling = apply_despeckling
     run_config.apply_logit_to_inputs = apply_logit_to_inputs
@@ -355,7 +368,7 @@ def run_dist_s1_workflow(
     lookback_strategy: str = 'multi_window',
     max_pre_imgs_per_burst_mw: list[int] = [5, 5],
     delta_lookback_days_mw: list[int] = [730, 365],
-    confirmation: bool = True,
+    confirmation: bool = False,
     product_dst_dir: str | Path | None = None,
     bucket: str | None = None,
     bucket_prefix: str = '',
@@ -367,7 +380,7 @@ def run_dist_s1_workflow(
     model_wts_path: str | Path | None = None,
     stride_for_norm_param_estimation: int = 16,
     batch_size_for_norm_param_estimation: int = 32,
-    optimize: bool = True,
+    model_compilation: bool = False,
     interpolation_method: str = 'none',
     apply_despeckling: bool = True,
     apply_logit_to_inputs: bool = True,
@@ -401,7 +414,7 @@ def run_dist_s1_workflow(
         model_wts_path=model_wts_path,
         stride_for_norm_param_estimation=stride_for_norm_param_estimation,
         batch_size_for_norm_param_estimation=batch_size_for_norm_param_estimation,
-        optimize=optimize,
+        model_compilation=model_compilation,
         interpolation_method=interpolation_method,
         apply_despeckling=apply_despeckling,
         apply_logit_to_inputs=apply_logit_to_inputs,
