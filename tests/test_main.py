@@ -58,7 +58,7 @@ def test_dist_s1_sas_main(
     # Run the command
     result = cli_runner.invoke(
         dist_s1,
-        ['run_sas', '--runconfig_yml_path', str(tmp_runconfig_yml_path)],
+        ['run_sas', '--run_config_path', str(tmp_runconfig_yml_path)],
         catch_exceptions=False,  # Let exceptions propagate for better debugging
     )
 
