@@ -289,8 +289,7 @@ def run_dist_s1_sas_prep_workflow(
     model_compilation: bool = False,
     algo_config_path: str | Path | None = None,
     prior_dist_s1_product: str | Path | None = None,
-    runconfig_path: str | Path | None = None,
-    algo_param_path: str | Path | None = None,
+    run_config_path: str | Path | None = None,
 ) -> RunConfigData:
     run_config = run_dist_s1_localization_workflow(
         mgrs_tile_id,
@@ -332,8 +331,8 @@ def run_dist_s1_sas_prep_workflow(
     run_config.prior_dist_s1_product = prior_dist_s1_product
 
     # Serialize to YAML if path is provided
-    if runconfig_path is not None:
-        run_config.to_yaml(runconfig_path, algo_param_path=algo_param_path)
+    if run_config_path is not None:
+        run_config.to_yaml(run_config_path, algo_param_path=algo_config_path)
 
     return run_config
 

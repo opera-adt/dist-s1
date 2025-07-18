@@ -133,7 +133,7 @@ def common_options(func: Callable) -> Callable:
     @click.option(
         '--bucket_prefix',
         type=str,
-        default='',
+        default=None,
         required=False,
         help='S3 bucket prefix to upload the final products to.',
     )
@@ -226,14 +226,14 @@ def parse_delta_lookback_days_mw(delta_lookback_days_mw: list[int], **kwargs: di
 # SAS Prep Workflow (No Internet Access)
 @cli.command(name='run_sas_prep')
 @click.option(
-    '--runconfig_path',
+    '--run_config_path',
     type=str,
-    default='run_config.yml',
+    default=None,
     required=False,
-    help='Path to yaml runconfig file that will be created.',
+    help='Path to yaml runconfig file that will be created. If not provided, no file will be created.',
 )
 @click.option(
-    '--algo_param_path',
+    '--algo_config_path',
     type=str,
     default=None,
     required=False,
@@ -254,8 +254,7 @@ def run_sas_prep(
     high_confidence_threshold: float,
     tqdm_enabled: bool,
     input_data_dir: str | Path | None,
-    runconfig_path: str | Path,
-    algo_param_path: str | Path | None,
+    run_config_path: str | Path,
     lookback_strategy: str,
     delta_lookback_days_mw: list[int],
     max_pre_imgs_per_burst_mw: list[int],
@@ -305,17 +304,16 @@ def run_sas_prep(
         batch_size_for_norm_param_estimation=batch_size_for_norm_param_estimation,
         model_compilation=model_compilation,
         algo_config_path=algo_config_path,
-        runconfig_path=runconfig_path,
-        algo_param_path=algo_param_path,
+        run_config_path=run_config_path,
     )
 
 
 # SAS Workflow (No Internet Access)
 @cli.command(name='run_sas')
-@click.option('--runconfig_yml_path', required=True, help='Path to YAML runconfig file', type=click.Path(exists=True))
-def run_sas(runconfig_yml_path: str | Path) -> None:
+@click.option('--run_config_path', required=True, help='Path to YAML runconfig file', type=click.Path(exists=True))
+def run_sas(run_config_path: str | Path, algo_config_path: str | Path | None = None) -> None:
     """Run SAS workflow."""
-    run_config = RunConfigData.from_yaml(runconfig_yml_path)
+    run_config = RunConfigData.from_yaml(run_config_path)
     run_dist_s1_sas_workflow(run_config)
 
 

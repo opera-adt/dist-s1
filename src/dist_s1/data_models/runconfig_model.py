@@ -161,7 +161,8 @@ class AlgoConfigData(BaseModel):
     conf_thresh: float = Field(default=3**2 * 3.5, description='Confidence threshold')
     metric_value_upper_lim: float = Field(default=100, description='Metric upper limit')
     base_date: datetime = Field(
-        default=datetime(2020, 12, 31), description='Reference date used to calculate the number of days'
+        default=datetime(2020, 12, 31),
+        description='Reference date used to calculate the number of days in confirmation process',
     )
     # model_source == "external" means use externally supplied paths for weights and config
     # otherwise use distmetrics.model_load.ALLOWED_MODELS for other models
@@ -281,7 +282,7 @@ class RunConfigData(AlgoConfigData):
     check_input_paths: bool = True
     product_dst_dir: Path | str | None = None
     bucket: str | None = None
-    bucket_prefix: str = ''
+    bucket_prefix: str | None = None
     # Path to external algorithm config file
     algo_config_path: Path | str | None = None
 

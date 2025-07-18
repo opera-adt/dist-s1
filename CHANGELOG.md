@@ -14,7 +14,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Changed
 - Multiwindow strategy is now the default in both python API and CLI
-- Confirmation_strategy is now `confirmation` and simply a boolean indicating whether confirmation should be applied. By default is set to False
+- Confirmation_strategy is now simply determined with respect to `prior_dist_s1_product`. If it is `None`, then no confirmation is performed. If it is a path, then it uses this directory and it's tiffs to perform confirmation.
 - Now retrieves the umd distance to land and use a water mask that excluded 1 km from ocean.
 - `optimize` is now `model_compilation`; also does not work with `device` that is `mps`
 - Update validation to occur at assignment and remove algorithm parameters being assigned within localization workflow.
@@ -24,6 +24,8 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   - It's now a base class to `RunConfigData` and if an external 
 - Updated interface for despeckling to use interpolation to fill nan values within burst area.
   - distmetrics>=1.0.0 - see more details there
+- Allows for serialization of yml files during `run_sas_prep_workflow` and associated CLI
+  - Also allows for serialization of algorithm parameters to serparate file as well.
 
 ## Fixed
 - All the tests with the updates above.
