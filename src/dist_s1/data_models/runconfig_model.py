@@ -257,6 +257,16 @@ class AlgoConfigData(BaseModel):
             raise ValueError('model_compilation cannot be True when device is set to mps')
         return self
 
+    def to_yml(self, yaml_file: str | Path) -> None:
+        """Save algorithm configuration to a YAML file."""
+        config_dict = self.model_dump()
+        yml_dict = {'algo_config': config_dict}
+
+        # Write to YAML file
+        yaml_file = Path(yaml_file)
+        with yaml_file.open('w') as f:
+            yaml.dump(yml_dict, f, default_flow_style=False, indent=4, sort_keys=False)
+
 
 class RunConfigData(AlgoConfigData):
     pre_rtc_copol: list[Path | str]
@@ -426,14 +436,45 @@ class RunConfigData(AlgoConfigData):
         config_dict.pop('check_input_paths', None)
         return config_dict
 
-    def to_yaml(self, yaml_file: str | Path) -> None:
-        """Save configuration to a YAML file."""
-        # Get only the non-private attributes (those that don't start with _)
-        config_dict = self.get_public_attributes()
-        yml_dict = {'run_config': config_dict}
+    def to_yaml(self, yaml_file: str | Path, algo_param_path: str | Path | None = None) -> None:
+        """Save configuration to a YAML file.
 
-        # Write to YAML file
+        Parameters
+        ----------
+        yaml_file : str | Path
+            Path to save the main configuration YAML file
+        algo_param_path : str | Path | None, default None
+            If provided, save algorithm parameters to this separate YAML file and reference it
+            in the main config. If None, save all parameters in one file.
+        """
         yaml_file = Path(yaml_file)
+
+        if algo_param_path is not None:
+            algo_param_path = Path(algo_param_path)
+
+            # Get algorithm parameters (fields defined in AlgoConfigData)
+            algo_field_names = set(AlgoConfigData.model_fields.keys())
+
+            # Get all public attributes
+            config_dict = self.get_public_attributes()
+
+            # Separate algorithm and run config parameters
+            algo_dict = {k: v for k, v in config_dict.items() if k in algo_field_names}
+            run_dict = {k: v for k, v in config_dict.items() if k not in algo_field_names}
+
+            # Save algorithm config to specified file
+            algo_config = AlgoConfigData(**algo_dict)
+            algo_config.to_yml(algo_param_path)
+
+            # Add reference to algorithm config file in main config
+            run_dict['algo_config_path'] = str(algo_param_path)
+            yml_dict = {'run_config': run_dict}
+        else:
+            # Save everything in one file
+            config_dict = self.get_public_attributes()
+            yml_dict = {'run_config': config_dict}
+
+        # Write main configuration to YAML file
         with yaml_file.open('w') as f:
             yaml.dump(yml_dict, f, default_flow_style=False, indent=4, sort_keys=False)
 

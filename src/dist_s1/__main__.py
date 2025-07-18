@@ -232,6 +232,16 @@ def parse_delta_lookback_days_mw(delta_lookback_days_mw: list[int], **kwargs: di
     required=False,
     help='Path to yaml runconfig file that will be created.',
 )
+@click.option(
+    '--algo_param_path',
+    type=str,
+    default=None,
+    required=False,
+    help=(
+        'Path to save algorithm parameters to a separate yml file. '
+        'If provided, the main config will reference this file.'
+    ),
+)
 @common_options
 def run_sas_prep(
     mgrs_tile_id: str,
@@ -245,6 +255,7 @@ def run_sas_prep(
     tqdm_enabled: bool,
     input_data_dir: str | Path | None,
     runconfig_path: str | Path,
+    algo_param_path: str | Path | None,
     lookback_strategy: str,
     delta_lookback_days_mw: list[int],
     max_pre_imgs_per_burst_mw: list[int],
@@ -265,7 +276,7 @@ def run_sas_prep(
     algo_config_path: str | Path | None = None,
 ) -> None:
     """Run SAS prep workflow."""
-    run_config = run_dist_s1_sas_prep_workflow(
+    run_dist_s1_sas_prep_workflow(
         mgrs_tile_id,
         post_date,
         track_number,
@@ -294,8 +305,9 @@ def run_sas_prep(
         batch_size_for_norm_param_estimation=batch_size_for_norm_param_estimation,
         model_compilation=model_compilation,
         algo_config_path=algo_config_path,
+        runconfig_path=runconfig_path,
+        algo_param_path=algo_param_path,
     )
-    run_config.to_yaml(runconfig_path)
 
 
 # SAS Workflow (No Internet Access)
