@@ -7,6 +7,7 @@ dist-s1 run_sas_prep --mgrs_tile_id '11SLT' \
     --high_confidence_threshold 5.5 \
     --post_date_buffer_days 1 \
     --apply_water_mask true \
+    --device 'cpu' \
     --product_dst_dir '../notebooks/los-angeles' \
     --model_source 'transformer_original' \
     --use_date_encoding true \
