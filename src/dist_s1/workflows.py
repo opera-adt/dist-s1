@@ -49,6 +49,8 @@ class BurstProcessingArgs:
     batch_size_for_norm_param_estimation: int
     device: str
     raw_data_for_nodata_mask: str
+    model_dtype: str
+    use_date_encoding: bool
 
 
 def _dist_processing_one_burst_wrapper(args: BurstProcessingArgs) -> str:
@@ -72,6 +74,8 @@ def _dist_processing_one_burst_wrapper(args: BurstProcessingArgs) -> str:
         batch_size=args.batch_size_for_norm_param_estimation,
         device=args.device,
         raw_data_for_nodata_mask=args.raw_data_for_nodata_mask,
+        model_dtype=args.model_dtype,
+        use_date_encoding=args.use_date_encoding,
     )
     return args.out_dist_path  # Return something to track completion
 
@@ -224,6 +228,8 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
             batch_size_for_norm_param_estimation=run_config.batch_size_for_norm_param_estimation,
             device=run_config.device,
             raw_data_for_nodata_mask=copol_post_path,
+            model_dtype=run_config.model_dtype,
+            use_date_encoding=run_config.use_date_encoding,
         )
         burst_args_list.append(burst_args)
 
@@ -361,6 +367,8 @@ def run_dist_s1_sas_prep_workflow(
     algo_config_path: str | Path | None = None,
     prior_dist_s1_product: str | Path | None = None,
     run_config_path: str | Path | None = None,
+    model_dtype: str = 'float32',
+    use_date_encoding: bool = False,
 ) -> RunConfigData:
     run_config = run_dist_s1_localization_workflow(
         mgrs_tile_id,
@@ -400,6 +408,8 @@ def run_dist_s1_sas_prep_workflow(
     run_config.apply_logit_to_inputs = apply_logit_to_inputs
     run_config.algo_config_path = algo_config_path
     run_config.prior_dist_s1_product = prior_dist_s1_product
+    run_config.model_dtype = model_dtype
+    run_config.use_date_encoding = use_date_encoding
 
     if run_config_path is not None:
         run_config.to_yaml(run_config_path, algo_param_path=algo_config_path)
@@ -450,6 +460,8 @@ def run_dist_s1_workflow(
     apply_logit_to_inputs: bool = True,
     algo_config_path: str | Path | None = None,
     prior_dist_s1_product: str | Path | None = None,
+    model_dtype: str = 'float32',
+    use_date_encoding: bool = False,
 ) -> Path:
     run_config = run_dist_s1_sas_prep_workflow(
         mgrs_tile_id,
@@ -484,6 +496,8 @@ def run_dist_s1_workflow(
         apply_logit_to_inputs=apply_logit_to_inputs,
         algo_config_path=algo_config_path,
         prior_dist_s1_product=prior_dist_s1_product,
+        model_dtype=model_dtype,
+        use_date_encoding=use_date_encoding,
     )
     _ = run_dist_s1_sas_workflow(run_config)
 

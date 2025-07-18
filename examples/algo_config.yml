@@ -28,3 +28,5 @@ algo_config:
     apply_logit_to_inputs: true
     apply_despeckling: true
     interpolation_method: none
+    model_dtype: float32
+    use_date_encoding: false

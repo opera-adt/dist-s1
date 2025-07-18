@@ -51,7 +51,7 @@ def compute_burst_disturbance_and_serialize(
     moderate_confidence_threshold: float,
     high_confidence_threshold: float,
     out_metric_path: Path | None = None,
-    utilize_acq_dts: bool = False,
+    use_date_encoding: bool = False,
     use_logits: bool = True,
     model_source: str | Path | None = 'transformer_optimized',
     model_cfg_path: str | Path | None = None,
@@ -75,7 +75,7 @@ def compute_burst_disturbance_and_serialize(
         batch_size=batch_size,
     )
 
-    if utilize_acq_dts:
+    if use_date_encoding:
         print(f'Using acq_dts {acq_dts}')
 
     pre_copol_data = [open_one_ds(path) for path in pre_copol_paths]

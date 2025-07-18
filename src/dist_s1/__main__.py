@@ -203,6 +203,20 @@ def common_options(func: Callable) -> Callable:
         required=False,
         help='Path to external algorithm configuration YAML file.',
     )
+    @click.option(
+        '--model_dtype',
+        type=click.Choice(['float32', 'bfloat16', 'float16']),
+        required=False,
+        default='float32',
+        help='Data type for model inference. Options: float32, bfloat16, float16.',
+    )
+    @click.option(
+        '--use_date_encoding',
+        type=bool,
+        default=False,
+        required=False,
+        help='Whether to use acquisition date encoding in processing.',
+    )
     @functools.wraps(func)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         return func(*args, **kwargs)
@@ -273,6 +287,8 @@ def run_sas_prep(
     batch_size_for_norm_param_estimation: int = 32,
     model_compilation: bool = False,
     algo_config_path: str | Path | None = None,
+    model_dtype: str = 'float32',
+    use_date_encoding: bool = False,
 ) -> None:
     """Run SAS prep workflow."""
     run_dist_s1_sas_prep_workflow(
@@ -305,6 +321,8 @@ def run_sas_prep(
         model_compilation=model_compilation,
         algo_config_path=algo_config_path,
         run_config_path=run_config_path,
+        model_dtype=model_dtype,
+        use_date_encoding=use_date_encoding,
     )
 
 
@@ -349,6 +367,8 @@ def run(
     batch_size_for_norm_param_estimation: int = 32,
     model_compilation: bool = False,
     algo_config_path: str | Path | None = None,
+    model_dtype: str = 'float32',
+    use_date_encoding: bool = False,
 ) -> str:
     """Localize data and run dist_s1_workflow."""
     return run_dist_s1_workflow(
@@ -380,6 +400,8 @@ def run(
         batch_size_for_norm_param_estimation=batch_size_for_norm_param_estimation,
         model_compilation=model_compilation,
         algo_config_path=algo_config_path,
+        model_dtype=model_dtype,
+        use_date_encoding=use_date_encoding,
     )
 
 

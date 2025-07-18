@@ -177,6 +177,17 @@ class AlgoConfigData(BaseModel):
         default='bilinear',
         pattern='^(nearest|bilinear|none)$',
     )
+    # Model data type for inference
+    model_dtype: str = Field(
+        default='float32',
+        pattern='^(float32|bfloat16|float16)$',
+        description='Data type for model inference',
+    )
+    # Use date encoding in processing
+    use_date_encoding: bool = Field(
+        default=False,
+        description='Whether to use acquisition date encoding in processing',
+    )
     # Validate assignments to all fields
     model_config = ConfigDict(validate_assignment=True)
 
@@ -253,6 +264,14 @@ class AlgoConfigData(BaseModel):
                 f'high_confidence_threshold ({high_threshold})'
             )
         return moderate_threshold
+
+    @field_validator('model_dtype')
+    def validate_model_dtype(cls, model_dtype: str) -> str:
+        """Validate that model_dtype is a supported data type."""
+        valid_dtypes = ['float32', 'bfloat16', 'float16']
+        if model_dtype not in valid_dtypes:
+            raise ValueError(f"model_dtype '{model_dtype}' must be one of: {valid_dtypes}")
+        return model_dtype
 
     @model_validator(mode='after')
     def validate_model_compilation_device_compatibility(self) -> 'AlgoConfigData':
