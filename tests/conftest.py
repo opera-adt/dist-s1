@@ -130,6 +130,5 @@ def runconfig_yaml_template() -> str:
   dst_dir: "{dst_dir}"
   apply_water_mask: false
   check_input_paths: false
-  confirmation: false
   algo_config_path: "{algo_config_path}"{additional_params}
 """

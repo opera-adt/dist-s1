@@ -24,7 +24,6 @@ def test_input_data_model_from_cropped_dataset(test_dir: Path, test_data_dir: Pa
 
     # Set configuration parameters via assignment
     config.apply_water_mask = False
-    config.confirmation = False
     config.prior_dist_s1_product = None
 
     df = config.df_inputs
@@ -134,10 +133,10 @@ def test_input_data_model_from_cropped_dataset(test_dir: Path, test_data_dir: Pa
     shutil.rmtree(tmp_dir)
 
 
-def test_confirmation_and_prior_product_validation(
+def test_confirmation_property_behavior(
     test_dir: Path, test_data_dir: Path, test_opera_golden_dummy_dataset: Path, change_local_dir: Callable
 ) -> None:
-    """Test that confirmation and prior_dist_s1_product validation works correctly."""
+    """Test that confirmation property correctly reflects prior_dist_s1_product state."""
     change_local_dir(test_dir)
 
     tmp_dir = test_dir / 'tmp'
@@ -146,75 +145,47 @@ def test_confirmation_and_prior_product_validation(
     df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
     product_dir = ProductDirectoryData.from_product_path(test_opera_golden_dummy_dataset)
 
-    # Test 1: confirmation=True without prior_dist_s1_product should fail
-    with pytest.raises(ValidationError, match='prior_dist_s1_product must be provided when confirmation is True'):
-        config = RunConfigData.from_product_df(
-            df_product,
-            dst_dir=tmp_dir,
-        )
-        config.check_input_paths = False  # Bypass file path validation to focus on confirmation validation
-        config.apply_water_mask = False
-        # Set confirmation=True while prior_dist_s1_product remains None - should trigger validation
-        config.confirmation = True
-
-    # Test 2: prior_dist_s1_product provided without confirmation=True should fail
-    with pytest.raises(ValidationError, match='confirmation must be True when prior_dist_s1_product is provided'):
-        config = RunConfigData.from_product_df(
-            df_product,
-            dst_dir=tmp_dir,
-        )
-        config.check_input_paths = False  # Bypass file path validation
-        config.apply_water_mask = False
-        config.prior_dist_s1_product = product_dir
-        config.confirmation = False
-
-    # Test 3: Both confirmation=True and prior_dist_s1_product provided should succeed
+    # Test 1: confirmation is False when prior_dist_s1_product is None (default)
     config = RunConfigData.from_product_df(
         df_product,
         dst_dir=tmp_dir,
     )
     config.check_input_paths = False  # Bypass file path validation
     config.apply_water_mask = False
-    # Set prior_dist_s1_product first, then confirmation=True - should succeed
-    config.prior_dist_s1_product = product_dir
-    config.confirmation = True
-    assert config.confirmation is True
-    assert config.prior_dist_s1_product == product_dir
-
-    # Test 4: Both confirmation=False and prior_dist_s1_product=None should succeed
-    config = RunConfigData.from_product_df(
-        df_product,
-        dst_dir=tmp_dir,
-    )
-    config.check_input_paths = False  # Bypass file path validation
-    config.apply_water_mask = False
-    # Setting confirmation=False should succeed when prior_dist_s1_product is None
-    config.confirmation = False
+    # Default state: prior_dist_s1_product is None, so confirmation should be False
+    assert config.prior_dist_s1_product is None
     assert config.confirmation is False
-    assert config.prior_dist_s1_product is None
 
-    # Test 5: Both confirmation=None and prior_dist_s1_product=None should succeed (default behavior)
+    # Test 2: confirmation is True when prior_dist_s1_product is set
     config = RunConfigData.from_product_df(
         df_product,
         dst_dir=tmp_dir,
-    )
-    config.check_input_paths = False  # Bypass file path validation
-    config.apply_water_mAsk = False
-    # Both fields should remain None by default, no validation should be triggered
-    assert config.confirmation is None
-    assert config.prior_dist_s1_product is None
-
-    # Test 6: Only confirmation=None (default) should succeed
-    config = RunConfigData.from_product_df(
-        df_product,
-        dst_dir=tmp_dir,
-        # confirmation defaults to None, not specified
+        prior_dist_s1_product=product_dir,
     )
     config.check_input_paths = False  # Bypass file path validation
     config.apply_water_mask = False
-    # confirmation and prior_dist_s1_product use defaults (None)
-    assert config.confirmation is None
-    assert config.prior_dist_s1_product is None
+    # With prior_dist_s1_product set, confirmation should be True
+    assert config.prior_dist_s1_product == product_dir
+    assert config.confirmation is True
+
+    # Test 3: confirmation changes when prior_dist_s1_product is modified
+    config = RunConfigData.from_product_df(
+        df_product,
+        dst_dir=tmp_dir,
+    )
+    config.check_input_paths = False
+    config.apply_water_mask = False
+
+    # Initially confirmation should be False
+    assert config.confirmation is False
+
+    # Setting prior_dist_s1_product should make confirmation True
+    config.prior_dist_s1_product = product_dir
+    assert config.confirmation is True
+
+    # Unsetting prior_dist_s1_product should make confirmation False again
+    config.prior_dist_s1_product = None
+    assert config.confirmation is False
 
     shutil.rmtree(tmp_dir)
 
@@ -237,7 +208,6 @@ def test_lookback_strategy_validation(test_dir: Path, test_data_dir: Path, chang
             lookback_strategy=strategy,
         )
         config.apply_water_mask = False
-        config.confirmation = False
         config.prior_dist_s1_product = None
         assert config.lookback_strategy == strategy
 
@@ -257,7 +227,6 @@ def test_lookback_strategy_validation(test_dir: Path, test_data_dir: Path, chang
         dst_dir=tmp_dir,
     )
     config.apply_water_mask = False
-    config.confirmation = False
     config.prior_dist_s1_product = None
     assert config.lookback_strategy == 'multi_window'
 
@@ -281,7 +250,6 @@ def test_device_resolution(test_dir: Path, test_data_dir: Path, change_local_dir
         dst_dir=tmp_dir,
     )
     config.apply_water_mask = False
-    config.confirmation = False
     config.prior_dist_s1_product = None
     config.device = 'best'
 
@@ -298,7 +266,6 @@ def test_device_resolution(test_dir: Path, test_data_dir: Path, change_local_dir
                 dst_dir=tmp_dir,
             )
             config.apply_water_mask = False
-            config.confirmation = False
             config.prior_dist_s1_product = None
             config.device = device
             assert config.device == device

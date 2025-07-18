@@ -110,13 +110,6 @@ def common_options(func: Callable) -> Callable:
         'Provide list values in order of older to recent lookback days.',
     )
     @click.option(
-        '--confirmation',
-        type=bool,
-        required=False,
-        default=False,
-        help='Whether to apply confirmation or not',
-    )
-    @click.option(
         '--product_dst_dir',
         type=str,
         default=None,
@@ -197,9 +190,9 @@ def common_options(func: Callable) -> Callable:
         help='Batch size for norm param estimation; Tune it according to resouces i.e. memory.',
     )
     @click.option(
-        '--optimize',
+        '--model_compilation',
         type=bool,
-        default=True,
+        default=False,
         required=False,
         help='Flag to enable compilation duringe execution.',
     )
@@ -255,7 +248,6 @@ def run_sas_prep(
     lookback_strategy: str,
     delta_lookback_days_mw: list[int],
     max_pre_imgs_per_burst_mw: list[int],
-    confirmation: bool,
     dst_dir: str | Path,
     water_mask_path: str | Path | None,
     product_dst_dir: str | Path | None,
@@ -269,7 +261,7 @@ def run_sas_prep(
     model_wts_path: str | Path | None,
     stride_for_norm_param_estimation: int = 16,
     batch_size_for_norm_param_estimation: int = 32,
-    optimize: bool = True,
+    model_compilation: bool = False,
     algo_config_path: str | Path | None = None,
 ) -> None:
     """Run SAS prep workflow."""
@@ -289,7 +281,6 @@ def run_sas_prep(
         lookback_strategy=lookback_strategy,
         max_pre_imgs_per_burst_mw=max_pre_imgs_per_burst_mw,
         delta_lookback_days_mw=delta_lookback_days_mw,
-        confirmation=confirmation,
         product_dst_dir=product_dst_dir,
         bucket=bucket,
         bucket_prefix=bucket_prefix,
@@ -301,7 +292,7 @@ def run_sas_prep(
         model_wts_path=model_wts_path,
         stride_for_norm_param_estimation=stride_for_norm_param_estimation,
         batch_size_for_norm_param_estimation=batch_size_for_norm_param_estimation,
-        model_compilation=optimize,
+        model_compilation=model_compilation,
         algo_config_path=algo_config_path,
     )
     run_config.to_yaml(runconfig_path)
@@ -335,7 +326,6 @@ def run(
     lookback_strategy: str,
     delta_lookback_days_mw: list[int],
     max_pre_imgs_per_burst_mw: list[int],
-    confirmation: bool,
     product_dst_dir: str | Path | None,
     bucket: str | None,
     bucket_prefix: str,
@@ -347,7 +337,7 @@ def run(
     model_wts_path: str | Path | None,
     stride_for_norm_param_estimation: int = 16,
     batch_size_for_norm_param_estimation: int = 32,
-    optimize: bool = True,
+    model_compilation: bool = False,
     algo_config_path: str | Path | None = None,
 ) -> str:
     """Localize data and run dist_s1_workflow."""
@@ -367,7 +357,6 @@ def run(
         lookback_strategy=lookback_strategy,
         max_pre_imgs_per_burst_mw=max_pre_imgs_per_burst_mw,
         delta_lookback_days_mw=delta_lookback_days_mw,
-        confirmation=confirmation,
         product_dst_dir=product_dst_dir,
         bucket=bucket,
         bucket_prefix=bucket_prefix,
@@ -379,7 +368,7 @@ def run(
         model_wts_path=model_wts_path,
         stride_for_norm_param_estimation=stride_for_norm_param_estimation,
         batch_size_for_norm_param_estimation=batch_size_for_norm_param_estimation,
-        model_compilation=optimize,
+        model_compilation=model_compilation,
         algo_config_path=algo_config_path,
     )
 

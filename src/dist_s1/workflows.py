@@ -37,7 +37,6 @@ def run_dist_s1_localization_workflow(
     input_data_dir: str | Path | None = None,
     apply_water_mask: bool = True,
     water_mask_path: str | Path | None = None,
-    confirmation: bool = True,
     device: str = 'best',
     interpolation_method: str = 'none',
     apply_despeckling: bool = True,
@@ -67,7 +66,6 @@ def run_dist_s1_localization_workflow(
     # These assignments will trigger validation due to validate_assignment=True
     run_config.apply_water_mask = apply_water_mask
     run_config.water_mask_path = water_mask_path
-    run_config.confirmation = confirmation
 
     # Assign algorithm parameters after localization
     # These assignments will trigger validation due to validate_assignment=True
@@ -281,7 +279,6 @@ def run_dist_s1_sas_prep_workflow(
     lookback_strategy: str = 'multi_window',
     max_pre_imgs_per_burst_mw: list[int] = [5, 5],
     delta_lookback_days_mw: list[int] = [730, 365],
-    confirmation: bool = True,
     water_mask_path: str | Path | None = None,
     product_dst_dir: str | Path | None = None,
     bucket: str | None = None,
@@ -299,6 +296,7 @@ def run_dist_s1_sas_prep_workflow(
     apply_logit_to_inputs: bool = True,
     model_compilation: bool = False,
     algo_config_path: str | Path | None = None,
+    prior_dist_s1_product: str | Path | None = None,
 ) -> RunConfigData:
     run_config = run_dist_s1_localization_workflow(
         mgrs_tile_id,
@@ -308,7 +306,6 @@ def run_dist_s1_sas_prep_workflow(
         post_date_buffer_days,
         max_pre_imgs_per_burst_mw,
         delta_lookback_days_mw,
-        confirmation=confirmation,
         dst_dir=dst_dir,
         input_data_dir=input_data_dir,
         apply_water_mask=apply_water_mask,
@@ -321,7 +318,6 @@ def run_dist_s1_sas_prep_workflow(
     run_config.moderate_confidence_threshold = moderate_confidence_threshold
     run_config.high_confidence_threshold = high_confidence_threshold
     run_config.lookback_strategy = lookback_strategy
-    run_config.confirmation = confirmation
     run_config.water_mask_path = water_mask_path
     run_config.product_dst_dir = product_dst_dir
     run_config.bucket = bucket
@@ -339,6 +335,7 @@ def run_dist_s1_sas_prep_workflow(
     run_config.apply_despeckling = apply_despeckling
     run_config.apply_logit_to_inputs = apply_logit_to_inputs
     run_config.algo_config_path = algo_config_path
+    run_config.prior_dist_s1_product = prior_dist_s1_product
     return run_config
 
 
@@ -368,7 +365,6 @@ def run_dist_s1_workflow(
     lookback_strategy: str = 'multi_window',
     max_pre_imgs_per_burst_mw: list[int] = [5, 5],
     delta_lookback_days_mw: list[int] = [730, 365],
-    confirmation: bool = False,
     product_dst_dir: str | Path | None = None,
     bucket: str | None = None,
     bucket_prefix: str = '',
@@ -385,6 +381,7 @@ def run_dist_s1_workflow(
     apply_despeckling: bool = True,
     apply_logit_to_inputs: bool = True,
     algo_config_path: str | Path | None = None,
+    prior_dist_s1_product: str | Path | None = None,
 ) -> Path:
     run_config = run_dist_s1_sas_prep_workflow(
         mgrs_tile_id,
@@ -401,7 +398,6 @@ def run_dist_s1_workflow(
         lookback_strategy=lookback_strategy,
         max_pre_imgs_per_burst_mw=max_pre_imgs_per_burst_mw,
         delta_lookback_days_mw=delta_lookback_days_mw,
-        confirmation=confirmation,
         water_mask_path=water_mask_path,
         product_dst_dir=product_dst_dir,
         bucket=bucket,
@@ -419,6 +415,7 @@ def run_dist_s1_workflow(
         apply_despeckling=apply_despeckling,
         apply_logit_to_inputs=apply_logit_to_inputs,
         algo_config_path=algo_config_path,
+        prior_dist_s1_product=prior_dist_s1_product,
     )
     _ = run_dist_s1_sas_workflow(run_config)
 

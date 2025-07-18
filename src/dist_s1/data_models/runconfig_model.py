@@ -110,7 +110,7 @@ class AlgoConfigData(BaseModel):
     """Base class containing algorithm configuration parameters."""
 
     device: str = Field(
-        default='best',
+        default='cpu',
         pattern='^(best|cuda|mps|cpu)$',
     )
     memory_strategy: str | None = Field(
@@ -272,8 +272,6 @@ class RunConfigData(AlgoConfigData):
     product_dst_dir: Path | str | None = None
     bucket: str | None = None
     bucket_prefix: str = ''
-    # Changed confirmation to default to None
-    confirmation: bool | None = Field(default=None)
     # Path to external algorithm config file
     algo_config_path: Path | str | None = None
 
@@ -378,20 +376,10 @@ class RunConfigData(AlgoConfigData):
             raise ValueError('The MGRS tile specified is not processed by DIST-S1')
         return mgrs_tile_id
 
-    @model_validator(mode='after')
-    def validate_confirmation_and_prior_product_consistency(self) -> 'RunConfigData':
-        """Validate that confirmation and prior_dist_s1_product are used together consistently."""
-        # Only validate if confirmation is not None to avoid validation issues during assignment
-        if self.confirmation is not None:
-            # If confirmation is explicitly True, prior_dist_s1_product must be provided
-            if self.confirmation is True and self.prior_dist_s1_product is None:
-                raise ValueError('prior_dist_s1_product must be provided when confirmation is True')
-
-            # If prior_dist_s1_product is provided, confirmation must be explicitly True
-            if self.prior_dist_s1_product is not None and self.confirmation is not True:
-                raise ValueError('confirmation must be True when prior_dist_s1_product is provided')
-
-        return self
+    @property
+    def confirmation(self) -> bool:
+        """Returns True if prior_dist_s1_product is not None."""
+        return self.prior_dist_s1_product is not None
 
     @property
     def processing_datetime(self) -> datetime:
@@ -459,7 +447,6 @@ class RunConfigData(AlgoConfigData):
         water_mask_path: Path | str | None = None,
         max_pre_imgs_per_burst_mw: list[int] | None = None,
         delta_lookback_days_mw: list[int] | None = None,
-        confirmation: bool | None = None,
         lookback_strategy: str = 'multi_window',
         prior_dist_s1_product: ProductDirectoryData | None = None,
         # Removed algorithm parameters that can be assigned later:
@@ -486,7 +473,6 @@ class RunConfigData(AlgoConfigData):
             water_mask_path=water_mask_path,
             max_pre_imgs_per_burst_mw=max_pre_imgs_per_burst_mw,
             delta_lookback_days_mw=delta_lookback_days_mw,
-            confirmation=confirmation,
             lookback_strategy=lookback_strategy,
             prior_dist_s1_product=prior_dist_s1_product,
             # Algorithm parameters removed - set via assignment
