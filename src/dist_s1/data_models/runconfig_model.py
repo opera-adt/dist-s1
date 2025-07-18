@@ -174,7 +174,7 @@ class AlgoConfigData(BaseModel):
     # Use despeckling
     apply_despeckling: bool = Field(default=True)
     interpolation_method: str = Field(
-        default='none',
+        default='bilinear',
         pattern='^(nearest|bilinear|none)$',
     )
     # Validate assignments to all fields
@@ -230,7 +230,10 @@ class AlgoConfigData(BaseModel):
             raise ValueError(f"Device '{device}' must be one of: cpu, cuda, mps")
         return device
 
-    @field_validator('n_workers_for_despeckling', 'n_workers_for_norm_param_estimation')
+    @field_validator(
+        'n_workers_for_despeckling',
+        'n_workers_for_norm_param_estimation',
+    )
     def validate_n_workers(cls, n_workers: int, info: ValidationInfo) -> int:
         if n_workers > mp.cpu_count():
             warnings.warn(
@@ -699,9 +702,18 @@ class RunConfigData(AlgoConfigData):
         """Handle device-specific validations and adjustments."""
         # Device-specific validations
         if self.device in ['cuda', 'mps'] and self.n_workers_for_norm_param_estimation > 1:
-            warnings.warn(
-                'CUDA and mps do not support multiprocessing; setting n_workers_for_norm_param_estimation to 1',
-                UserWarning,
+            raise ValueError(
+                f'CUDA and MPS devices do not support multiprocessing. '
+                f'When device="{self.device}", n_workers_for_norm_param_estimation must be 1, '
+                f'but got {self.n_workers_for_norm_param_estimation}. '
+                f'Either set device="cpu" to use multiprocessing or set n_workers_for_norm_param_estimation=1.'
             )
-            self.n_workers_for_norm_param_estimation = 1
+        if self.device in ['cuda', 'mps'] and self.model_compilation:
+            raise ValueError(
+                f'Model compilation with CUDA/MPS devices requires single-threaded processing. '
+                f'When device="{self.device}" and model_compilation=True, '
+                f'n_workers_for_norm_param_estimation must be 1, '
+                f'but got {self.n_workers_for_norm_param_estimation}. '
+                f'Either set device="cpu", model_compilation=False, or n_workers_for_norm_param_estimation=1.'
+            )
         return self

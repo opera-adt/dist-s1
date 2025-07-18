@@ -2,9 +2,9 @@ algo_config:
     device: mps
     memory_strategy: high
     tqdm_enabled: true
-    n_workers_for_norm_param_estimation: 8
+    n_workers_for_norm_param_estimation: 1
     batch_size_for_norm_param_estimation: 32
-    stride_for_norm_param_estimation: 16
+    stride_for_norm_param_estimation: 8
     n_workers_for_despeckling: 8
     lookback_strategy: multi_window
     model_compilation: false

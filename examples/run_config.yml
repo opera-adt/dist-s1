@@ -358,7 +358,7 @@ run_config:
     prior_dist_s1_product:
     mgrs_tile_id: 11SLT
     dst_dir: /Users/cmarshak/bekaert-team/dist-s1/notebooks/los-angeles
-    water_mask_path:
+    water_mask_path: /Users/cmarshak/bekaert-team/dist-s1/notebooks/los-angeles/11SLT_water_mask.tif
     apply_water_mask: true
     product_dst_dir: /Users/cmarshak/bekaert-team/dist-s1/notebooks/los-angeles
     bucket:
