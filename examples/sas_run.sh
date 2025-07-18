@@ -9,6 +9,8 @@ dist-s1 run_sas_prep --mgrs_tile_id '11SLT' \
     --apply_water_mask true \
     --product_dst_dir '../notebooks/los-angeles' \
     --model_source 'transformer_original' \
+    --use_date_encoding true \
+    --model_dtype 'float16' \
     --n_workers_for_norm_param_estimation 4 \
     --batch_size_for_norm_param_estimation 32 \
     --stride_for_norm_param_estimation 8 \
