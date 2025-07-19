@@ -180,8 +180,8 @@ class AlgoConfigData(BaseModel):
     # Model data type for inference
     model_dtype: str = Field(
         default='float32',
-        pattern='^(float32|bfloat16|float16)$',
-        description='Data type for model inference',
+        pattern='^(float32|bfloat16|float)$',
+        description='Data type for model inference. Note: bfloat16 is only supported on GPU devices.',
     )
     # Use date encoding in processing
     use_date_encoding: bool = Field(
@@ -278,6 +278,19 @@ class AlgoConfigData(BaseModel):
         """Validate that model_compilation is not True when device is 'mps'."""
         if self.model_compilation is True and self.device == 'mps':
             raise ValueError('model_compilation cannot be True when device is set to mps')
+        return self
+
+    @model_validator(mode='after')
+    def validate_model_dtype_device_compatibility(self) -> 'AlgoConfigData':
+        """Warn when bfloat16 is used with non-GPU devices."""
+        if self.model_dtype == 'bfloat16' and self.device not in ['cuda']:
+            warnings.warn(
+                f"model_dtype 'bfloat16' is only supported on GPU devices. "
+                f"Current device is '{self.device}'. "
+                f"Consider using 'float32' or 'float' for CPU/MPS devices.",
+                UserWarning,
+                stacklevel=2,
+            )
         return self
 
     def to_yml(self, yaml_file: str | Path) -> None:

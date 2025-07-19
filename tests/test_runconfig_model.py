@@ -251,6 +251,9 @@ def test_device_resolution(test_dir: Path, test_data_dir: Path, change_local_dir
     )
     config.apply_water_mask = False
     config.prior_dist_s1_product = None
+
+    # Set n_workers to 1 first to avoid validation errors with GPU devices
+    config.n_workers_for_norm_param_estimation = 1
     config.device = 'best'
 
     # Verify that 'best' was resolved to an actual device
@@ -267,6 +270,8 @@ def test_device_resolution(test_dir: Path, test_data_dir: Path, change_local_dir
             )
             config.apply_water_mask = False
             config.prior_dist_s1_product = None
+            if device in ['cuda', 'mps']:
+                config.n_workers_for_norm_param_estimation = 1  # Required for GPU devices
             config.device = device
             assert config.device == device
         except ValidationError as e:
@@ -527,5 +532,133 @@ def test_algorithm_config_validation_errors(
     # Test invalid memory_strategy - matches field name
     with pytest.raises(ValidationError, match=r'memory_strategy'):
         AlgoConfigData(memory_strategy='invalid_strategy')
+
+    shutil.rmtree(tmp_dir)
+
+
+def test_model_dtype_device_compatibility_warning(
+    test_dir: Path, test_data_dir: Path, change_local_dir: Callable
+) -> None:
+    """Test that warnings are issued when bfloat16 is used with non-GPU devices."""
+    change_local_dir(test_dir)
+
+    tmp_dir = test_dir / 'tmp'
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
+
+    # Test 1: bfloat16 with CPU should issue warning
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter('always')
+        config = RunConfigData.from_product_df(
+            df_product,
+            dst_dir=tmp_dir,
+        )
+        config.apply_water_mask = False
+        config.prior_dist_s1_product = None
+        config.model_dtype = 'bfloat16'
+        config.device = 'cpu'
+
+        # Check that warning was issued
+        warning_messages = [str(warning.message) for warning in w]
+        dtype_warnings = [
+            msg for msg in warning_messages if 'bfloat16' in msg and 'only supported on GPU devices' in msg
+        ]
+        assert len(dtype_warnings) > 0, 'Expected warning for bfloat16 with CPU device'
+
+    # Test 2: bfloat16 with MPS should issue warning
+    try:
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter('always')
+            config = RunConfigData.from_product_df(
+                df_product,
+                dst_dir=tmp_dir,
+            )
+            config.apply_water_mask = False
+            config.prior_dist_s1_product = None
+            config.n_workers_for_norm_param_estimation = 1  # Required for MPS
+            config.model_dtype = 'bfloat16'
+            config.device = 'mps'
+
+            # Check that warning was issued
+            warning_messages = [str(warning.message) for warning in w]
+            dtype_warnings = [
+                msg for msg in warning_messages if 'bfloat16' in msg and 'only supported on GPU devices' in msg
+            ]
+            assert len(dtype_warnings) > 0, 'Expected warning for bfloat16 with MPS device'
+    except ValidationError as e:
+        # It's okay if MPS is not available
+        if 'MPS is not available' in str(e):
+            pass
+        else:
+            raise
+
+    # Test 3: bfloat16 with CUDA should NOT issue warning
+    try:
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter('always')
+            config = RunConfigData.from_product_df(
+                df_product,
+                dst_dir=tmp_dir,
+            )
+            config.apply_water_mask = False
+            config.prior_dist_s1_product = None
+            config.n_workers_for_norm_param_estimation = 1  # Required for CUDA
+            config.model_dtype = 'bfloat16'
+            config.device = 'cuda'
+
+            # Check that NO warning was issued for dtype compatibility
+            warning_messages = [str(warning.message) for warning in w]
+            dtype_warnings = [
+                msg for msg in warning_messages if 'bfloat16' in msg and 'only supported on GPU devices' in msg
+            ]
+            assert len(dtype_warnings) == 0, 'Should not have warning for bfloat16 with CUDA device'
+    except ValidationError as e:
+        # It's okay if CUDA is not available
+        if 'CUDA is not available' in str(e):
+            pass
+        else:
+            raise
+
+    # Test 4: float32 with any device should NOT issue warning
+    for device in ['cpu', 'mps']:
+        try:
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter('always')
+                config = RunConfigData.from_product_df(
+                    df_product,
+                    dst_dir=tmp_dir,
+                )
+                config.apply_water_mask = False
+                config.prior_dist_s1_product = None
+                if device in ['mps', 'cuda']:
+                    config.n_workers_for_norm_param_estimation = 1  # Required for GPU devices
+                config.model_dtype = 'float32'
+                config.device = device
+
+                # Check that NO warning was issued for dtype compatibility
+                warning_messages = [str(warning.message) for warning in w]
+                dtype_warnings = [
+                    msg for msg in warning_messages if 'bfloat16' in msg and 'only supported on GPU devices' in msg
+                ]
+                assert len(dtype_warnings) == 0, f'Should not have warning for float32 with {device} device'
+        except ValidationError as e:
+            # It's okay if the device is not available
+            if 'is not available' in str(e):
+                pass
+            else:
+                raise
+
+    # Test 5: Test with AlgoConfigData directly
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter('always')
+        algo_config = AlgoConfigData(model_dtype='bfloat16', device='cpu')
+
+        # Check that warning was issued
+        warning_messages = [str(warning.message) for warning in w]
+        dtype_warnings = [
+            msg for msg in warning_messages if 'bfloat16' in msg and 'only supported on GPU devices' in msg
+        ]
+        assert len(dtype_warnings) > 0, 'Expected warning for bfloat16 with CPU device in AlgoConfigData'
 
     shutil.rmtree(tmp_dir)
