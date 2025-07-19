@@ -369,7 +369,8 @@ def test_algorithm_config_parameter_conflicts(
   # These parameters conflict with the algorithm config
   interpolation_method: nearest
   moderate_confidence_threshold: 5.0
-  device: best"""
+  device: best
+  n_workers_for_norm_param_estimation: 1"""
 
     main_config_path = tmp_dir / 'test_main_config.yml'
     main_config_content = runconfig_yaml_template.format(
