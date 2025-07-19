@@ -663,3 +663,56 @@ def test_model_dtype_device_compatibility_warning(
         assert len(dtype_warnings) > 0, 'Expected warning for bfloat16 with CPU device in AlgoConfigData'
 
     shutil.rmtree(tmp_dir)
+
+
+def test_model_path_validation(test_dir: Path, change_local_dir: Callable) -> None:
+    """Test that validation errors are properly raised when model paths don't exist."""
+    change_local_dir(test_dir)
+
+    tmp_dir = test_dir / 'tmp'
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create a real config file for testing
+    real_config_path = tmp_dir / 'real_config.json'
+    real_config_path.write_text('{"model_type": "test"}')
+
+    # Create a real weights file for testing
+    real_weights_path = tmp_dir / 'real_weights.pth'
+    real_weights_path.write_text('fake_weights_content')
+
+    # Test 1: Non-existent model_cfg_path should raise ValidationError
+    with pytest.raises(ValidationError, match=r'Model config path does not exist'):
+        AlgoConfigData(model_cfg_path='/non/existent/config.json')
+
+    # Test 2: Non-existent model_wts_path should raise ValidationError
+    with pytest.raises(ValidationError, match=r'Model weights path does not exist'):
+        AlgoConfigData(model_wts_path='/non/existent/weights.pth')
+
+    # Test 3: Both non-existent paths should raise ValidationError
+    with pytest.raises(ValidationError, match=r'Model config path does not exist'):
+        AlgoConfigData(model_cfg_path='/non/existent/config.json', model_wts_path='/non/existent/weights.pth')
+
+    # Test 4: Directory instead of file for model_cfg_path should raise ValidationError
+    with pytest.raises(ValidationError, match=r'Model config path is not a file'):
+        AlgoConfigData(model_cfg_path=str(tmp_dir))
+
+    # Test 5: Directory instead of file for model_wts_path should raise ValidationError
+    with pytest.raises(ValidationError, match=r'Model weights path is not a file'):
+        AlgoConfigData(model_wts_path=str(tmp_dir))
+
+    # Test 6: Valid paths should work (no ValidationError)
+    config = AlgoConfigData(model_cfg_path=str(real_config_path), model_wts_path=str(real_weights_path))
+    assert config.model_cfg_path == real_config_path
+    assert config.model_wts_path == real_weights_path
+
+    # Test 7: None values should be allowed (no ValidationError)
+    config_with_none = AlgoConfigData(model_cfg_path=None, model_wts_path=None)
+    assert config_with_none.model_cfg_path is None
+    assert config_with_none.model_wts_path is None
+
+    # Test 8: String paths should be converted to Path objects
+    config_with_strings = AlgoConfigData(model_cfg_path=str(real_config_path), model_wts_path=str(real_weights_path))
+    assert isinstance(config_with_strings.model_cfg_path, Path)
+    assert isinstance(config_with_strings.model_wts_path, Path)
+
+    shutil.rmtree(tmp_dir)

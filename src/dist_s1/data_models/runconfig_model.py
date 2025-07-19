@@ -273,6 +273,30 @@ class AlgoConfigData(BaseModel):
             raise ValueError(f"model_dtype '{model_dtype}' must be one of: {valid_dtypes}")
         return model_dtype
 
+    @field_validator('model_cfg_path', mode='before')
+    def validate_model_cfg_path(cls, model_cfg_path: Path | str | None) -> Path | None:
+        """Validate that model_cfg_path exists if provided."""
+        if model_cfg_path is None:
+            return None
+        model_cfg_path = Path(model_cfg_path) if isinstance(model_cfg_path, str) else model_cfg_path
+        if not model_cfg_path.exists():
+            raise ValueError(f'Model config path does not exist: {model_cfg_path}')
+        if not model_cfg_path.is_file():
+            raise ValueError(f'Model config path is not a file: {model_cfg_path}')
+        return model_cfg_path
+
+    @field_validator('model_wts_path', mode='before')
+    def validate_model_wts_path(cls, model_wts_path: Path | str | None) -> Path | None:
+        """Validate that model_wts_path exists if provided."""
+        if model_wts_path is None:
+            return None
+        model_wts_path = Path(model_wts_path) if isinstance(model_wts_path, str) else model_wts_path
+        if not model_wts_path.exists():
+            raise ValueError(f'Model weights path does not exist: {model_wts_path}')
+        if not model_wts_path.is_file():
+            raise ValueError(f'Model weights path is not a file: {model_wts_path}')
+        return model_wts_path
+
     @model_validator(mode='after')
     def validate_model_compilation_device_compatibility(self) -> 'AlgoConfigData':
         """Validate that model_compilation is not True when device is 'mps'."""
