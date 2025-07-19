@@ -6,7 +6,7 @@ from rasterio.enums import Resampling
 from rasterio.env import Env
 
 import dist_s1
-from dist_s1.constants import BASE_DATE, DIST_CMAP
+from dist_s1.constants import BASE_DATE_FOR_CONFIRMATION, DIST_CMAP
 from dist_s1.data_models.runconfig_model import RunConfigData
 from dist_s1.rio_tools import open_one_ds, serialize_one_2d_ds
 from dist_s1.water_mask import apply_water_mask
@@ -96,7 +96,7 @@ def package_disturbance_tifs_no_confirmation(run_config: RunConfigData) -> None:
     # GEN-DIST-DUR
     X_dur = generate_count_disturbed_no_confirmation(X_dist, dtype=np.int16, nodata_value=-1)
     # GEN-DIST-DATE - everything is pd.Timestamp
-    date_encoded = (run_config.min_acq_date.to_pydatetime() - BASE_DATE).days
+    date_encoded = (run_config.min_acq_date.to_pydatetime() - BASE_DATE_FOR_CONFIRMATION).days
     X_date = generate_count_disturbed_no_confirmation(X_dist, dtype=np.int16, nodata_value=-1, count_value=date_encoded)
     # GEN-DIST-LAST-DATE - last date of valid observation
     X_last_date = X_dur.copy()

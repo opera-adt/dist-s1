@@ -21,7 +21,7 @@ algo_config:
     conf_upper_lim: 32000
     conf_thresh: 31.5
     metric_value_upper_lim: 100.0
-    base_date: 2020-12-31 00:00:00
+    base_date_for_confirmation: 2020-12-31 00:00:00
     model_source: transformer_original
     model_cfg_path:
     model_wts_path:

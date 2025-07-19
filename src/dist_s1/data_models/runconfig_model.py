@@ -160,7 +160,7 @@ class AlgoConfigData(BaseModel):
     conf_upper_lim: int = Field(default=32000, description='Confidence upper limit')
     conf_thresh: float = Field(default=3**2 * 3.5, description='Confidence threshold')
     metric_value_upper_lim: float = Field(default=100, description='Metric upper limit')
-    base_date: datetime = Field(
+    base_date_for_confirmation: datetime = Field(
         default=datetime(2020, 12, 31),
         description='Reference date used to calculate the number of days in confirmation process',
     )

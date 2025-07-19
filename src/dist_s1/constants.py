@@ -5,9 +5,9 @@ PRODUCT_VERSION = '0.1'
 
 MODEL_CONTEXT_LENGTH = 10
 
-# Base date for date encoding
+# Base date for date encoding used in confirmation process
 
-BASE_DATE = pd.Timestamp('2020-12-31', tz='UTC')
+BASE_DATE_FOR_CONFIRMATION = pd.Timestamp('2020-12-31', tz='UTC')
 
 # Disturbance labels
 
