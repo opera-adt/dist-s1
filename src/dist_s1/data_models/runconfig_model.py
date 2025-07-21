@@ -27,6 +27,7 @@ from dist_s1.data_models.defaults import (
     DEFAULT_DEVICE,
     DEFAULT_DST_DIR,
     DEFAULT_HIGH_CONFIDENCE_THRESHOLD,
+    DEFAULT_INPUT_DATA_DIR,
     DEFAULT_INTERPOLATION_METHOD,
     DEFAULT_LOOKBACK_STRATEGY,
     DEFAULT_MAX_OBS_NUM_YEAR,
@@ -40,6 +41,7 @@ from dist_s1.data_models.defaults import (
     DEFAULT_NODAYLIMIT,
     DEFAULT_N_WORKERS_FOR_DESPECKLING,
     DEFAULT_N_WORKERS_FOR_NORM_PARAM_ESTIMATION,
+    DEFAULT_POST_DATE_BUFFER_DAYS,
     DEFAULT_STRIDE_FOR_NORM_PARAM_ESTIMATION,
     DEFAULT_TQDM_ENABLED,
     DEFAULT_USE_DATE_ENCODING,
@@ -166,6 +168,11 @@ class AlgoConfigData(BaseModel):
         default=DEFAULT_N_WORKERS_FOR_DESPECKLING,
         ge=1,
     )
+    # Data handling
+    input_data_dir: Path | str | None = Field(
+        default=DEFAULT_INPUT_DATA_DIR,
+        description='Input data directory. If None, defaults to dst_dir.',
+    )
     lookback_strategy: str = Field(
         default=DEFAULT_LOOKBACK_STRATEGY,
         pattern='^(multi_window|immediate_lookback)$',
@@ -225,6 +232,18 @@ class AlgoConfigData(BaseModel):
         if v is None:
             return 'transformer_optimized'
         return v
+
+    @field_validator('input_data_dir', mode='before')
+    def validate_input_data_dir(cls, input_data_dir: Path | str | None) -> Path | None:
+        """Convert string to Path and validate if provided."""
+        if input_data_dir is None:
+            return None
+        input_data_dir = Path(input_data_dir) if isinstance(input_data_dir, str) else input_data_dir
+        if not input_data_dir.exists():
+            raise ValueError(f'Input data directory does not exist: {input_data_dir}')
+        if not input_data_dir.is_dir():
+            raise ValueError(f'Input data directory is not a directory: {input_data_dir}')
+        return input_data_dir.resolve()
 
     @classmethod
     def from_yaml(cls, yaml_file: str | Path) -> 'AlgoConfigData':
@@ -368,6 +387,11 @@ class RunConfigData(AlgoConfigData):
     water_mask_path: Path | str | None = None
     apply_water_mask: bool = Field(default=DEFAULT_APPLY_WATER_MASK)
     check_input_paths: bool = DEFAULT_CHECK_INPUT_PATHS
+    post_date_buffer_days: int = Field(
+        default=DEFAULT_POST_DATE_BUFFER_DAYS,
+        ge=0,
+        description='Buffer days around post-date for data collection.',
+    )
     product_dst_dir: Path | str | None = None
     bucket: str | None = None
     bucket_prefix: str | None = None
@@ -780,6 +804,13 @@ class RunConfigData(AlgoConfigData):
                 dst_dir=self.dst_dir,
                 overwrite=True,
             )
+        return self
+
+    @model_validator(mode='after')
+    def handle_input_data_dir_default(self) -> 'RunConfigData':
+        """Set input_data_dir to dst_dir if None."""
+        if self.input_data_dir is None:
+            self.input_data_dir = self.dst_dir
         return self
 
     @model_validator(mode='after')

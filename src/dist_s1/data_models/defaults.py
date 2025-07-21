@@ -20,6 +20,9 @@ DEFAULT_BATCH_SIZE_FOR_NORM_PARAM_ESTIMATION = 32
 DEFAULT_STRIDE_FOR_NORM_PARAM_ESTIMATION = 16
 DEFAULT_N_WORKERS_FOR_DESPECKLING = 8
 
+# Data handling settings
+DEFAULT_INPUT_DATA_DIR = None
+
 # Algorithm strategy settings
 DEFAULT_LOOKBACK_STRATEGY = 'multi_window'
 DEFAULT_MODEL_COMPILATION = False
@@ -58,6 +61,7 @@ DEFAULT_ALGO_CONFIG_PATH = None
 # Processing settings
 DEFAULT_APPLY_WATER_MASK = True
 DEFAULT_CHECK_INPUT_PATHS = True
+DEFAULT_POST_DATE_BUFFER_DAYS = 1
 
 # AWS/Cloud settings
 DEFAULT_BUCKET = None
@@ -67,16 +71,8 @@ DEFAULT_BUCKET_PREFIX = None
 DEFAULT_PRIOR_DIST_S1_PRODUCT = None
 
 # =============================================================================
-# CLI-specific Defaults (not in data models)
+# Removed CLI-specific Defaults (now integrated into data models)
 # =============================================================================
 
-# Workflow parameters
-DEFAULT_POST_DATE_BUFFER_DAYS = 1
-DEFAULT_INPUT_DATA_DIR = None
-
-# =============================================================================
-# String versions for CLI parsing
-# =============================================================================
-
-# For CLI options that need string representations
-DEFAULT_DST_DIR_STR = 'out/'
+# Previously had DEFAULT_INPUT_DATA_DIR and DEFAULT_POST_DATE_BUFFER_DAYS here
+# These are now integrated into AlgoConfigData and RunConfigData respectively

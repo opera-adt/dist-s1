@@ -90,18 +90,11 @@ def run_dist_s1_localization_workflow(
     delta_lookback_days_mw: list[int] = [730, 365],
     dst_dir: str | Path = 'out',
     input_data_dir: str | Path | None = None,
-    apply_water_mask: bool = True,
-    water_mask_path: str | Path | None = None,
-    device: str = 'best',
-    interpolation_method: str = 'none',
-    apply_despeckling: bool = True,
-    apply_logit_to_inputs: bool = True,
 ) -> RunConfigData:
     """Run the DIST-S1 localization workflow.
 
-    This function handles both data localization and algorithm parameter assignment.
-    It separates the core data localization from algorithm parameter configuration
-    for better maintainability.
+    This function handles data localization only. Algorithm parameter assignment
+    is handled separately by the calling workflow for better separation of concerns.
     """
     run_config = localize_rtc_s1(
         mgrs_tile_id,
@@ -114,15 +107,6 @@ def run_dist_s1_localization_workflow(
         dst_dir=dst_dir,
         input_data_dir=input_data_dir,
     )
-
-    # Assign configuration parameters after localization
-    # These assignments will trigger validation due to validate_assignment=True
-    run_config.apply_water_mask = apply_water_mask
-    run_config.water_mask_path = water_mask_path
-    run_config.device = device
-    run_config.interpolation_method = interpolation_method
-    run_config.apply_despeckling = apply_despeckling
-    run_config.apply_logit_to_inputs = apply_logit_to_inputs
 
     return run_config
 
@@ -380,9 +364,6 @@ def run_dist_s1_sas_prep_workflow(
         delta_lookback_days_mw,
         dst_dir=dst_dir,
         input_data_dir=input_data_dir,
-        apply_water_mask=apply_water_mask,
-        water_mask_path=water_mask_path,
-        device=device,
     )
     run_config.memory_strategy = memory_strategy
     run_config.tqdm_enabled = tqdm_enabled
