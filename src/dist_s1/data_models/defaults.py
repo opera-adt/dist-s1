@@ -79,6 +79,4 @@ DEFAULT_INPUT_DATA_DIR = None
 # =============================================================================
 
 # For CLI options that need string representations
-DEFAULT_MAX_PRE_IMGS_PER_BURST_MW_STR = '5,5'
-DEFAULT_DELTA_LOOKBACK_DAYS_MW_STR = '730,365'
 DEFAULT_DST_DIR_STR = 'out/'

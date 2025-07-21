@@ -9,13 +9,13 @@ from distmetrics.model_load import ALLOWED_MODELS
 from .data_models.defaults import (
     DEFAULT_APPLY_WATER_MASK,
     DEFAULT_BATCH_SIZE_FOR_NORM_PARAM_ESTIMATION,
-    DEFAULT_DELTA_LOOKBACK_DAYS_MW_STR,
+    DEFAULT_DELTA_LOOKBACK_DAYS_MW,
     DEFAULT_DEVICE,
     DEFAULT_DST_DIR_STR,
     DEFAULT_HIGH_CONFIDENCE_THRESHOLD,
     DEFAULT_INPUT_DATA_DIR,
     DEFAULT_LOOKBACK_STRATEGY,
-    DEFAULT_MAX_PRE_IMGS_PER_BURST_MW_STR,
+    DEFAULT_MAX_PRE_IMGS_PER_BURST_MW,
     DEFAULT_MEMORY_STRATEGY,
     DEFAULT_MODEL_COMPILATION,
     DEFAULT_MODEL_DTYPE,
@@ -124,7 +124,7 @@ def common_options(func: Callable) -> Callable:
     )
     @click.option(
         '--max_pre_imgs_per_burst_mw',
-        default=DEFAULT_MAX_PRE_IMGS_PER_BURST_MW_STR,
+        default=','.join(map(str, DEFAULT_MAX_PRE_IMGS_PER_BURST_MW)),
         callback=parse_int_list,
         required=False,
         show_default=True,
@@ -132,7 +132,7 @@ def common_options(func: Callable) -> Callable:
     )
     @click.option(
         '--delta_lookback_days_mw',
-        default=DEFAULT_DELTA_LOOKBACK_DAYS_MW_STR,
+        default=','.join(map(str, DEFAULT_DELTA_LOOKBACK_DAYS_MW)),
         callback=parse_int_list,
         required=False,
         show_default=True,
