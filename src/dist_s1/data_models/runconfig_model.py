@@ -34,9 +34,11 @@ from dist_s1.data_models.defaults import (
     DEFAULT_MAX_PRE_IMGS_PER_BURST_MW,
     DEFAULT_MEMORY_STRATEGY,
     DEFAULT_METRIC_VALUE_UPPER_LIM,
+    DEFAULT_MODEL_CFG_PATH,
     DEFAULT_MODEL_COMPILATION,
     DEFAULT_MODEL_DTYPE,
     DEFAULT_MODEL_SOURCE,
+    DEFAULT_MODEL_WTS_PATH,
     DEFAULT_MODERATE_CONFIDENCE_THRESHOLD,
     DEFAULT_NODAYLIMIT,
     DEFAULT_N_WORKERS_FOR_DESPECKLING,
@@ -143,43 +145,75 @@ class AlgoConfigData(BaseModel):
     device: str = Field(
         default=DEFAULT_DEVICE,
         pattern='^(best|cuda|mps|cpu)$',
+        description='Device to use for model inference. `best` will use the best available device.',
     )
     memory_strategy: str | None = Field(
         default=DEFAULT_MEMORY_STRATEGY,
         pattern='^(high|low)$',
+        description='Memory strategy to use for model inference. `high` will use more memory, `low` will use less. '
+        'Utilizing more memory will improve runtime performance.',
     )
-    tqdm_enabled: bool = Field(default=DEFAULT_TQDM_ENABLED)
+    tqdm_enabled: bool = Field(
+        default=DEFAULT_TQDM_ENABLED,
+        description='Whether to enable tqdm progress bars.',
+    )
     n_workers_for_norm_param_estimation: int = Field(
         default=DEFAULT_N_WORKERS_FOR_NORM_PARAM_ESTIMATION,
         ge=1,
+        description='Number of workers for norm parameter estimation from the baseline. '
+        'Utilizing more workers will improve runtime performance and utilize more memory. '
+        'Does not work with model compilation or MPS/GPU devices.',
     )
     # Batch size for transformer model.
     batch_size_for_norm_param_estimation: int = Field(
         default=DEFAULT_BATCH_SIZE_FOR_NORM_PARAM_ESTIMATION,
         ge=1,
+        description='Batch size for norm parameter estimation from the baseline. '
+        'Utilizing a larger batch size will improve runtime performance and utilize more memory.',
     )
     # Stride for transformer model.
     stride_for_norm_param_estimation: int = Field(
         default=DEFAULT_STRIDE_FOR_NORM_PARAM_ESTIMATION,
         ge=1,
         le=16,
+        description='Stride for norm parameter estimation from the baseline. '
+        'Utilizing a larger stride will improve metric accuracy and utilize more memory.'
+        'Memory usage scales inverse quadratically with stride. That is, '
+        'If stride=16 consumes N bytes of memory, then stride=4 consumes 16N bytes of memory.',
+    )
+    apply_logit_to_inputs: bool = Field(
+        default=DEFAULT_APPLY_LOGIT_TO_INPUTS,
+        description='Whether to apply logit transform to the input data.',
     )
     n_workers_for_despeckling: int = Field(
         default=DEFAULT_N_WORKERS_FOR_DESPECKLING,
         ge=1,
+        description='Number of workers for despeckling. '
+        'Utilizing more workers will improve runtime performance and utilize more memory.',
     )
     # Data handling
-    input_data_dir: Path | str | None = Field(
-        default=DEFAULT_INPUT_DATA_DIR,
-        description='Input data directory. If None, defaults to dst_dir.',
-    )
     lookback_strategy: str = Field(
         default=DEFAULT_LOOKBACK_STRATEGY,
         pattern='^(multi_window|immediate_lookback)$',
+        description='Lookback strategy to use for data curation of the baseline. '
+        '`multi_window` will use a multi-window lookback strategy and is default for OEPRA DIST-S1, '
+        '`immediate_lookback` will use an immediate lookback strategy using acquisitions preceding the post-date.',
+    )
+    post_date_buffer_days: int = Field(
+        default=DEFAULT_POST_DATE_BUFFER_DAYS,
+        ge=0,
+        le=7,
+        description='Buffer days around post-date for data collection to create acqusition image to compare baseline '
+        'to.',
     )
     # Flag to enable optimizations. False, load the model and use it.
     # True, load the model and compile for CPU or GPU
-    model_compilation: bool = Field(default=DEFAULT_MODEL_COMPILATION)
+    model_compilation: bool = Field(
+        default=DEFAULT_MODEL_COMPILATION,
+        description='Whether to compile the model for CPU or GPU. '
+        'False, use the model as is. '
+        'True, load the model and compile for CPU or GPU optimizations.',
+    )
     max_pre_imgs_per_burst_mw: list[int] = Field(
         default=DEFAULT_MAX_PRE_IMGS_PER_BURST_MW,
         description='Max number of pre-images per burst within each window',
@@ -189,29 +223,68 @@ class AlgoConfigData(BaseModel):
         description='Delta lookback days for each window relative to post-image acquisition date',
     )
     # This is where default thresholds are set!
-    moderate_confidence_threshold: float = Field(default=DEFAULT_MODERATE_CONFIDENCE_THRESHOLD, ge=0.0, le=15.0)
-    high_confidence_threshold: float = Field(default=DEFAULT_HIGH_CONFIDENCE_THRESHOLD, ge=0.0, le=15.0)
-    nodaylimit: int = Field(default=DEFAULT_NODAYLIMIT)
-    max_obs_num_year: int = Field(default=DEFAULT_MAX_OBS_NUM_YEAR, description='Max observation number per year')
-    conf_upper_lim: int = Field(default=DEFAULT_CONF_UPPER_LIM, description='Confidence upper limit')
-    conf_thresh: float = Field(default=DEFAULT_CONF_THRESH, description='Confidence threshold')
-    metric_value_upper_lim: float = Field(default=DEFAULT_METRIC_VALUE_UPPER_LIM, description='Metric upper limit')
+    moderate_confidence_threshold: float = Field(
+        default=DEFAULT_MODERATE_CONFIDENCE_THRESHOLD,
+        ge=0.0,
+        le=15.0,
+        description='Moderate confidence threshold for alerting disturbance.',
+    )
+    high_confidence_threshold: float = Field(
+        default=DEFAULT_HIGH_CONFIDENCE_THRESHOLD,
+        ge=0.0,
+        le=15.0,
+        description='High confidence threshold for alerting disturbance.',
+    )
+    nodaylimit: int = Field(
+        default=DEFAULT_NODAYLIMIT,
+        description='Number of days to limit confirmation process. Confirmation must occur within first '
+        'observance of disturbance and `nodaylimit` days after.',
+    )
+    max_obs_num_year: int = Field(
+        default=DEFAULT_MAX_OBS_NUM_YEAR,
+        description='Max observation number per year. If observations exceeds this number, then the confirmation must '
+        'conclude and be reset.',
+    )
+    conf_upper_lim: int = Field(
+        default=DEFAULT_CONF_UPPER_LIM,
+        description='Confidence upper limit for confirmation. Confidence is an accumulation of the metric over time.',
+    )
+    conf_thresh: float = Field(
+        default=DEFAULT_CONF_THRESH,
+        description='Confidence threshold for confirmed disturbance during confirmation process.',
+    )
+    metric_value_upper_lim: float = Field(
+        default=DEFAULT_METRIC_VALUE_UPPER_LIM, description='Metric upper limit set during confirmation'
+    )
     base_date_for_confirmation: datetime = Field(
         default=datetime(2020, 12, 31),
-        description='Reference date used to calculate the number of days in confirmation process',
+        description='Reference date used to calculate the number of days in confirmation process. We encode disturbance'
+        ' temporal information by number of days from this base date.',
     )
-    # model_source == "external" means use externally supplied paths for weights and config
-    # otherwise use distmetrics.model_load.ALLOWED_MODELS for other models
-    model_source: str | None = DEFAULT_MODEL_SOURCE
-    model_cfg_path: Path | str | None = None
-    model_wts_path: Path | str | None = None
-    # Use logit transform
-    apply_logit_to_inputs: bool = Field(default=DEFAULT_APPLY_LOGIT_TO_INPUTS)
-    # Use despeckling
-    apply_despeckling: bool = Field(default=DEFAULT_APPLY_DESPECKLING)
+    model_source: str | None = Field(
+        default=DEFAULT_MODEL_SOURCE,
+        description='Model source. If `external`, use externally supplied paths for weights and config. '
+        'Otherwise, use distmetrics.model_load.ALLOWED_MODELS for other models.',
+    )
+    model_cfg_path: Path | str | None = Field(
+        default=DEFAULT_MODEL_CFG_PATH,
+        description='Path to model config file. If `external`, use externally supplied path. '
+        'Otherwise, use distmetrics.model_load.ALLOWED_MODELS for other models.',
+    )
+    model_wts_path: Path | str | None = Field(
+        default=DEFAULT_MODEL_WTS_PATH,
+        description='Path to model weights file. If `external`, use externally supplied path. '
+        'Otherwise, use distmetrics.model_load.ALLOWED_MODELS for other models.',
+    )
+    apply_despeckling: bool = Field(
+        default=DEFAULT_APPLY_DESPECKLING,
+        description='Whether to apply despeckling to the input data.',
+    )
     interpolation_method: str = Field(
         default=DEFAULT_INTERPOLATION_METHOD,
         pattern='^(nearest|bilinear|none)$',
+        description='Interpolation method to use for despeckling. `nearest` will use nearest neighbor interpolation, '
+        '`bilinear` will use bilinear interpolation, and `none` will not apply despeckling.',
     )
     # Model data type for inference
     model_dtype: str = Field(
@@ -222,7 +295,7 @@ class AlgoConfigData(BaseModel):
     # Use date encoding in processing
     use_date_encoding: bool = Field(
         default=DEFAULT_USE_DATE_ENCODING,
-        description='Whether to use acquisition date encoding in processing',
+        description='Whether to use acquisition date encoding in model application (currently not supported)',
     )
     # Validate assignments to all fields
     model_config = ConfigDict(validate_assignment=True)
@@ -232,18 +305,6 @@ class AlgoConfigData(BaseModel):
         if v is None:
             return 'transformer_optimized'
         return v
-
-    @field_validator('input_data_dir', mode='before')
-    def validate_input_data_dir(cls, input_data_dir: Path | str | None) -> Path | None:
-        """Convert string to Path and validate if provided."""
-        if input_data_dir is None:
-            return None
-        input_data_dir = Path(input_data_dir) if isinstance(input_data_dir, str) else input_data_dir
-        if not input_data_dir.exists():
-            raise ValueError(f'Input data directory does not exist: {input_data_dir}')
-        if not input_data_dir.is_dir():
-            raise ValueError(f'Input data directory is not a directory: {input_data_dir}')
-        return input_data_dir.resolve()
 
     @classmethod
     def from_yaml(cls, yaml_file: str | Path) -> 'AlgoConfigData':
@@ -377,26 +438,52 @@ class AlgoConfigData(BaseModel):
 
 
 class RunConfigData(AlgoConfigData):
-    pre_rtc_copol: list[Path | str]
-    pre_rtc_crosspol: list[Path | str]
-    post_rtc_copol: list[Path | str]
-    post_rtc_crosspol: list[Path | str]
-    prior_dist_s1_product: ProductDirectoryData | None = None
-    mgrs_tile_id: str
-    dst_dir: Path | str = DEFAULT_DST_DIR
-    water_mask_path: Path | str | None = None
-    apply_water_mask: bool = Field(default=DEFAULT_APPLY_WATER_MASK)
-    check_input_paths: bool = DEFAULT_CHECK_INPUT_PATHS
-    post_date_buffer_days: int = Field(
-        default=DEFAULT_POST_DATE_BUFFER_DAYS,
-        ge=0,
-        description='Buffer days around post-date for data collection.',
+    pre_rtc_copol: list[Path | str] = Field(..., description='List of paths to pre-rtc copolarization data.')
+    pre_rtc_crosspol: list[Path | str] = Field(..., description='List of paths to pre-rtc crosspolarization data.')
+    post_rtc_copol: list[Path | str] = Field(..., description='List of paths to post-rtc copolarization data.')
+    post_rtc_crosspol: list[Path | str] = Field(..., description='List of paths to post-rtc crosspolarization data.')
+    prior_dist_s1_product: ProductDirectoryData | None = Field(
+        default=None,
+        description='Path to prior DIST-S1 product. If None, no prior product is used and confirmation is not'
+        ' performed.',
     )
-    product_dst_dir: Path | str | None = None
-    bucket: str | None = None
-    bucket_prefix: str | None = None
+    mgrs_tile_id: str = Field(..., description='MGRS tile ID. Required to kick-off disturbance processing.')
+    dst_dir: Path | str = DEFAULT_DST_DIR
+    input_data_dir: Path | str | None = Field(
+        default=DEFAULT_INPUT_DATA_DIR,
+        description='Input data directory. If None, defaults to dst_dir.',
+    )
+    water_mask_path: Path | str | None = Field(
+        default=None,
+        description='Path to water mask. If None, no water mask is used.',
+    )
+    apply_water_mask: bool = Field(
+        default=DEFAULT_APPLY_WATER_MASK,
+        description='Whether to apply water mask to the input data. If True, water mask is applied to the input data. '
+        'If no water mask path is provided, the tiles to generate the water mask are localized and formatted for use.',
+    )
+    check_input_paths: bool = Field(
+        default=DEFAULT_CHECK_INPUT_PATHS,
+        description='Whether to check if the input paths exist. If True, the input paths are checked. '
+        'Used during testing.',
+    )
+    product_dst_dir: Path | str | None = Field(
+        default=None,
+        description='Path to product directory. If None, defaults to dst_dir.',
+    )
+    bucket: str | None = Field(
+        default=None,
+        description='Bucket to use for product storage. If None, no bucket is used.',
+    )
+    bucket_prefix: str | None = Field(
+        default=None,
+        description='Bucket prefix to use for product storage. If None, no bucket prefix is used.',
+    )
     # Path to external algorithm config file
-    algo_config_path: Path | str | None = None
+    algo_config_path: Path | str | None = Field(
+        default=None,
+        description='Path to external algorithm config file. If None, no external algorithm config is used.',
+    )
 
     # Private attributes that are associated to properties
     _burst_ids: list[str] | None = None
@@ -472,6 +559,18 @@ class RunConfigData(AlgoConfigData):
             raise ValidationError(f"Path '{product_dst_dir}' exists but is not a directory")
         product_dst_dir.mkdir(parents=True, exist_ok=True)
         return product_dst_dir.resolve()
+
+    @field_validator('input_data_dir', mode='before')
+    def validate_input_data_dir(cls, input_data_dir: Path | str | None) -> Path | None:
+        """Convert string to Path and validate if provided."""
+        if input_data_dir is None:
+            return None
+        input_data_dir = Path(input_data_dir) if isinstance(input_data_dir, str) else input_data_dir
+        if not input_data_dir.exists():
+            raise ValueError(f'Input data directory does not exist: {input_data_dir}')
+        if not input_data_dir.is_dir():
+            raise ValueError(f'Input data directory is not a directory: {input_data_dir}')
+        return input_data_dir.resolve()
 
     @field_validator('pre_rtc_crosspol', 'post_rtc_crosspol')
     def check_matching_lengths_copol_and_crosspol(
