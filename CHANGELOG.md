@@ -20,6 +20,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `optimize` is now `model_compilation`; also does not work with `device` that is `mps`
 - Update validation to occur at assignment and remove algorithm parameters being assigned within localization workflow.
 - `base_date` is now `base_date_for_confirmation`.
+- Remove algorithm assignments in localization workflows.
 
 ## Added
 - Constants for CLI and `RunConfigData` - allows for consistent data parsing.
