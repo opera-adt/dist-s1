@@ -6,6 +6,27 @@ from typing import ParamSpec, TypeVar
 import click
 from distmetrics.model_load import ALLOWED_MODELS
 
+from .data_models.defaults import (
+    DEFAULT_APPLY_WATER_MASK,
+    DEFAULT_BATCH_SIZE_FOR_NORM_PARAM_ESTIMATION,
+    DEFAULT_DELTA_LOOKBACK_DAYS_MW_STR,
+    DEFAULT_DEVICE,
+    DEFAULT_DST_DIR_STR,
+    DEFAULT_HIGH_CONFIDENCE_THRESHOLD,
+    DEFAULT_INPUT_DATA_DIR,
+    DEFAULT_LOOKBACK_STRATEGY,
+    DEFAULT_MAX_PRE_IMGS_PER_BURST_MW_STR,
+    DEFAULT_MEMORY_STRATEGY,
+    DEFAULT_MODEL_COMPILATION,
+    DEFAULT_MODEL_DTYPE,
+    DEFAULT_MODERATE_CONFIDENCE_THRESHOLD,
+    DEFAULT_N_WORKERS_FOR_DESPECKLING,
+    DEFAULT_N_WORKERS_FOR_NORM_PARAM_ESTIMATION,
+    DEFAULT_POST_DATE_BUFFER_DAYS,
+    DEFAULT_STRIDE_FOR_NORM_PARAM_ESTIMATION,
+    DEFAULT_TQDM_ENABLED,
+    DEFAULT_USE_DATE_ENCODING,
+)
 from .data_models.runconfig_model import RunConfigData
 from .workflows import run_dist_s1_sas_prep_workflow, run_dist_s1_sas_workflow, run_dist_s1_workflow
 
@@ -33,16 +54,21 @@ def common_options(func: Callable) -> Callable:
     @click.option(
         '--track_number',
         type=int,
-        required=False,
-        default=1,
+        required=True,
         help='Sentinel-1 Track Number; Supply one from the group of bursts collected from a pass; '
         'Near the dateline you may have two sequential track numbers.',
     )
-    @click.option('--post_date_buffer_days', type=int, default=1, required=False, help='Buffer days around post-date.')
+    @click.option(
+        '--post_date_buffer_days',
+        type=int,
+        default=DEFAULT_POST_DATE_BUFFER_DAYS,
+        required=False,
+        help='Buffer days around post-date.',
+    )
     @click.option(
         '--dst_dir',
         type=str,
-        default='out/',
+        default=DEFAULT_DST_DIR_STR,
         required=False,
         help='Path to intermediate data products',
     )
@@ -50,24 +76,28 @@ def common_options(func: Callable) -> Callable:
         '--memory_strategy',
         type=click.Choice(['high', 'low']),
         required=False,
-        default='high',
+        default=DEFAULT_MEMORY_STRATEGY,
         help='Memory strategy to use for GPU inference. Options: high, low.',
     )
     @click.option(
         '--moderate_confidence_threshold',
         type=float,
         required=False,
-        default=3.5,
+        default=DEFAULT_MODERATE_CONFIDENCE_THRESHOLD,
         help='Moderate confidence threshold.',
     )
     @click.option(
-        '--high_confidence_threshold', type=float, required=False, default=5.5, help='High confidence threshold.'
+        '--high_confidence_threshold',
+        type=float,
+        required=False,
+        default=DEFAULT_HIGH_CONFIDENCE_THRESHOLD,
+        help='High confidence threshold.',
     )
-    @click.option('--tqdm_enabled', type=bool, required=False, default=True, help='Enable tqdm.')
+    @click.option('--tqdm_enabled', type=bool, required=False, default=DEFAULT_TQDM_ENABLED, help='Enable tqdm.')
     @click.option(
         '--input_data_dir',
         type=str,
-        default=None,
+        default=DEFAULT_INPUT_DATA_DIR,
         required=False,
         help='Input data directory. If None, uses `dst_dir`. Default None.',
     )
@@ -81,7 +111,7 @@ def common_options(func: Callable) -> Callable:
     @click.option(
         '--apply_water_mask',
         type=bool,
-        default=True,
+        default=DEFAULT_APPLY_WATER_MASK,
         required=False,
         help='Apply water mask to the data.',
     )
@@ -89,12 +119,12 @@ def common_options(func: Callable) -> Callable:
         '--lookback_strategy',
         type=click.Choice(['multi_window', 'immediate_lookback']),
         required=False,
-        default='multi_window',
+        default=DEFAULT_LOOKBACK_STRATEGY,
         help='Options to use for lookback strategy.',
     )
     @click.option(
         '--max_pre_imgs_per_burst_mw',
-        default='5,5',
+        default=DEFAULT_MAX_PRE_IMGS_PER_BURST_MW_STR,
         callback=parse_int_list,
         required=False,
         show_default=True,
@@ -102,7 +132,7 @@ def common_options(func: Callable) -> Callable:
     )
     @click.option(
         '--delta_lookback_days_mw',
-        default='730,365',
+        default=DEFAULT_DELTA_LOOKBACK_DAYS_MW_STR,
         callback=parse_int_list,
         required=False,
         show_default=True,
@@ -126,7 +156,7 @@ def common_options(func: Callable) -> Callable:
     @click.option(
         '--n_workers_for_despeckling',
         type=int,
-        default=8,
+        default=DEFAULT_N_WORKERS_FOR_DESPECKLING,
         required=False,
         help='N CPUs to use for despeckling the bursts',
     )
@@ -141,13 +171,13 @@ def common_options(func: Callable) -> Callable:
         '--device',
         type=click.Choice(['cpu', 'cuda', 'mps', 'best']),
         required=False,
-        default='best',
+        default=DEFAULT_DEVICE,
         help='Device to use for transformer model inference of normal parameters.',
     )
     @click.option(
         '--n_workers_for_norm_param_estimation',
         type=int,
-        default=8,
+        default=DEFAULT_N_WORKERS_FOR_NORM_PARAM_ESTIMATION,
         required=False,
         help='Number of CPUs to use for normal parameter estimation; error will be thrown if GPU is available and not'
         ' or set to something other than CPU.',
@@ -176,7 +206,7 @@ def common_options(func: Callable) -> Callable:
     @click.option(
         '--stride_for_norm_param_estimation',
         type=int,
-        default=16,
+        default=DEFAULT_STRIDE_FOR_NORM_PARAM_ESTIMATION,
         required=False,
         help='Batch size for norm param. Number of pixels the'
         ' convolutional filter moves across the input image at'
@@ -185,14 +215,14 @@ def common_options(func: Callable) -> Callable:
     @click.option(
         '--batch_size_for_norm_param_estimation',
         type=int,
-        default=32,
+        default=DEFAULT_BATCH_SIZE_FOR_NORM_PARAM_ESTIMATION,
         required=False,
         help='Batch size for norm param estimation; Tune it according to resouces i.e. memory.',
     )
     @click.option(
         '--model_compilation',
         type=bool,
-        default=False,
+        default=DEFAULT_MODEL_COMPILATION,
         required=False,
         help='Flag to enable compilation duringe execution.',
     )
@@ -207,13 +237,13 @@ def common_options(func: Callable) -> Callable:
         '--model_dtype',
         type=click.Choice(['float32', 'bfloat16', 'float16']),
         required=False,
-        default='float32',
+        default=DEFAULT_MODEL_DTYPE,
         help='Data type for model inference. Options: float32, bfloat16, float16.',
     )
     @click.option(
         '--use_date_encoding',
         type=bool,
-        default=False,
+        default=DEFAULT_USE_DATE_ENCODING,
         required=False,
         help='Whether to use acquisition date encoding in processing.',
     )
