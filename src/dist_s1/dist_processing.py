@@ -8,7 +8,7 @@ from distmetrics.rio_tools import merge_categorical_arrays, merge_with_weighted_
 from distmetrics.tf_inference import estimate_normal_params
 from scipy.special import logit
 
-from dist_s1.constants import BASE_DATE, DISTLABEL2VAL, DIST_CMAP
+from dist_s1.constants import BASE_DATE_FOR_CONFIRMATION, DISTLABEL2VAL, DIST_CMAP
 from dist_s1.rio_tools import check_profiles_match, get_mgrs_profile, open_one_ds, serialize_one_2d_ds
 
 
@@ -170,14 +170,14 @@ def compute_tile_disturbance_using_previous_product_and_serialize(
     conf_upper_lim: int = 32000,
     conf_thresh: float = 3**2 * 3.5,
     metric_value_upper_lim: float = 100,
-    base_date: datetime.datetime | None = None,
+    base_date_for_confirmation: datetime.datetime | None = None,
     previous_dist_arr_path_list: list[str | None] | None = None,
 ) -> None:
     # Status codes
     NODIST, FIRSTLO, PROVLO, CONFLO, FIRSTHI, PROVHI, CONFHI, CONFLOFIN, CONFHIFIN, NODATA = range(10)
     NODATA = 255  # right now this function is not used, check the function.
-    if base_date is None:
-        base_date = BASE_DATE
+    if base_date_for_confirmation is None:
+        base_date_for_confirmation = BASE_DATE_FOR_CONFIRMATION
 
     # Get dist_date from a sample path pattern
     dist_date = datetime.datetime.strptime(Path(dist_metric_date).name.split('_')[4], '%Y%m%dT%H%M%SZ')
@@ -185,7 +185,7 @@ def compute_tile_disturbance_using_previous_product_and_serialize(
     # Load current metric and profile
     currAnom, anom_prof = open_one_ds(dist_metric_path)
     rows, cols = currAnom.shape
-    currDate = (dist_date - base_date).days
+    currDate = (dist_date - base_date_for_confirmation).days
 
     # Initialize or load previous arrays
     if previous_dist_arr_path_list is None:

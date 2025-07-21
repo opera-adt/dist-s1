@@ -15,6 +15,35 @@ from pandera.pandas import check_input
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, ValidationInfo, field_validator, model_validator
 from yaml import Dumper
 
+from dist_s1.data_models.defaults import (
+    DEFAULT_APPLY_DESPECKLING,
+    DEFAULT_APPLY_LOGIT_TO_INPUTS,
+    DEFAULT_APPLY_WATER_MASK,
+    DEFAULT_BATCH_SIZE_FOR_NORM_PARAM_ESTIMATION,
+    DEFAULT_CHECK_INPUT_PATHS,
+    DEFAULT_CONF_THRESH,
+    DEFAULT_CONF_UPPER_LIM,
+    DEFAULT_DELTA_LOOKBACK_DAYS_MW,
+    DEFAULT_DEVICE,
+    DEFAULT_DST_DIR,
+    DEFAULT_HIGH_CONFIDENCE_THRESHOLD,
+    DEFAULT_INTERPOLATION_METHOD,
+    DEFAULT_LOOKBACK_STRATEGY,
+    DEFAULT_MAX_OBS_NUM_YEAR,
+    DEFAULT_MAX_PRE_IMGS_PER_BURST_MW,
+    DEFAULT_MEMORY_STRATEGY,
+    DEFAULT_METRIC_VALUE_UPPER_LIM,
+    DEFAULT_MODEL_COMPILATION,
+    DEFAULT_MODEL_DTYPE,
+    DEFAULT_MODEL_SOURCE,
+    DEFAULT_MODERATE_CONFIDENCE_THRESHOLD,
+    DEFAULT_NODAYLIMIT,
+    DEFAULT_N_WORKERS_FOR_DESPECKLING,
+    DEFAULT_N_WORKERS_FOR_NORM_PARAM_ESTIMATION,
+    DEFAULT_STRIDE_FOR_NORM_PARAM_ESTIMATION,
+    DEFAULT_TQDM_ENABLED,
+    DEFAULT_USE_DATE_ENCODING,
+)
 from dist_s1.data_models.output_models import ProductDirectoryData, ProductNameData
 from dist_s1.water_mask import water_mask_control_flow
 
@@ -110,82 +139,82 @@ class AlgoConfigData(BaseModel):
     """Base class containing algorithm configuration parameters."""
 
     device: str = Field(
-        default='cpu',
+        default=DEFAULT_DEVICE,
         pattern='^(best|cuda|mps|cpu)$',
     )
     memory_strategy: str | None = Field(
-        default='high',
+        default=DEFAULT_MEMORY_STRATEGY,
         pattern='^(high|low)$',
     )
-    tqdm_enabled: bool = Field(default=True)
+    tqdm_enabled: bool = Field(default=DEFAULT_TQDM_ENABLED)
     n_workers_for_norm_param_estimation: int = Field(
-        default=8,
+        default=DEFAULT_N_WORKERS_FOR_NORM_PARAM_ESTIMATION,
         ge=1,
     )
     # Batch size for transformer model.
     batch_size_for_norm_param_estimation: int = Field(
-        default=32,
+        default=DEFAULT_BATCH_SIZE_FOR_NORM_PARAM_ESTIMATION,
         ge=1,
     )
     # Stride for transformer model.
     stride_for_norm_param_estimation: int = Field(
-        default=16,
+        default=DEFAULT_STRIDE_FOR_NORM_PARAM_ESTIMATION,
         ge=1,
         le=16,
     )
     n_workers_for_despeckling: int = Field(
-        default=8,
+        default=DEFAULT_N_WORKERS_FOR_DESPECKLING,
         ge=1,
     )
     lookback_strategy: str = Field(
-        default='multi_window',
+        default=DEFAULT_LOOKBACK_STRATEGY,
         pattern='^(multi_window|immediate_lookback)$',
     )
     # Flag to enable optimizations. False, load the model and use it.
     # True, load the model and compile for CPU or GPU
-    model_compilation: bool = Field(default=False)
+    model_compilation: bool = Field(default=DEFAULT_MODEL_COMPILATION)
     max_pre_imgs_per_burst_mw: list[int] = Field(
-        default=[5, 5],
+        default=DEFAULT_MAX_PRE_IMGS_PER_BURST_MW,
         description='Max number of pre-images per burst within each window',
     )
     delta_lookback_days_mw: list[int] = Field(
-        default=[730, 365],
+        default=DEFAULT_DELTA_LOOKBACK_DAYS_MW,
         description='Delta lookback days for each window relative to post-image acquisition date',
     )
     # This is where default thresholds are set!
-    moderate_confidence_threshold: float = Field(default=3.5, ge=0.0, le=15.0)
-    high_confidence_threshold: float = Field(default=5.5, ge=0.0, le=15.0)
-    nodaylimit: int = Field(default=18)
-    max_obs_num_year: int = Field(default=253, description='Max observation number per year')
-    conf_upper_lim: int = Field(default=32000, description='Confidence upper limit')
-    conf_thresh: float = Field(default=3**2 * 3.5, description='Confidence threshold')
-    metric_value_upper_lim: float = Field(default=100, description='Metric upper limit')
-    base_date: datetime = Field(
+    moderate_confidence_threshold: float = Field(default=DEFAULT_MODERATE_CONFIDENCE_THRESHOLD, ge=0.0, le=15.0)
+    high_confidence_threshold: float = Field(default=DEFAULT_HIGH_CONFIDENCE_THRESHOLD, ge=0.0, le=15.0)
+    nodaylimit: int = Field(default=DEFAULT_NODAYLIMIT)
+    max_obs_num_year: int = Field(default=DEFAULT_MAX_OBS_NUM_YEAR, description='Max observation number per year')
+    conf_upper_lim: int = Field(default=DEFAULT_CONF_UPPER_LIM, description='Confidence upper limit')
+    conf_thresh: float = Field(default=DEFAULT_CONF_THRESH, description='Confidence threshold')
+    metric_value_upper_lim: float = Field(default=DEFAULT_METRIC_VALUE_UPPER_LIM, description='Metric upper limit')
+    base_date_for_confirmation: datetime = Field(
         default=datetime(2020, 12, 31),
         description='Reference date used to calculate the number of days in confirmation process',
     )
     # model_source == "external" means use externally supplied paths for weights and config
     # otherwise use distmetrics.model_load.ALLOWED_MODELS for other models
-    model_source: str | None = 'transformer_optimized'
+    model_source: str | None = DEFAULT_MODEL_SOURCE
     model_cfg_path: Path | str | None = None
     model_wts_path: Path | str | None = None
     # Use logit transform
-    apply_logit_to_inputs: bool = Field(default=True)
+    apply_logit_to_inputs: bool = Field(default=DEFAULT_APPLY_LOGIT_TO_INPUTS)
     # Use despeckling
-    apply_despeckling: bool = Field(default=True)
+    apply_despeckling: bool = Field(default=DEFAULT_APPLY_DESPECKLING)
     interpolation_method: str = Field(
-        default='bilinear',
+        default=DEFAULT_INTERPOLATION_METHOD,
         pattern='^(nearest|bilinear|none)$',
     )
     # Model data type for inference
     model_dtype: str = Field(
-        default='float32',
-        pattern='^(float32|bfloat16|float16)$',
-        description='Data type for model inference',
+        default=DEFAULT_MODEL_DTYPE,
+        pattern='^(float32|bfloat16|float)$',
+        description='Data type for model inference. Note: bfloat16 is only supported on GPU devices.',
     )
     # Use date encoding in processing
     use_date_encoding: bool = Field(
-        default=False,
+        default=DEFAULT_USE_DATE_ENCODING,
         description='Whether to use acquisition date encoding in processing',
     )
     # Validate assignments to all fields
@@ -273,11 +302,48 @@ class AlgoConfigData(BaseModel):
             raise ValueError(f"model_dtype '{model_dtype}' must be one of: {valid_dtypes}")
         return model_dtype
 
+    @field_validator('model_cfg_path', mode='before')
+    def validate_model_cfg_path(cls, model_cfg_path: Path | str | None) -> Path | None:
+        """Validate that model_cfg_path exists if provided."""
+        if model_cfg_path is None:
+            return None
+        model_cfg_path = Path(model_cfg_path) if isinstance(model_cfg_path, str) else model_cfg_path
+        if not model_cfg_path.exists():
+            raise ValueError(f'Model config path does not exist: {model_cfg_path}')
+        if not model_cfg_path.is_file():
+            raise ValueError(f'Model config path is not a file: {model_cfg_path}')
+        return model_cfg_path
+
+    @field_validator('model_wts_path', mode='before')
+    def validate_model_wts_path(cls, model_wts_path: Path | str | None) -> Path | None:
+        """Validate that model_wts_path exists if provided."""
+        if model_wts_path is None:
+            return None
+        model_wts_path = Path(model_wts_path) if isinstance(model_wts_path, str) else model_wts_path
+        if not model_wts_path.exists():
+            raise ValueError(f'Model weights path does not exist: {model_wts_path}')
+        if not model_wts_path.is_file():
+            raise ValueError(f'Model weights path is not a file: {model_wts_path}')
+        return model_wts_path
+
     @model_validator(mode='after')
     def validate_model_compilation_device_compatibility(self) -> 'AlgoConfigData':
         """Validate that model_compilation is not True when device is 'mps'."""
         if self.model_compilation is True and self.device == 'mps':
             raise ValueError('model_compilation cannot be True when device is set to mps')
+        return self
+
+    @model_validator(mode='after')
+    def validate_model_dtype_device_compatibility(self) -> 'AlgoConfigData':
+        """Warn when bfloat16 is used with non-GPU devices."""
+        if self.model_dtype == 'bfloat16' and self.device not in ['cuda']:
+            warnings.warn(
+                f"model_dtype 'bfloat16' is only supported on GPU devices. "
+                f"Current device is '{self.device}'. "
+                f"Consider using 'float32' or 'float' for CPU/MPS devices.",
+                UserWarning,
+                stacklevel=2,
+            )
         return self
 
     def to_yml(self, yaml_file: str | Path) -> None:
@@ -298,10 +364,10 @@ class RunConfigData(AlgoConfigData):
     post_rtc_crosspol: list[Path | str]
     prior_dist_s1_product: ProductDirectoryData | None = None
     mgrs_tile_id: str
-    dst_dir: Path | str = Path('out')
+    dst_dir: Path | str = DEFAULT_DST_DIR
     water_mask_path: Path | str | None = None
-    apply_water_mask: bool = Field(default=True)
-    check_input_paths: bool = True
+    apply_water_mask: bool = Field(default=DEFAULT_APPLY_WATER_MASK)
+    check_input_paths: bool = DEFAULT_CHECK_INPUT_PATHS
     product_dst_dir: Path | str | None = None
     bucket: str | None = None
     bucket_prefix: str | None = None
@@ -506,12 +572,12 @@ class RunConfigData(AlgoConfigData):
     def from_product_df(
         cls,
         product_df: gpd.GeoDataFrame,
-        dst_dir: Path | str | None = Path('out'),
-        apply_water_mask: bool = True,
+        dst_dir: Path | str | None = DEFAULT_DST_DIR,
+        apply_water_mask: bool = DEFAULT_APPLY_WATER_MASK,
         water_mask_path: Path | str | None = None,
         max_pre_imgs_per_burst_mw: list[int] | None = None,
         delta_lookback_days_mw: list[int] | None = None,
-        lookback_strategy: str = 'multi_window',
+        lookback_strategy: str = DEFAULT_LOOKBACK_STRATEGY,
         prior_dist_s1_product: ProductDirectoryData | None = None,
         # Removed algorithm parameters that can be assigned later:
         # device, interpolation_method, apply_despeckling, apply_logit_to_inputs
@@ -523,9 +589,9 @@ class RunConfigData(AlgoConfigData):
         df_pre = product_df[product_df.input_category == 'pre'].reset_index(drop=True)
         df_post = product_df[product_df.input_category == 'post'].reset_index(drop=True)
         if max_pre_imgs_per_burst_mw is None:
-            max_pre_imgs_per_burst_mw = [5, 5]
+            max_pre_imgs_per_burst_mw = DEFAULT_MAX_PRE_IMGS_PER_BURST_MW
         if delta_lookback_days_mw is None:
-            delta_lookback_days_mw = [730, 365]
+            delta_lookback_days_mw = DEFAULT_DELTA_LOOKBACK_DAYS_MW
         runconfig_data = RunConfigData(
             pre_rtc_copol=df_pre.loc_path_copol.tolist(),
             pre_rtc_crosspol=df_pre.loc_path_crosspol.tolist(),

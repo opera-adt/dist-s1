@@ -9,8 +9,9 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [2.0.0] - 2025-07-16
 
 ## Removed
-- `n_lookbacks` (which should be called `n_baselines`) for computing confirmation within the SAS
+- `n_lookbacks` (which should have been called `n_baselines`) for computing confirmation within the SAS
    - No longer is there complicated accounting to keeping track of and confirming changes through baseline
+- Constant for `BASE_DATE`.
 
 ## Changed
 - Multiwindow strategy is now the default in both python API and CLI
@@ -18,14 +19,18 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Now retrieves the umd distance to land and use a water mask that excluded 1 km from ocean.
 - `optimize` is now `model_compilation`; also does not work with `device` that is `mps`
 - Update validation to occur at assignment and remove algorithm parameters being assigned within localization workflow.
+- `base_date` is now `base_date_for_confirmation`.
 
 ## Added
+- Constants for CLI and `RunConfigData` - allows for consistent data parsing.
 - Ability to use algorithm parameters to supplement runconfig for SDS operations.
   - It's now a base class to `RunConfigData` and if an external 
 - Updated interface for despeckling to use interpolation to fill nan values within burst area.
   - distmetrics>=1.0.0 - see more details there
 - Allows for serialization of yml files during `run_sas_prep_workflow` and associated CLI
   - Also allows for serialization of algorithm parameters to serparate file as well.
+- Validation for `model_dtype` with `device` (only `bfloat16` is permitted with `GPU`)
+- Validation for external model usage
 
 ## Fixed
 - All the tests with the updates above.

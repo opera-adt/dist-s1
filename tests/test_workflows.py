@@ -1,3 +1,4 @@
+import json
 import shutil
 from collections.abc import Callable
 from pathlib import Path
@@ -133,6 +134,63 @@ def test_dist_s1_workflow_interface(
         dst_dir=tmp_dir,
         apply_water_mask=False,
     )
+
+    if ERASE_WORKFLOW_OUTPUTS:
+        shutil.rmtree(tmp_dir)
+
+
+def test_dist_s1_workflow_interface_external_model(
+    test_dir: Path,
+    test_data_dir: Path,
+    change_local_dir: Callable,
+    mocker: MockerFixture,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """Tests the s1 workflow interface with external model source, not the outputs."""
+    change_local_dir(test_dir)
+    tmp_dir = test_dir / 'tmp'
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    monkeypatch.setenv('EARTHDATA_USERNAME', 'foo')
+    monkeypatch.setenv('EARTHDATA_PASSWORD', 'bar')
+
+    # Create temporary model config and weights files
+    model_cfg_path = tmp_dir / 'model_config.json'
+    model_wts_path = tmp_dir / 'model_weights.pth'
+
+    # Create dummy config file (JSON format)
+    model_cfg_content = {'model_type': 'transformer', 'n_heads': 8, 'd_model': 256, 'num_layers': 6}
+    with model_cfg_path.open('w') as f:
+        json.dump(model_cfg_content, f)
+
+    # Create dummy weights file (just a placeholder)
+    model_wts_path.write_text('dummy_weights_content')
+
+    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
+    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir)
+    config.apply_water_mask = False
+
+    # We don't need credentials because we mock the data.
+    mocker.patch('dist_s1.localize_rtc_s1.enumerate_one_dist_s1_product', return_value=df_product)
+    mocker.patch('dist_s1.localize_rtc_s1.localize_rtc_s1_ts', return_value=df_product)
+    mocker.patch('dist_s1.workflows.run_dist_s1_sas_workflow', return_value=config)
+
+    run_dist_s1_workflow(
+        mgrs_tile_id='10SGD',
+        post_date='2025-01-02',
+        track_number=137,
+        dst_dir=tmp_dir,
+        apply_water_mask=False,
+        device='cpu',  # Use CPU to avoid MPS validation issues
+        n_workers_for_norm_param_estimation=1,  # Required for MPS/CUDA devices
+        model_source='external',
+        model_cfg_path=str(model_cfg_path),
+        model_wts_path=str(model_wts_path),
+    )
+
+    # Verify the temporary files were created and exist
+    assert model_cfg_path.exists()
+    assert model_wts_path.exists()
 
     if ERASE_WORKFLOW_OUTPUTS:
         shutil.rmtree(tmp_dir)
