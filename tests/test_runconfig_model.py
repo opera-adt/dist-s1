@@ -653,7 +653,7 @@ def test_model_dtype_device_compatibility_warning(
     # Test 5: Test with AlgoConfigData directly
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter('always')
-        algo_config = AlgoConfigData(model_dtype='bfloat16', device='cpu')
+        _ = AlgoConfigData(model_dtype='bfloat16', device='cpu')
 
         # Check that warning was issued
         warning_messages = [str(warning.message) for warning in w]
