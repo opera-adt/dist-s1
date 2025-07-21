@@ -20,8 +20,6 @@ def localize_rtc_s1(
     input_data_dir: Path | str | None = None,
     dst_dir: Path | str | None = 'out',
     tqdm_enabled: bool = True,
-    # Removed parameters that can be assigned later:
-    # apply_water_mask, water_mask_path, confirmation
 ) -> RunConfigData:
     """Localize RTC-S1 data and create RunConfigData.
 

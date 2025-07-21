@@ -11,7 +11,7 @@ from .data_models.defaults import (
     DEFAULT_BATCH_SIZE_FOR_NORM_PARAM_ESTIMATION,
     DEFAULT_DELTA_LOOKBACK_DAYS_MW,
     DEFAULT_DEVICE,
-    DEFAULT_DST_DIR_STR,
+    DEFAULT_DST_DIR,
     DEFAULT_HIGH_CONFIDENCE_THRESHOLD,
     DEFAULT_INPUT_DATA_DIR,
     DEFAULT_LOOKBACK_STRATEGY,
@@ -68,7 +68,7 @@ def common_options(func: Callable) -> Callable:
     @click.option(
         '--dst_dir',
         type=str,
-        default=DEFAULT_DST_DIR_STR,
+        default=str(DEFAULT_DST_DIR),
         required=False,
         help='Path to intermediate data products',
     )

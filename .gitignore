@@ -92,6 +92,10 @@ notebooks/out/
 notebooks/los-angeles/
 
 
+# Notes
+notes/
+
+
 # Notebooks in tests
 tests/*.ipynb
 

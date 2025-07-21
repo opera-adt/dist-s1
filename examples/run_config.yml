@@ -360,6 +360,7 @@ run_config:
     dst_dir: /Users/cmarshak/bekaert-team/dist-s1/notebooks/los-angeles
     water_mask_path: /Users/cmarshak/bekaert-team/dist-s1/notebooks/los-angeles/11SLT_water_mask.tif
     apply_water_mask: true
+    post_date_buffer_days: 1
     product_dst_dir: /Users/cmarshak/bekaert-team/dist-s1/notebooks/los-angeles
     bucket:
     bucket_prefix:

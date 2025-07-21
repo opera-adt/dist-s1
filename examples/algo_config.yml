@@ -6,6 +6,7 @@ algo_config:
     batch_size_for_norm_param_estimation: 32
     stride_for_norm_param_estimation: 8
     n_workers_for_despeckling: 8
+    input_data_dir: /Users/cmarshak/bekaert-team/dist-s1/notebooks/los-angeles
     lookback_strategy: multi_window
     model_compilation: false
     max_pre_imgs_per_burst_mw:

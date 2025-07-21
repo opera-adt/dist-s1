@@ -133,6 +133,8 @@ def test_dist_s1_main_interface(
             str(tmp_dir),
             '--device',
             device,
+            '--n_workers_for_norm_param_estimation',
+            '1',  # Required for MPS/CUDA devices when device='best' resolves to GPU
         ],
     )
     assert result.exit_code == 0
