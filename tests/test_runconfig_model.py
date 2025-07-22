@@ -8,8 +8,9 @@ import numpy as np
 import pytest
 from pydantic import ValidationError
 
+from dist_s1.data_models.algoconfig_model import AlgoConfigData
 from dist_s1.data_models.output_models import ProductDirectoryData
-from dist_s1.data_models.runconfig_model import AlgoConfigData, RunConfigData
+from dist_s1.data_models.runconfig_model import RunConfigData
 
 
 def test_input_data_model_from_cropped_dataset(test_dir: Path, test_data_dir: Path, change_local_dir: Callable) -> None:

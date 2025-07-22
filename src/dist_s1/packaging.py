@@ -146,7 +146,7 @@ def package_disturbance_tifs_no_confirmation(run_config: RunConfigData) -> None:
         ]
 
     for arr, prof, path, cmap in serialization_inputs:
-        serialize_one_2d_ds(arr, prof, path, colormap=cmap, tags=tags)
+        serialize_one_2d_ds(arr, prof, path, colormap=cmap, tags=tags, cog=True)
 
 
 def package_conf_db_disturbance_tifs(run_config: RunConfigData) -> None:
