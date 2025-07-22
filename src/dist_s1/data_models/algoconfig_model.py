@@ -14,6 +14,7 @@ from dist_s1.data_models.defaults import (
     DEFAULT_BATCH_SIZE_FOR_NORM_PARAM_ESTIMATION,
     DEFAULT_CONF_THRESH,
     DEFAULT_CONF_UPPER_LIM,
+    DEFAULT_CONSECUTIVE_NODIST,
     DEFAULT_DELTA_LOOKBACK_DAYS_MW,
     DEFAULT_DEVICE,
     DEFAULT_HIGH_CONFIDENCE_THRESHOLD,
@@ -29,9 +30,11 @@ from dist_s1.data_models.defaults import (
     DEFAULT_MODEL_SOURCE,
     DEFAULT_MODEL_WTS_PATH,
     DEFAULT_MODERATE_CONFIDENCE_THRESHOLD,
+    DEFAULT_NOCOUNT_RESET_THRESH,
     DEFAULT_NODAYLIMIT,
     DEFAULT_N_WORKERS_FOR_DESPECKLING,
     DEFAULT_N_WORKERS_FOR_NORM_PARAM_ESTIMATION,
+    DEFAULT_PERCENT_RESET_THRESH,
     DEFAULT_POST_DATE_BUFFER_DAYS,
     DEFAULT_STRIDE_FOR_NORM_PARAM_ESTIMATION,
     DEFAULT_TQDM_ENABLED,
@@ -133,6 +136,21 @@ class AlgoConfigData(BaseModel):
         default=DEFAULT_NODAYLIMIT,
         description='Number of days to limit confirmation process. Confirmation must occur within first '
         'observance of disturbance and `nodaylimit` days after.',
+    )
+    consecutive_nodist: int = Field(
+        default=DEFAULT_CONSECUTIVE_NODIST,
+        description='Boolean activation of consecutive no disturbance tracking. True will apply this logic, '
+        'after 2 `nocount` disturbance must finish.',
+    )
+    percent_reset_thresh: int = Field(
+        default=DEFAULT_PERCENT_RESET_THRESH,
+        description='Precentage number threshold to reset disturbance. Values below `percent_reset_thresh` '
+        'will reset disturbance.',
+    )
+    nocount_reset_thresh: int = Field(
+        default=DEFAULT_NOCOUNT_RESET_THRESH,
+        description='If the number of non-disturbed observations `prevnocount` is above `nocount_reset_thresh` '
+        'disturbance will reset.',
     )
     max_obs_num_year: int = Field(
         default=DEFAULT_MAX_OBS_NUM_YEAR,
