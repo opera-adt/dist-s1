@@ -1,8 +1,7 @@
 import warnings
 from importlib.metadata import PackageNotFoundError, version
 
-from .data_models.runconfig_model import RunConfigData
-from .workflows import (
+from dist_s1.workflows import (
     run_burst_disturbance_workflow,
     run_despeckle_workflow,
     run_dist_s1_localization_workflow,
@@ -25,7 +24,6 @@ except PackageNotFoundError:
 
 
 __all__ = [
-    'RunConfigData',
     'run_dist_s1_workflow',
     'run_dist_s1_sas_workflow',
     'run_dist_s1_localization_workflow',

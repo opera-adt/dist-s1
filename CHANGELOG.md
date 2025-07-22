@@ -21,6 +21,8 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Update validation to occur at assignment and remove algorithm parameters being assigned within localization workflow.
 - `base_date` is now `base_date_for_confirmation`.
 - Remove algorithm assignments in localization workflows.
+- Organized `AlgoConfigData` and `RunConfigData` into seperate files
+- Put data/path utils into `data_utils.py`.
 
 ## Added
 - Constants for CLI and `RunConfigData` - allows for consistent data parsing.
@@ -33,6 +35,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Validation for `model_dtype` with `device` (only `bfloat16` is permitted with `GPU`)
 - Validation for external model usage
 - Description of Runconfig Variables
+- Cloud-optimized Geotiff Format in Packaging
 
 ## Fixed
 - All the tests with the updates above.
