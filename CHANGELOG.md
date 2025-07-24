@@ -36,6 +36,10 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Validation for external model usage
 - Description of Runconfig Variables
 - Cloud-optimized Geotiff Format in Packaging
+- Confirmation is now contained inside its own function `confirmation.py`
+  - Exposed parameter `consecutive_nodist`, if `True` the `nocount` condition is applied (doesn't allow 2 consecutive misses).
+  - Exposed parameter `percent_reset_thresh`, it will apply reset if `percent` below threshold. 
+  - Exposed parameter `nocount_reset_thresh`, it will apply reset if `prevnocount` is above threshold.   
 
 ## Fixed
 - All the tests with the updates above.

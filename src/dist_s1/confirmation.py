@@ -77,7 +77,7 @@ def compute_tile_disturbance_using_previous_product_and_serialize(
 
     with np.errstate(divide='ignore', invalid='ignore'):
         prevnocount = np.where(
-            (percent > 0) & (percent <= 100), ((100 - percent) / percent * count).astype(np.int32), 0
+            (percent > 0) & (percent <= 100), ((100.0 - percent) / percent * count).astype(np.int32), 0
         )
 
     disturbed = (current_metric >= lowthresh) & valid
@@ -95,7 +95,7 @@ def compute_tile_disturbance_using_previous_product_and_serialize(
     can_increment = continuing & (count < max_obs_num_year)
     count[can_increment] += 1
     percent[can_increment] = (
-        (count[can_increment] * 100) / (count[can_increment] + prevnocount[can_increment])
+        (count[can_increment] * 100.0) / (count[can_increment] + prevnocount[can_increment])
     ).astype(np.uint8)
 
     duration[disturbed] = current_date - date[disturbed] + 1
@@ -105,7 +105,7 @@ def compute_tile_disturbance_using_previous_product_and_serialize(
     adjust_percent = not_disturbed & (percent > 0) & (percent <= 100) & (count < max_obs_num_year + 1)
     prevcount = count.copy()
     percent[adjust_percent] = (
-        (count[adjust_percent] * 100) / (prevcount[adjust_percent] + prevnocount[adjust_percent] + 1)
+        (count[adjust_percent] * 100.0) / (prevcount[adjust_percent] + prevnocount[adjust_percent] + 1)
     ).astype(np.uint8)
     
     # Reset status for pixels that were NODATA and are now not disturbed 
@@ -132,7 +132,7 @@ def compute_tile_disturbance_using_previous_product_and_serialize(
     with np.errstate(divide='ignore', invalid='ignore'):
         mean[update_conf] = (prevmean[update_conf] * (count[update_conf] + prevnocount[update_conf]) +
                              curr_metric_conf[update_conf]) / denom[update_conf]
-    tempconf = (mean * count * count).astype(np.int32)
+    tempconf = (mean * count.astype(np.float64) * count.astype(np.float64)).astype(np.int32)
     confidence[update_conf] = np.clip(tempconf[update_conf], 0, conf_upper_lim)
 
     # Update confidence for new disturbances
@@ -176,24 +176,22 @@ def compute_tile_disturbance_using_previous_product_and_serialize(
     must_finish_conditions.append(((current_date - last_metric_date) >= nodaylimit) & (last_metric_date > 0))
     # Condition B: Short disturbance with low current metric
     must_finish_conditions.append((duration == 1) & (current_metric < lowthresh))
-    # Condition C: Conditional nocount logic
+    # Condition C: Conditional nocount logic (used if `consecutive_nodist` is set to True)
     if consecutive_nodist:
         must_finish_conditions.append(nocount == 2)
     # Condition D: Percent below threshold
-    # If the percentage of disturbed observations drops below this, it triggers a reset.
+    # If the percent of disturbed observations drops below threshold, it triggers reset.
     must_finish_conditions.append(percent < percent_reset_thresh)
     # Condition E: Number of non-disturbed observations (prevnocount) below threshold
-    # If the number of non-disturbed observations (prevnocount) is high, the disturbance
-    # is reset (e.g., a weak or false disturbance).
+    # If the number of non-disturbed observations in a series (prevnocount) is high,
+    # the disturbance resets.
     must_finish_conditions.append(prevnocount >= nocount_reset_thresh)
 
     # Combine all must_finish_conditions with OR
-    # Ensure must_finish_conditions is not empty before calling logical_or.reduce
     if must_finish_conditions:
         combined_must_finish_criteria = np.logical_or.reduce(must_finish_conditions)
     else:
         combined_must_finish_criteria = np.full(status.shape, False, dtype=bool)
-
 
     must_finish = (status_at_finish_check <= CONFHI) & combined_must_finish_criteria
 
