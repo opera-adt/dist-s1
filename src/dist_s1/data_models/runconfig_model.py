@@ -88,7 +88,7 @@ class RunConfigData(AlgoConfigData):
     _product_data_model: ProductDirectoryData | None = None
     _min_acq_date: datetime | None = None
     _processing_datetime: datetime | None = None
-    _algo_config_loaded: bool = False  # Track if algorithm config has been loaded
+    _algo_config_loaded: bool = False
     # Validate assignments to all fields
     model_config = ConfigDict(validate_assignment=True)
 
