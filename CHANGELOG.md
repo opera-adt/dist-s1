@@ -39,6 +39,8 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Fixed
 - All the tests with the updates above.
+- Correct loading of algo_config.yml in `prep` steps.
+  - Only `from_yml` loads the algo_config correctly, but when it is assigned in the `prep` workflows, it is not corrected.
 
 
 ## [1.0.1] - 2025-06-05
