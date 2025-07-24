@@ -717,3 +717,109 @@ def test_model_path_validation(test_dir: Path, change_local_dir: Callable) -> No
     assert isinstance(config_with_strings.model_wts_path, Path)
 
     shutil.rmtree(tmp_dir)
+
+
+def test_algo_config_path_programmatic_loading(test_dir: Path, test_data_dir: Path, change_local_dir: Callable) -> None:
+    """Test that algorithm config is automatically loaded when algo_config_path is provided programmatically."""
+    change_local_dir(test_dir)
+
+    tmp_dir = test_dir / 'tmp'
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create a custom algorithm config file with non-default parameters
+    algo_config_content = """
+algo_config:
+  device: cpu
+  memory_strategy: low
+  moderate_confidence_threshold: 4.5
+  high_confidence_threshold: 7.0
+  apply_despeckling: false
+  apply_logit_to_inputs: false
+  n_workers_for_despeckling: 2
+  batch_size_for_norm_param_estimation: 64
+  stride_for_norm_param_estimation: 8
+  interpolation_method: nearest
+  tqdm_enabled: false
+"""
+
+    algo_config_path = tmp_dir / 'test_algo_config.yml'
+    with algo_config_path.open('w') as f:
+        f.write(algo_config_content)
+
+    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
+
+    # Test that algorithm config is loaded automatically when creating RunConfigData programmatically
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter('always')
+
+        config = RunConfigData.from_product_df(
+            df_product,
+            dst_dir=tmp_dir,
+            apply_water_mask=False,
+        )
+
+        # Set algo_config_path to trigger automatic loading
+        config.algo_config_path = algo_config_path
+
+        # Check that warnings were issued for algorithm parameters loaded from external config
+        warning_messages = [str(warning.message) for warning in w]
+        algorithm_warnings = [
+            msg for msg in warning_messages if 'Algorithm parameter' in msg and 'loaded from external config' in msg
+        ]
+
+        # Should have warnings for parameters that were loaded from the external config
+        assert len(algorithm_warnings) > 0, 'Expected warnings for algorithm parameters loaded from external config'
+
+        # Check that specific parameters have warnings
+        expected_warned_params = ['moderate_confidence_threshold', 'apply_despeckling', 'device', 'memory_strategy']
+        for param in expected_warned_params:
+            param_warnings = [msg for msg in algorithm_warnings if f"'{param}'" in msg]
+            assert len(param_warnings) > 0, f"Expected warning for parameter '{param}'"
+
+    # Verify that the algorithm parameters from the config file were correctly applied
+    assert config.device == 'cpu'
+    assert config.memory_strategy == 'low'
+    assert config.moderate_confidence_threshold == 4.5
+    assert config.high_confidence_threshold == 7.0
+    assert config.apply_despeckling is False
+    assert config.apply_logit_to_inputs is False
+    assert config.n_workers_for_despeckling == 2
+    assert config.batch_size_for_norm_param_estimation == 64
+    assert config.stride_for_norm_param_estimation == 8
+    assert config.interpolation_method == 'nearest'
+    assert config.tqdm_enabled is False
+
+    # Test 2: Verify that non-existent algo_config_path raises ValidationError
+    with pytest.raises(ValidationError, match=r'Algorithm config path does not exist'):
+        config = RunConfigData.from_product_df(
+            df_product,
+            dst_dir=tmp_dir,
+            apply_water_mask=False,
+        )
+        config.algo_config_path = tmp_dir / 'non_existent_config.yml'
+
+    # Test 3: Verify that directory instead of file raises ValidationError
+    with pytest.raises(ValidationError, match=r'Algorithm config path is not a file'):
+        config = RunConfigData.from_product_df(
+            df_product,
+            dst_dir=tmp_dir,
+            apply_water_mask=False,
+        )
+        config.algo_config_path = tmp_dir
+
+    # Test 4: Test that algo_config_path can be provided during object creation
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter('always')
+
+        config = RunConfigData.from_product_df(
+            df_product,
+            dst_dir=tmp_dir,
+            apply_water_mask=False,
+        )
+        # Set algo_config_path directly (this should trigger the validator)
+        config.algo_config_path = algo_config_path
+
+        # Verify at least one parameter was loaded correctly
+        assert config.moderate_confidence_threshold == 4.5
+
+    shutil.rmtree(tmp_dir)

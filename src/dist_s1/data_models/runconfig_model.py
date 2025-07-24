@@ -88,6 +88,7 @@ class RunConfigData(AlgoConfigData):
     _product_data_model: ProductDirectoryData | None = None
     _min_acq_date: datetime | None = None
     _processing_datetime: datetime | None = None
+    _algo_config_loaded: bool = False  # Track if algorithm config has been loaded
     # Validate assignments to all fields
     model_config = ConfigDict(validate_assignment=True)
 
@@ -118,6 +119,8 @@ class RunConfigData(AlgoConfigData):
                     )
 
         obj = cls(**runconfig_data)
+        if algo_config_path is not None:
+            obj._algo_config_loaded = True
         return obj
 
     @field_validator('pre_rtc_copol', 'pre_rtc_crosspol', 'post_rtc_copol', 'post_rtc_crosspol', mode='before')
@@ -190,6 +193,18 @@ class RunConfigData(AlgoConfigData):
         if df_mgrs_burst.empty:
             raise ValueError('The MGRS tile specified is not processed by DIST-S1')
         return mgrs_tile_id
+
+    @field_validator('algo_config_path', mode='before')
+    def validate_algo_config_path(cls, algo_config_path: Path | str | None) -> Path | None:
+        """Validate that algo_config_path exists if provided."""
+        if algo_config_path is None:
+            return None
+        algo_config_path = Path(algo_config_path) if isinstance(algo_config_path, str) else algo_config_path
+        if not algo_config_path.exists():
+            raise ValueError(f'Algorithm config path does not exist: {algo_config_path}')
+        if not algo_config_path.is_file():
+            raise ValueError(f'Algorithm config path is not a file: {algo_config_path}')
+        return algo_config_path
 
     @property
     def confirmation(self) -> bool:
@@ -505,4 +520,32 @@ class RunConfigData(AlgoConfigData):
         """Set input_data_dir to dst_dir if None."""
         if self.input_data_dir is None:
             self.input_data_dir = self.dst_dir
+        return self
+
+    @model_validator(mode='after')
+    def handle_algo_config_loading(self) -> 'RunConfigData':
+        """Load algorithm configuration from external file if algo_config_path is provided."""
+        if self.algo_config_path is not None and not self._algo_config_loaded:
+            algo_config = AlgoConfigData.from_yaml(self.algo_config_path)
+
+            algo_field_names = set(AlgoConfigData.model_fields.keys())
+
+            default_algo_config = AlgoConfigData()
+            default_values = default_algo_config.model_dump()
+
+            algo_dict = algo_config.model_dump()
+            for field_name, field_value in algo_dict.items():
+                if field_name in algo_field_names and hasattr(self, field_name):
+                    current_value = getattr(self, field_name)
+                    default_value = default_values.get(field_name)
+
+                    if current_value == default_value:
+                        object.__setattr__(self, field_name, field_value)
+                        warnings.warn(
+                            f"Algorithm parameter '{field_name}' loaded from external config: {self.algo_config_path}",
+                            UserWarning,
+                            stacklevel=2,
+                        )
+            self._algo_config_loaded = True
+
         return self
