@@ -539,13 +539,24 @@ class RunConfigData(AlgoConfigData):
                     current_value = getattr(self, field_name)
                     default_value = default_values.get(field_name)
 
+                    # If the current value is the default, we assume user did not set it and we load it
+                    # from the external yml file.
                     if current_value == default_value:
                         object.__setattr__(self, field_name, field_value)
                         warnings.warn(
-                            f"Algorithm parameter '{field_name}' loaded from external config: {self.algo_config_path}",
+                            f'Algorithm parameter "{field_name}" loaded from external config: {self.algo_config_path} '
+                            'to non-default value.',
                             UserWarning,
                             stacklevel=2,
                         )
+                    else:
+                        warnings.warn(
+                            f'Algorithm parameter "{field_name}" is already set to {current_value} in model '
+                            '(non-default value) and will not be overridden by algo_config.yml.',
+                            UserWarning,
+                            stacklevel=2,
+                        )
+
             self._algo_config_loaded = True
 
         return self
