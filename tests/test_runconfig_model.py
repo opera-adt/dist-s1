@@ -321,20 +321,22 @@ def test_algorithm_config_from_yaml(
         warnings.simplefilter('always')
         config = RunConfigData.from_yaml(str(main_config_path))
 
-        # Check that warnings were issued for algorithm parameters
+        # Check that the single warning was issued for algorithm fields initialization
         warning_messages = [str(warning.message) for warning in w]
         algorithm_warnings = [
-            msg for msg in warning_messages if 'Algorithm parameter' in msg and 'inherited from external config' in msg
+            msg
+            for msg in warning_messages
+            if 'All algorithm fields (including defaults) are being initialized by' in msg
         ]
 
-        # Should have warnings for each algorithm parameter that was inherited
-        assert len(algorithm_warnings) > 0, 'Expected warnings for inherited algorithm parameters'
+        # Should have exactly one warning for algorithm fields initialization
+        assert len(algorithm_warnings) == 1, (
+            f'Expected exactly one warning for algorithm fields initialization, got {len(algorithm_warnings)}'
+        )
 
-        # Check that specific parameters have warnings
-        expected_params = ['interpolation_method', 'moderate_confidence_threshold', 'device', 'apply_despeckling']
-        for param in expected_params:
-            param_warnings = [msg for msg in algorithm_warnings if f"'{param}'" in msg]
-            assert len(param_warnings) > 0, f"Expected warning for parameter '{param}'"
+        # Verify the warning mentions the correct file path
+        algo_warning = algorithm_warnings[0]
+        assert str(test_algo_config_path) in algo_warning, f'Warning should mention the algorithm config file path'
 
     # Verify that the algorithm parameters were actually applied
     assert config.interpolation_method == 'bilinear'
@@ -391,23 +393,24 @@ def test_algorithm_config_parameter_conflicts(
         warnings.simplefilter('always')
         config = RunConfigData.from_yaml(str(main_config_path))
 
-        # Check that warnings were issued only for non-conflicting parameters
+        # Check that the single warning was issued for algorithm fields initialization
         warning_messages = [str(warning.message) for warning in w]
         algorithm_warnings = [
-            msg for msg in warning_messages if 'Algorithm parameter' in msg and 'inherited from external config' in msg
+            msg
+            for msg in warning_messages
+            if 'All algorithm fields (including defaults) are being initialized by' in msg
         ]
 
-        # Should have warnings for parameters that were inherited (not overridden)
-        inherited_params = ['apply_despeckling', 'memory_strategy']
-        for param in inherited_params:
-            param_warnings = [msg for msg in algorithm_warnings if f"'{param}'" in msg]
-            assert len(param_warnings) > 0, f"Expected warning for inherited parameter '{param}'"
+        # Should have exactly one warning for algorithm fields initialization
+        assert len(algorithm_warnings) == 1, (
+            f'Expected exactly one warning for algorithm fields initialization, got {len(algorithm_warnings)}'
+        )
 
-        # Should NOT have warnings for parameters that were overridden in main config
-        overridden_params = ['interpolation_method', 'moderate_confidence_threshold', 'device']
-        for param in overridden_params:
-            param_warnings = [msg for msg in algorithm_warnings if f"'{param}'" in msg]
-            assert len(param_warnings) == 0, f"Should not have warning for overridden parameter '{param}'"
+        # Verify the warning mentions the correct file path
+        algo_warning = algorithm_warnings[0]
+        assert str(test_algo_config_conflicts_path) in algo_warning, (
+            f'Warning should mention the algorithm config file path'
+        )
 
     # Verify that main config parameters take precedence
     assert config.interpolation_method == 'nearest'  # From main config
@@ -763,17 +766,27 @@ algo_config:
 
         # Check that warnings were issued for algorithm parameters loaded from external config
         warning_messages = [str(warning.message) for warning in w]
-        algorithm_warnings = [
-            msg for msg in warning_messages if 'Algorithm parameter' in msg and 'loaded from external config' in msg
+
+        # Look for individual parameter warnings from AlgoConfigData.from_yaml
+        individual_param_warnings = [
+            msg for msg in warning_messages if 'Algorithm parameter' in msg and 'from external config file' in msg
         ]
 
-        # Should have warnings for parameters that were loaded from the external config
-        assert len(algorithm_warnings) > 0, 'Expected warnings for algorithm parameters loaded from external config'
+        # Look for the summary warning from handle_algo_config_loading
+        summary_warnings = [msg for msg in warning_messages if 'Updated algorithm parameters from' in msg]
 
-        # Check that specific parameters have warnings
+        # Should have individual warnings for parameters loaded from the external config
+        assert len(individual_param_warnings) > 0, (
+            'Expected individual warnings for algorithm parameters loaded from external config'
+        )
+
+        # Should also have a summary warning
+        assert len(summary_warnings) > 0, 'Expected summary warning for updated algorithm parameters'
+
+        # Check that specific parameters have individual warnings
         expected_warned_params = ['moderate_confidence_threshold', 'apply_despeckling', 'device', 'memory_strategy']
         for param in expected_warned_params:
-            param_warnings = [msg for msg in algorithm_warnings if f"'{param}'" in msg]
+            param_warnings = [msg for msg in individual_param_warnings if f"'{param}'" in msg]
             assert len(param_warnings) > 0, f"Expected warning for parameter '{param}'"
 
     # Verify that the algorithm parameters from the config file were correctly applied

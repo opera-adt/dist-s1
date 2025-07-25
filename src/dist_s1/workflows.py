@@ -387,11 +387,11 @@ def run_dist_s1_sas_prep_workflow(
     run_config.interpolation_method = interpolation_method
     run_config.apply_despeckling = apply_despeckling
     run_config.apply_logit_to_inputs = apply_logit_to_inputs
-    run_config.algo_config_path = algo_config_path
     run_config.prior_dist_s1_product = prior_dist_s1_product
     run_config.model_dtype = model_dtype
     run_config.use_date_encoding = use_date_encoding
-
+    # This appears last because it will overwrite all the parameters above
+    run_config.algo_config_path = algo_config_path
     if run_config_path is not None:
         run_config.to_yaml(run_config_path, algo_param_path=algo_config_path)
 

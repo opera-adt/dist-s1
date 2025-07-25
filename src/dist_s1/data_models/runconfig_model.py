@@ -1,6 +1,7 @@
 import warnings
 from datetime import datetime
 from pathlib import Path
+import threading
 
 import geopandas as gpd
 import pandas as pd
@@ -12,6 +13,9 @@ from pandera.pandas import check_input
 from pydantic import ConfigDict, Field, ValidationError, ValidationInfo, field_validator, model_validator
 
 from dist_s1.data_models.algoconfig_model import AlgoConfigData
+
+# Thread-local storage to track if we're loading from YAML
+_thread_local = threading.local()
 from dist_s1.data_models.data_utils import (
     check_filename_format,
     get_acquisition_datetime,
@@ -104,24 +108,37 @@ class RunConfigData(AlgoConfigData):
         # Handle algorithm config if specified
         algo_config_path = runconfig_data.get('algo_config_path')
         if algo_config_path is not None:
-            algo_config = AlgoConfigData.from_yaml(algo_config_path)
+            # Suppress individual warnings from AlgoConfigData.from_yaml
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore')
+                algo_config = AlgoConfigData.from_yaml(algo_config_path)
 
-            # Override algorithm parameters with those from external file
-            # Only override if the parameter is not explicitly set in the main config
+            # Load algorithm parameters first, then override with main config parameters
+            # Main config parameters take precedence over algorithm config parameters
             algo_dict = algo_config.model_dump()
+            # Apply algorithm parameters first
             for field_name, field_value in algo_dict.items():
                 if field_name not in runconfig_data:
                     runconfig_data[field_name] = field_value
-                    warnings.warn(
-                        f"Algorithm parameter '{field_name}' inherited from external config: {algo_config_path}",
-                        UserWarning,
-                        stacklevel=2,
-                    )
 
-        obj = cls(**runconfig_data)
-        if algo_config_path is not None:
-            obj._algo_config_loaded = True
-        return obj
+            # Issue single warning for all algorithm fields
+            warnings.warn(
+                f'All algorithm fields (including defaults) are being initialized by "{algo_config_path}" yml',
+                UserWarning,
+                stacklevel=2,
+            )
+
+            # Set flag to skip validator during this creation
+            _thread_local.skip_algo_validator = True
+
+        try:
+            obj = cls(**runconfig_data)
+            if algo_config_path is not None:
+                obj._algo_config_loaded = True
+            return obj
+        finally:
+            # Clean up the flag
+            _thread_local.skip_algo_validator = False
 
     @field_validator('pre_rtc_copol', 'pre_rtc_crosspol', 'post_rtc_copol', 'post_rtc_crosspol', mode='before')
     def convert_to_paths(cls, values: list[Path | str], info: ValidationInfo) -> list[Path]:
@@ -525,37 +542,37 @@ class RunConfigData(AlgoConfigData):
     @model_validator(mode='after')
     def handle_algo_config_loading(self) -> 'RunConfigData':
         """Load algorithm configuration from external file if algo_config_path is provided."""
+        # Skip if we're being called from from_yaml
+        if getattr(_thread_local, 'skip_algo_validator', False):
+            return self
+
         if self.algo_config_path is not None and not self._algo_config_loaded:
             algo_config = AlgoConfigData.from_yaml(self.algo_config_path)
 
-            algo_field_names = set(AlgoConfigData.model_fields.keys())
+            # Get algorithm fields that exist in both models using set intersection
+            algo_fields = set(AlgoConfigData.model_fields.keys()) & set(self.model_fields.keys())
 
-            default_algo_config = AlgoConfigData()
-            default_values = default_algo_config.model_dump()
+            # Only update fields that have default values (weren't explicitly set in main config)
+            updates = {}
+            for field in algo_fields:
+                current_value = getattr(self, field)
+                algo_value = getattr(algo_config, field)
+                default_value = self.model_fields[field].default
 
-            algo_dict = algo_config.model_dump()
-            for field_name, field_value in algo_dict.items():
-                if field_name in algo_field_names and hasattr(self, field_name):
-                    current_value = getattr(self, field_name)
-                    default_value = default_values.get(field_name)
+                # If current value equals default, use algo config value
+                # This allows main config to override algorithm config
+                if current_value == default_value and algo_value != default_value:
+                    updates[field] = algo_value
 
-                    # If the current value is the default, we assume user did not set it and we load it
-                    # from the external yml file.
-                    if current_value == default_value:
-                        object.__setattr__(self, field_name, field_value)
-                        warnings.warn(
-                            f'Algorithm parameter "{field_name}" loaded from external config: {self.algo_config_path} '
-                            'to non-default value.',
-                            UserWarning,
-                            stacklevel=2,
-                        )
-                    else:
-                        warnings.warn(
-                            f'Algorithm parameter "{field_name}" is already set to {current_value} in model '
-                            '(non-default value) and will not be overridden by algo_config.yml.',
-                            UserWarning,
-                            stacklevel=2,
-                        )
+            # Batch update using __dict__ for efficiency
+            self.__dict__.update(updates)
+
+            if updates:
+                warnings.warn(
+                    f'Updated algorithm parameters from {self.algo_config_path}: {list(updates.keys())}',
+                    UserWarning,
+                    stacklevel=2,
+                )
 
             self._algo_config_loaded = True
 
