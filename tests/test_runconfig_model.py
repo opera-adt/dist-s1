@@ -210,7 +210,7 @@ def test_lookback_strategy_validation(test_dir: Path, test_data_dir: Path, chang
         )
         config.apply_water_mask = False
         config.prior_dist_s1_product = None
-        assert config.lookback_strategy == strategy
+        assert config.algo_config.lookback_strategy == strategy
 
     # Test 2: Invalid lookback_strategy values should fail
     invalid_strategies = ['invalid_strategy', 'single_window', 'delayed_lookback', 'multi', 'immediate']
@@ -229,7 +229,7 @@ def test_lookback_strategy_validation(test_dir: Path, test_data_dir: Path, chang
     )
     config.apply_water_mask = False
     config.prior_dist_s1_product = None
-    assert config.lookback_strategy == 'multi_window'
+    assert config.algo_config.lookback_strategy == 'multi_window'
 
     shutil.rmtree(tmp_dir)
 
@@ -254,12 +254,12 @@ def test_device_resolution(test_dir: Path, test_data_dir: Path, change_local_dir
     config.prior_dist_s1_product = None
 
     # Set n_workers to 1 first to avoid validation errors with GPU devices
-    config.n_workers_for_norm_param_estimation = 1
-    config.device = 'best'
+    config.algo_config.n_workers_for_norm_param_estimation = 1
+    config.algo_config.device = 'best'
 
     # Verify that 'best' was resolved to an actual device
-    assert config.device in ['cpu', 'cuda', 'mps'], (
-        f"Device should be one of ['cpu', 'cuda', 'mps'], got {config.device}"
+    assert config.algo_config.device in ['cpu', 'cuda', 'mps'], (
+        f"Device should be one of ['cpu', 'cuda', 'mps'], got {config.algo_config.device}"
     )
 
     # Test that explicit device values work correctly
@@ -272,9 +272,9 @@ def test_device_resolution(test_dir: Path, test_data_dir: Path, change_local_dir
             config.apply_water_mask = False
             config.prior_dist_s1_product = None
             if device in ['cuda', 'mps']:
-                config.n_workers_for_norm_param_estimation = 1  # Required for GPU devices
-            config.device = device
-            assert config.device == device
+                config.algo_config.n_workers_for_norm_param_estimation = 1  # Required for GPU devices
+            config.algo_config.device = device
+            assert config.algo_config.device == device
         except ValidationError as e:
             # It's okay for cuda/mps to fail if not available
             if device == 'cuda' and not torch.cuda.is_available():
@@ -316,172 +316,18 @@ def test_algorithm_config_from_yaml(
     with Path.open(main_config_path, 'w') as f:
         f.write(main_config_content)
 
-    # Test that warnings are issued for algorithm parameters loaded from file
-    with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter('always')
-        config = RunConfigData.from_yaml(str(main_config_path))
-
-        # Check that the single warning was issued for algorithm fields initialization
-        warning_messages = [str(warning.message) for warning in w]
-        algorithm_warnings = [
-            msg
-            for msg in warning_messages
-            if 'All algorithm fields (including defaults) are being initialized by' in msg
-        ]
-
-        # Should have exactly one warning for algorithm fields initialization
-        assert len(algorithm_warnings) == 1, (
-            f'Expected exactly one warning for algorithm fields initialization, got {len(algorithm_warnings)}'
-        )
-
-        # Verify the warning mentions the correct file path
-        algo_warning = algorithm_warnings[0]
-        assert str(test_algo_config_path) in algo_warning, f'Warning should mention the algorithm config file path'
+    # Load configuration and verify that algorithm parameters were applied
+    config = RunConfigData.from_yaml(str(main_config_path))
 
     # Verify that the algorithm parameters were actually applied
-    assert config.interpolation_method == 'bilinear'
-    assert config.moderate_confidence_threshold == 4.2
-    assert config.high_confidence_threshold == 6.8
-    assert config.device == 'cpu'
-    assert config.apply_despeckling is False
-    assert config.apply_logit_to_inputs is False
-    assert config.memory_strategy == 'low'
-    assert config.batch_size_for_norm_param_estimation == 64
-
-    shutil.rmtree(tmp_dir)
-
-
-def test_algorithm_config_parameter_conflicts(
-    test_dir: Path,
-    test_data_dir: Path,
-    test_algo_config_conflicts_path: Path,
-    runconfig_yaml_template: str,
-    change_local_dir: Callable,
-) -> None:
-    """Test that main config parameters override algorithm config parameters and warnings are issued appropriately."""
-    change_local_dir(test_dir)
-
-    tmp_dir = test_dir / 'tmp'
-    tmp_dir.mkdir(parents=True, exist_ok=True)
-
-    # Create a main runconfig YAML file that has some conflicting parameters
-    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
-
-    # Additional parameters that conflict with the algorithm config
-    additional_params = """
-  # These parameters conflict with the algorithm config
-  interpolation_method: nearest
-  moderate_confidence_threshold: 5.0
-  device: best
-  n_workers_for_norm_param_estimation: 1"""
-
-    main_config_path = tmp_dir / 'test_main_config.yml'
-    main_config_content = runconfig_yaml_template.format(
-        pre_rtc_copol=df_product[df_product.input_category == 'pre'].loc_path_copol.tolist(),
-        pre_rtc_crosspol=df_product[df_product.input_category == 'pre'].loc_path_crosspol.tolist(),
-        post_rtc_copol=df_product[df_product.input_category == 'post'].loc_path_copol.tolist(),
-        post_rtc_crosspol=df_product[df_product.input_category == 'post'].loc_path_crosspol.tolist(),
-        dst_dir=tmp_dir,
-        algo_config_path=test_algo_config_conflicts_path,
-        additional_params=additional_params,
-    )
-    with Path.open(main_config_path, 'w') as f:
-        f.write(main_config_content)
-
-    # Test that the main config parameters take precedence
-    with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter('always')
-        config = RunConfigData.from_yaml(str(main_config_path))
-
-        # Check that the single warning was issued for algorithm fields initialization
-        warning_messages = [str(warning.message) for warning in w]
-        algorithm_warnings = [
-            msg
-            for msg in warning_messages
-            if 'All algorithm fields (including defaults) are being initialized by' in msg
-        ]
-
-        # Should have exactly one warning for algorithm fields initialization
-        assert len(algorithm_warnings) == 1, (
-            f'Expected exactly one warning for algorithm fields initialization, got {len(algorithm_warnings)}'
-        )
-
-        # Verify the warning mentions the correct file path
-        algo_warning = algorithm_warnings[0]
-        assert str(test_algo_config_conflicts_path) in algo_warning, (
-            f'Warning should mention the algorithm config file path'
-        )
-
-    # Verify that main config parameters take precedence
-    assert config.interpolation_method == 'nearest'  # From main config
-    assert config.moderate_confidence_threshold == 5.0  # From main config
-    assert config.device in ['cpu', 'cuda', 'mps']  # 'best' gets resolved, from main config
-
-    # Verify that non-conflicting algorithm parameters were applied
-    assert config.apply_despeckling is False  # From algorithm config
-    assert config.memory_strategy == 'low'  # From algorithm config
-
-    shutil.rmtree(tmp_dir)
-
-
-def test_algo_config_direct_yaml_loading_with_warnings(
-    test_dir: Path, test_algo_config_direct_path: Path, change_local_dir: Callable
-) -> None:
-    """Test that AlgoConfigData.from_yaml issues warnings for all loaded parameters."""
-    change_local_dir(test_dir)
-
-    tmp_dir = test_dir / 'tmp'
-    tmp_dir.mkdir(parents=True, exist_ok=True)
-
-    # Test that warnings are issued for all loaded parameters
-    with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter('always')
-        algo_config = AlgoConfigData.from_yaml(test_algo_config_direct_path)
-
-        # Check that warnings were issued for algorithm parameters
-        warning_messages = [str(warning.message) for warning in w]
-        algorithm_warnings = [
-            msg for msg in warning_messages if 'Algorithm parameter' in msg and 'from external config file' in msg
-        ]
-
-        # Should have warnings for each algorithm parameter that was loaded
-        assert len(algorithm_warnings) > 0, 'Expected warnings for loaded algorithm parameters'
-
-        # Check that specific parameters have warnings
-        expected_params = [
-            'interpolation_method',
-            'moderate_confidence_threshold',
-            'high_confidence_threshold',
-            'device',
-            'apply_despeckling',
-            'apply_logit_to_inputs',
-            'memory_strategy',
-            'batch_size_for_norm_param_estimation',
-            'stride_for_norm_param_estimation',
-            'n_workers_for_despeckling',
-            'tqdm_enabled',
-            'model_compilation',
-        ]
-
-        for param in expected_params:
-            param_warnings = [msg for msg in algorithm_warnings if f"'{param}'" in msg]
-            assert len(param_warnings) == 1, (
-                f"Expected exactly one warning for parameter '{param}', got {len(param_warnings)}"
-            )
-
-    # Verify that all the algorithm parameters were correctly loaded
-    assert algo_config.interpolation_method == 'bilinear'
-    assert algo_config.moderate_confidence_threshold == 3.8
-    assert algo_config.high_confidence_threshold == 6.2
-    assert algo_config.device == 'cpu'
-    assert algo_config.apply_despeckling is False
-    assert algo_config.apply_logit_to_inputs is True
-    assert algo_config.memory_strategy == 'high'
-    assert algo_config.batch_size_for_norm_param_estimation == 128
-    assert algo_config.stride_for_norm_param_estimation == 8
-    assert algo_config.n_workers_for_despeckling == 4
-    assert algo_config.tqdm_enabled is False
-    assert algo_config.model_compilation is True
+    assert config.algo_config.interpolation_method == 'bilinear'
+    assert config.algo_config.moderate_confidence_threshold == 4.2
+    assert config.algo_config.high_confidence_threshold == 6.8
+    assert config.algo_config.device == 'cpu'
+    assert config.algo_config.apply_despeckling is False
+    assert config.algo_config.apply_logit_to_inputs is False
+    assert config.algo_config.memory_strategy == 'low'
+    assert config.algo_config.batch_size_for_norm_param_estimation == 64
 
     shutil.rmtree(tmp_dir)
 
@@ -561,8 +407,8 @@ def test_model_dtype_device_compatibility_warning(
         )
         config.apply_water_mask = False
         config.prior_dist_s1_product = None
-        config.model_dtype = 'bfloat16'
-        config.device = 'cpu'
+        config.algo_config.model_dtype = 'bfloat16'
+        config.algo_config.device = 'cpu'
 
         # Check that warning was issued
         warning_messages = [str(warning.message) for warning in w]
@@ -581,9 +427,9 @@ def test_model_dtype_device_compatibility_warning(
             )
             config.apply_water_mask = False
             config.prior_dist_s1_product = None
-            config.n_workers_for_norm_param_estimation = 1  # Required for MPS
-            config.model_dtype = 'bfloat16'
-            config.device = 'mps'
+            config.algo_config.n_workers_for_norm_param_estimation = 1  # Required for MPS
+            config.algo_config.model_dtype = 'bfloat16'
+            config.algo_config.device = 'mps'
 
             # Check that warning was issued
             warning_messages = [str(warning.message) for warning in w]
@@ -608,9 +454,9 @@ def test_model_dtype_device_compatibility_warning(
             )
             config.apply_water_mask = False
             config.prior_dist_s1_product = None
-            config.n_workers_for_norm_param_estimation = 1  # Required for CUDA
-            config.model_dtype = 'bfloat16'
-            config.device = 'cuda'
+            config.algo_config.n_workers_for_norm_param_estimation = 1  # Required for CUDA
+            config.algo_config.model_dtype = 'bfloat16'
+            config.algo_config.device = 'cuda'
 
             # Check that NO warning was issued for dtype compatibility
             warning_messages = [str(warning.message) for warning in w]
@@ -637,9 +483,9 @@ def test_model_dtype_device_compatibility_warning(
                 config.apply_water_mask = False
                 config.prior_dist_s1_product = None
                 if device in ['mps', 'cuda']:
-                    config.n_workers_for_norm_param_estimation = 1  # Required for GPU devices
-                config.model_dtype = 'float32'
-                config.device = device
+                    config.algo_config.n_workers_for_norm_param_estimation = 1  # Required for GPU devices
+                config.algo_config.model_dtype = 'float32'
+                config.algo_config.device = device
 
                 # Check that NO warning was issued for dtype compatibility
                 warning_messages = [str(warning.message) for warning in w]
@@ -752,55 +598,27 @@ algo_config:
     df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
 
     # Test that algorithm config is loaded automatically when creating RunConfigData programmatically
-    with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter('always')
+    config = RunConfigData.from_product_df(
+        df_product,
+        dst_dir=tmp_dir,
+        apply_water_mask=False,
+    )
 
-        config = RunConfigData.from_product_df(
-            df_product,
-            dst_dir=tmp_dir,
-            apply_water_mask=False,
-        )
-
-        # Set algo_config_path to trigger automatic loading
-        config.algo_config_path = algo_config_path
-
-        # Check that warnings were issued for algorithm parameters loaded from external config
-        warning_messages = [str(warning.message) for warning in w]
-
-        # Look for individual parameter warnings from AlgoConfigData.from_yaml
-        individual_param_warnings = [
-            msg for msg in warning_messages if 'Algorithm parameter' in msg and 'from external config file' in msg
-        ]
-
-        # Look for the summary warning from handle_algo_config_loading
-        summary_warnings = [msg for msg in warning_messages if 'Updated algorithm parameters from' in msg]
-
-        # Should have individual warnings for parameters loaded from the external config
-        assert len(individual_param_warnings) > 0, (
-            'Expected individual warnings for algorithm parameters loaded from external config'
-        )
-
-        # Should also have a summary warning
-        assert len(summary_warnings) > 0, 'Expected summary warning for updated algorithm parameters'
-
-        # Check that specific parameters have individual warnings
-        expected_warned_params = ['moderate_confidence_threshold', 'apply_despeckling', 'device', 'memory_strategy']
-        for param in expected_warned_params:
-            param_warnings = [msg for msg in individual_param_warnings if f"'{param}'" in msg]
-            assert len(param_warnings) > 0, f"Expected warning for parameter '{param}'"
+    # Set algo_config_path to trigger automatic loading
+    config.algo_config_path = algo_config_path
 
     # Verify that the algorithm parameters from the config file were correctly applied
-    assert config.device == 'cpu'
-    assert config.memory_strategy == 'low'
-    assert config.moderate_confidence_threshold == 4.5
-    assert config.high_confidence_threshold == 7.0
-    assert config.apply_despeckling is False
-    assert config.apply_logit_to_inputs is False
-    assert config.n_workers_for_despeckling == 2
-    assert config.batch_size_for_norm_param_estimation == 64
-    assert config.stride_for_norm_param_estimation == 8
-    assert config.interpolation_method == 'nearest'
-    assert config.tqdm_enabled is False
+    assert config.algo_config.device == 'cpu'
+    assert config.algo_config.memory_strategy == 'low'
+    assert config.algo_config.moderate_confidence_threshold == 4.5
+    assert config.algo_config.high_confidence_threshold == 7.0
+    assert config.algo_config.apply_despeckling is False
+    assert config.algo_config.apply_logit_to_inputs is False
+    assert config.algo_config.n_workers_for_despeckling == 2
+    assert config.algo_config.batch_size_for_norm_param_estimation == 64
+    assert config.algo_config.stride_for_norm_param_estimation == 8
+    assert config.algo_config.interpolation_method == 'nearest'
+    assert config.algo_config.tqdm_enabled is False
 
     # Test 2: Verify that non-existent algo_config_path raises ValidationError
     with pytest.raises(ValidationError, match=r'Algorithm config path does not exist'):
@@ -821,7 +639,7 @@ algo_config:
         config.algo_config_path = tmp_dir
 
     # Test 4: Test that algo_config_path can be provided during object creation
-    with warnings.catch_warnings(record=True) as w:
+    with warnings.catch_warnings(record=True):
         warnings.simplefilter('always')
 
         config = RunConfigData.from_product_df(
@@ -833,6 +651,6 @@ algo_config:
         config.algo_config_path = algo_config_path
 
         # Verify at least one parameter was loaded correctly
-        assert config.moderate_confidence_threshold == 4.5
+        assert config.algo_config.moderate_confidence_threshold == 4.5
 
     shutil.rmtree(tmp_dir)

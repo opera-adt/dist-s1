@@ -142,8 +142,8 @@ def run_despeckle_workflow(run_config: RunConfigData) -> None:
     despeckle_and_serialize_rtc_s1(
         rtc_paths,
         dst_paths,
-        n_workers=run_config.n_workers_for_despeckling,
-        interpolation_method=run_config.interpolation_method,
+        n_workers=run_config.algo_config.n_workers_for_despeckling,
+        interpolation_method=run_config.algo_config.interpolation_method,
     )
 
 
@@ -159,7 +159,7 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
         df_burst_input_data.sort_values(by='acq_dt', inplace=True, ascending=True)
         df_metric_burst = df_burst_distmetrics[df_burst_distmetrics.jpl_burst_id == burst_id].reset_index(drop=True)
 
-        if run_config.apply_despeckling:
+        if run_config.algo_config.apply_despeckling:
             copol_path_column = 'loc_path_copol_dspkl'
             crosspol_path_column = 'loc_path_crosspol_dspkl'
         else:
@@ -200,31 +200,31 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
             acq_dts=acq_dts,
             out_dist_path=output_dist_path,
             out_metric_path=output_metric_path,
-            moderate_confidence_threshold=run_config.moderate_confidence_threshold,
-            high_confidence_threshold=run_config.high_confidence_threshold,
-            use_logits=run_config.apply_logit_to_inputs,
-            model_compilation=run_config.model_compilation,
-            model_source=run_config.model_source,
-            model_cfg_path=run_config.model_cfg_path,
-            model_wts_path=run_config.model_wts_path,
-            memory_strategy=run_config.memory_strategy,
-            stride_for_norm_param_estimation=run_config.stride_for_norm_param_estimation,
-            batch_size_for_norm_param_estimation=run_config.batch_size_for_norm_param_estimation,
-            device=run_config.device,
+            moderate_confidence_threshold=run_config.algo_config.moderate_confidence_threshold,
+            high_confidence_threshold=run_config.algo_config.high_confidence_threshold,
+            use_logits=run_config.algo_config.apply_logit_to_inputs,
+            model_compilation=run_config.algo_config.model_compilation,
+            model_source=run_config.algo_config.model_source,
+            model_cfg_path=run_config.algo_config.model_cfg_path,
+            model_wts_path=run_config.algo_config.model_wts_path,
+            memory_strategy=run_config.algo_config.memory_strategy,
+            stride_for_norm_param_estimation=run_config.algo_config.stride_for_norm_param_estimation,
+            batch_size_for_norm_param_estimation=run_config.algo_config.batch_size_for_norm_param_estimation,
+            device=run_config.algo_config.device,
             raw_data_for_nodata_mask=copol_post_path,
-            model_dtype=run_config.model_dtype,
-            use_date_encoding=run_config.use_date_encoding,
+            model_dtype=run_config.algo_config.model_dtype,
+            use_date_encoding=run_config.algo_config.use_date_encoding,
         )
         burst_args_list.append(burst_args)
 
     # Process bursts in parallel or sequentially based on configuration
-    tqdm_disable = not run_config.tqdm_enabled
+    tqdm_disable = not run_config.algo_config.tqdm_enabled
 
-    if run_config.n_workers_for_norm_param_estimation == 1 or len(burst_args_list) == 1:
+    if run_config.algo_config.n_workers_for_norm_param_estimation == 1 or len(burst_args_list) == 1:
         for args in tqdm(burst_args_list, disable=tqdm_disable, desc='Burst disturbance'):
             _dist_processing_one_burst_wrapper(args)
     else:
-        with torch_mp.Pool(processes=run_config.n_workers_for_norm_param_estimation) as pool:
+        with torch_mp.Pool(processes=run_config.algo_config.n_workers_for_norm_param_estimation) as pool:
             list(
                 tqdm(
                     pool.imap(_dist_processing_one_burst_wrapper, burst_args_list),
@@ -290,7 +290,7 @@ def run_disturbance_confirmation(run_config: RunConfigData) -> None:
 
 
 def run_dist_s1_processing_workflow(run_config: RunConfigData) -> RunConfigData:
-    if run_config.apply_despeckling:
+    if run_config.algo_config.apply_despeckling:
         run_despeckle_workflow(run_config)
 
     run_burst_disturbance_workflow(run_config)
@@ -365,31 +365,31 @@ def run_dist_s1_sas_prep_workflow(
         dst_dir=dst_dir,
         input_data_dir=input_data_dir,
     )
-    run_config.memory_strategy = memory_strategy
-    run_config.tqdm_enabled = tqdm_enabled
+    run_config.algo_config.memory_strategy = memory_strategy
+    run_config.algo_config.tqdm_enabled = tqdm_enabled
     run_config.apply_water_mask = apply_water_mask
-    run_config.moderate_confidence_threshold = moderate_confidence_threshold
-    run_config.high_confidence_threshold = high_confidence_threshold
-    run_config.lookback_strategy = lookback_strategy
+    run_config.algo_config.moderate_confidence_threshold = moderate_confidence_threshold
+    run_config.algo_config.high_confidence_threshold = high_confidence_threshold
+    run_config.algo_config.lookback_strategy = lookback_strategy
     run_config.water_mask_path = water_mask_path
     run_config.product_dst_dir = product_dst_dir
     run_config.bucket = bucket
     run_config.bucket_prefix = bucket_prefix
-    run_config.n_workers_for_despeckling = n_workers_for_despeckling
-    run_config.n_workers_for_norm_param_estimation = n_workers_for_norm_param_estimation
-    run_config.device = device
-    run_config.model_source = model_source
-    run_config.model_cfg_path = model_cfg_path
-    run_config.model_wts_path = model_wts_path
-    run_config.stride_for_norm_param_estimation = stride_for_norm_param_estimation
-    run_config.batch_size_for_norm_param_estimation = batch_size_for_norm_param_estimation
-    run_config.model_compilation = model_compilation
-    run_config.interpolation_method = interpolation_method
-    run_config.apply_despeckling = apply_despeckling
-    run_config.apply_logit_to_inputs = apply_logit_to_inputs
+    run_config.algo_config.n_workers_for_despeckling = n_workers_for_despeckling
+    run_config.algo_config.n_workers_for_norm_param_estimation = n_workers_for_norm_param_estimation
+    run_config.algo_config.device = device
+    run_config.algo_config.model_source = model_source
+    run_config.algo_config.model_cfg_path = model_cfg_path
+    run_config.algo_config.model_wts_path = model_wts_path
+    run_config.algo_config.stride_for_norm_param_estimation = stride_for_norm_param_estimation
+    run_config.algo_config.batch_size_for_norm_param_estimation = batch_size_for_norm_param_estimation
+    run_config.algo_config.model_compilation = model_compilation
+    run_config.algo_config.interpolation_method = interpolation_method
+    run_config.algo_config.apply_despeckling = apply_despeckling
+    run_config.algo_config.apply_logit_to_inputs = apply_logit_to_inputs
     run_config.prior_dist_s1_product = prior_dist_s1_product
-    run_config.model_dtype = model_dtype
-    run_config.use_date_encoding = use_date_encoding
+    run_config.algo_config.model_dtype = model_dtype
+    run_config.algo_config.use_date_encoding = use_date_encoding
     # This appears last because it will overwrite all the parameters above
     run_config.algo_config_path = algo_config_path
     if run_config_path is not None:
