@@ -10,7 +10,7 @@ from pytest import MonkeyPatch
 from pytest_mock import MockerFixture
 
 from dist_s1.__main__ import cli as dist_s1
-from dist_s1.data_models.output_models import ProductDirectoryData
+from dist_s1.data_models.output_models import DistS1ProductDirectory
 from dist_s1.data_models.runconfig_model import RunConfigData
 
 
@@ -39,7 +39,7 @@ def test_dist_s1_sas_main(
     tmp_dir = test_dir / 'tmp'
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
-    product_data_golden = ProductDirectoryData.from_product_path(test_opera_golden_dummy_dataset)
+    product_data_golden = DistS1ProductDirectory.from_product_path(test_opera_golden_dummy_dataset)
 
     # Load and modify runconfig - not the paths are relative to the test_dir
     runconfig_data = RunConfigData.from_yaml(cropped_10SGD_dataset_runconfig)
@@ -69,7 +69,7 @@ def test_dist_s1_sas_main(
 
     # If we get here, check the product contents
     product_data_path = product_directories[0]
-    out_product_data = ProductDirectoryData.from_product_path(product_data_path)
+    out_product_data = DistS1ProductDirectory.from_product_path(product_data_path)
 
     # Check the product_dst_dir exists
     assert product_dst_dir.exists()

@@ -24,18 +24,6 @@ TIF_LAYER_DTYPES = {
     'GEN-DIST-DUR': 'int16',
     'GEN-DIST-LAST-DATE': 'int16',
 }
-COMP_BASELINE_LAYERS = {'GEN-DIST-STATUS', 'GEN-METRIC', 'GEN-DIST-STATUS-ACQ'}
-CONF_DB_LAYERS = {
-    'GEN-DIST-STATUS',
-    'GEN-METRIC',
-    'GEN-METRIC-MAX',
-    'GEN-DIST-CONF',
-    'GEN-DIST-DATE',
-    'GEN-DIST-COUNT',
-    'GEN-DIST-PERC',
-    'GEN-DIST-DUR',
-    'GEN-DIST-LAST-DATE',
-}
 TIF_LAYERS = TIF_LAYER_DTYPES.keys()
 EXPECTED_FORMAT_STRING = (
     'OPERA_L3_DIST-ALERT-S1_T{mgrs_tile_id}_{acq_datetime}_{proc_datetime}_S1_30_v{PRODUCT_VERSION}'
@@ -178,7 +166,7 @@ class ProductFileData(BaseModel):
         return True, 'Files match perfectly.'
 
 
-class ProductDirectoryData(BaseModel):
+class DistS1ProductDirectory(BaseModel):
     product_name: str
     dst_dir: Path | str
     tif_layer_dtypes: ClassVar[dict[str, str]] = dict(TIF_LAYER_DTYPES)
@@ -213,10 +201,14 @@ class ProductDirectoryData(BaseModel):
         layer_dict['browse'] = self.product_dir_path / f'{self.product_name}.png'
         return layer_dict
 
+    @property
+    def acq_datetime(self) -> datetime:
+        return self.product_name.acq_date_time
+
     def validate_layer_paths(self) -> bool:
         failed_layers = []
         for layer, path in self.layer_path_dict.items():
-            if layer not in COMP_BASELINE_LAYERS:
+            if layer not in TIF_LAYERS:
                 continue
             if not path.exists():
                 warn(f'Layer {layer} does not exist at path: {path}', UserWarning)
@@ -226,7 +218,7 @@ class ProductDirectoryData(BaseModel):
     def validate_tif_layer_dtypes(self) -> bool:
         failed_layers = []
         for layer, path in self.layer_path_dict.items():
-            if layer not in COMP_BASELINE_LAYERS:
+            if layer not in TIF_LAYERS:
                 continue
             if path.suffix == '.tif':
                 with rasterio.open(path) as src:
@@ -242,7 +234,7 @@ class ProductDirectoryData(BaseModel):
     def validate_conf_db_layer_paths(self) -> bool:
         failed_layers = []
         for layer, path in self.layer_path_dict.items():
-            if layer not in CONF_DB_LAYERS:
+            if layer not in TIF_LAYERS:
                 continue
             if not path.exists():
                 warn(f'Layer {layer} does not exist at path: {path}', UserWarning)
@@ -252,7 +244,7 @@ class ProductDirectoryData(BaseModel):
     def validate_conf_db_tif_layer_dtypes(self) -> bool:
         failed_layers = []
         for layer, path in self.layer_path_dict.items():
-            if layer not in CONF_DB_LAYERS:
+            if layer not in TIF_LAYERS:
                 continue
             if path.suffix == '.tif':
                 with rasterio.open(path) as src:
@@ -265,7 +257,7 @@ class ProductDirectoryData(BaseModel):
         return len(failed_layers) == 0
 
     def __eq__(
-        self, other: 'ProductDirectoryData', *, rtol: float = 1e-05, atol: float = 1e-05, equal_nan: bool = True
+        self, other: 'DistS1ProductDirectory', *, rtol: float = 1e-05, atol: float = 1e-05, equal_nan: bool = True
     ) -> bool:
         """Compare two ProductDirectoryData instances for equality.
 
@@ -352,7 +344,7 @@ class ProductDirectoryData(BaseModel):
         return equality
 
     @classmethod
-    def from_product_path(cls, product_dir_path: Path | str) -> 'ProductDirectoryData':
+    def from_product_path(cls, product_dir_path: Path | str) -> 'DistS1ProductDirectory':
         """Create a ProductDirectoryData instance from an existing product directory path.
 
         Parameters
@@ -396,7 +388,7 @@ class ProductDirectoryData(BaseModel):
         dst_dir: Path | str,
         water_mask_path: Path | str | None = None,
         overwrite: bool = False,
-    ) -> 'ProductDirectoryData':
+    ) -> 'DistS1ProductDirectory':
         """Generate a product directory with placeholder GeoTIFF files containing zeros.
 
         Parameters

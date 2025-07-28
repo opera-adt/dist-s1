@@ -5,12 +5,10 @@ PRODUCT_VERSION = '0.1'
 
 MODEL_CONTEXT_LENGTH = 10
 
-# Base date for date encoding used in confirmation process
-
+# Confirmation
 BASE_DATE_FOR_CONFIRMATION = pd.Timestamp('2020-12-31', tz='UTC')
 
 # Disturbance labels
-
 DISTLABEL2VAL = {
     'nodata': 255,
     'no_disturbance': 0,
@@ -20,25 +18,13 @@ DISTLABEL2VAL = {
     'first_high_conf_disturbance': 4,
     'provisional_high_conf_disturbance': 5,
     'confirmed_high_conf_disturbance': 6,
+    'confirmed_low_conf_finished': 7,
+    'confirmed_high_conf_finished': 8,
 }
 DISTVAL2LABEL = {v: k for k, v in DISTLABEL2VAL.items()}
 
 
 # Colormaps
-
-COLORBLIND_DIST_CMAP = {
-    0: (255, 255, 255, 255),  # No disturbance (White)
-    1: (173, 216, 230, 255),  # First low (Light Blue)
-    2: (100, 149, 237, 255),  # Provisional low (Cornflower Blue)
-    3: (25, 25, 112, 255),  # Confirmed low (Midnight Blue)
-    7: (10, 10, 60, 255),  # Confirmed low finished (Very Dark Blue)
-    4: (255, 182, 193, 255),  # First high (Light Pink)
-    5: (255, 99, 71, 255),  # Provisional high (Tomato Red)
-    6: (178, 34, 34, 255),  # Confirmed high (Firebrick Red)
-    8: (139, 0, 0, 255),  # Confirmed high finished (Dark Red)
-    255: (128, 128, 128, 255),  # No data (Grey)
-}
-
 DIST_CMAP = {
     0: (18, 18, 18, 255),  # No disturbance
     1: (0, 85, 85, 255),  # First low

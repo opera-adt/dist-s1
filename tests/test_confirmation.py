@@ -21,7 +21,7 @@ def generate_status_test_series() -> tuple[list[np.ndarray], dict[str, tuple[int
     FIN_QUIET_DURATION = 10
 
     num_arrays = CONF_DURATION + FIN_QUIET_DURATION + 1
-    final_t = num_arrays - 1 
+    final_t = num_arrays - 1
 
     size = 10
     arrays = []
@@ -29,14 +29,14 @@ def generate_status_test_series() -> tuple[list[np.ndarray], dict[str, tuple[int
 
     # Define a unique coordinate for each status's representative pixel.
     coords = {
-        'NODIST':    (0, 0),  # No disturbance
-        'NODATA':    (0, 1),  # No data (will be set to NaN)
-        'FIRSTHI':   (1, 0),  # First high anomaly
-        'FIRSTLO':   (1, 1),  # First low anomaly
-        'PROVHI':    (2, 0),  # Provisional high
-        'PROVLO':    (2, 1),  # Provisional low
-        'CONFHI':    (3, 0),  # Confirmed high
-        'CONFLO':    (3, 1),  # Confirmed low
+        'NODIST': (0, 0),  # No disturbance
+        'NODATA': (0, 1),  # No data (will be set to NaN)
+        'FIRSTHI': (1, 0),  # First high anomaly
+        'FIRSTLO': (1, 1),  # First low anomaly
+        'PROVHI': (2, 0),  # Provisional high
+        'PROVLO': (2, 1),  # Provisional low
+        'CONFHI': (3, 0),  # Confirmed high
+        'CONFLO': (3, 1),  # Confirmed low
         'CONFHIFIN': (4, 0),  # Finalized confirmed high
         'CONFLOFIN': (4, 1),  # Finalized confirmed low
     }
@@ -87,7 +87,7 @@ def write_raster(path: str | Path, array: np.ndarray, dtype: str = 'float32', no
         dtype=dtype,
         crs='EPSG:4326',
         transform=from_origin(0, 0, 1, 1),
-        nodata=nodata_val
+        nodata=nodata_val,
     ) as dst:
         dst.write(np.nan_to_num(array, nan=nodata_val).astype(dtype), 1)
 
@@ -99,21 +99,21 @@ def read_raster(path: str | Path) -> np.ndarray:
 
 def test_disturbance_status_series(tmp_path: Path) -> None:
     with warnings.catch_warnings():
-        warnings.simplefilter("ignore", rasterio.errors.NotGeoreferencedWarning)
+        warnings.simplefilter('ignore', rasterio.errors.NotGeoreferencedWarning)
         arrays, slices = generate_status_test_series()
         base_date = datetime.datetime(2023, 7, 1)
 
         # Paths to track previous data
         previous_paths = None
-        output_products = [tmp_path / f"product_{i}" for i in range(len(arrays))]
+        output_products = [tmp_path / f'product_{i}' for i in range(len(arrays))]
 
         for t, frame in enumerate(arrays):
             date = base_date + datetime.timedelta(days=t)
             date_tag = date.strftime('%Y%m%dT000000Z')
-            metric_path = tmp_path / f"dist_metric_dummy1_dummy2_{date_tag}_metric.tif"
+            metric_path = tmp_path / f'dist_metric_dummy1_dummy2_{date_tag}_metric.tif'
             write_raster(metric_path, frame)
 
-            output_paths = [tmp_path / f"out_status_{t}_{i}.tif" for i in range(8)]
+            output_paths = [tmp_path / f'out_status_{t}_{i}.tif' for i in range(8)]
 
             compute_tile_disturbance_using_previous_product_and_serialize(
                 metric_path,
@@ -121,15 +121,15 @@ def test_disturbance_status_series(tmp_path: Path) -> None:
                 [str(p) for p in output_paths],
                 previous_dist_arr_path_list=[str(p) for p in previous_paths] if previous_paths else None,
                 base_date_for_confirmation=base_date,
-                lowthresh=3.5,
-                highthresh=5.5,
+                alert_low_conf_thresh=3.5,
+                alert_high_conf_thresh=5.5,
             )
 
             # Prepare next timestep input
             previous_paths = output_paths
             output_products[t] = output_paths[0]  # status band
 
-        #Final status map
+        # Final status map
         final_status = read_raster(output_products[-1])
 
         expected_codes = {
@@ -146,4 +146,4 @@ def test_disturbance_status_series(tmp_path: Path) -> None:
         for label, expected_val in expected_codes.items():
             r, c = slices[label]
             sub = final_status[r, c]
-            assert (sub == expected_val).any(), f"{label} block missing expected code {expected_val}"
+            assert (sub == expected_val).any(), f'{label} block missing expected code {expected_val}'

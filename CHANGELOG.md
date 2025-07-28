@@ -12,6 +12,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `n_lookbacks` (which should have been called `n_baselines`) for computing confirmation within the SAS
    - No longer is there complicated accounting to keeping track of and confirming changes through baseline
 - Constant for `BASE_DATE`.
+- Extra validation for confirmation packaging
 
 ## Changed
 - Multiwindow strategy is now the default in both python API and CLI
@@ -23,6 +24,9 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Remove algorithm assignments in localization workflows.
 - Organized `AlgoConfigData` and `RunConfigData` into seperate files
 - Put data/path utils into `data_utils.py`.
+- Variables for confirmation processing (use snake case wherever possible)
+- Now have an output product without confirmation and a product with confirmation (for provenance)
+- De-couple confirmation and packaging in workflow logic
 
 ## Added
 - Constants for CLI and `RunConfigData` - allows for consistent data parsing.
@@ -40,6 +44,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   - Exposed parameter `consecutive_nodist`, if `True` the `nocount` condition is applied (doesn't allow 2 consecutive misses).
   - Exposed parameter `percent_reset_thresh`, it will apply reset if `percent` below threshold. 
   - Exposed parameter `nocount_reset_thresh`, it will apply reset if `prevnocount` is above threshold.   
+- Confirmation CLI
 
 ## Fixed
 - All the tests with the updates above.

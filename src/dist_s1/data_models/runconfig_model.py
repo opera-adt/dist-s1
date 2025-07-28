@@ -26,7 +26,7 @@ from dist_s1.data_models.defaults import (
     DEFAULT_INPUT_DATA_DIR,
     DEFAULT_POST_DATE_BUFFER_DAYS,
 )
-from dist_s1.data_models.output_models import ProductDirectoryData, ProductNameData
+from dist_s1.data_models.output_models import DistS1ProductDirectory, ProductNameData
 from dist_s1.water_mask import water_mask_control_flow
 
 
@@ -35,7 +35,7 @@ class RunConfigData(AlgoConfigData):
     pre_rtc_crosspol: list[Path | str] = Field(..., description='List of paths to pre-rtc crosspolarization data.')
     post_rtc_copol: list[Path | str] = Field(..., description='List of paths to post-rtc copolarization data.')
     post_rtc_crosspol: list[Path | str] = Field(..., description='List of paths to post-rtc crosspolarization data.')
-    prior_dist_s1_product: ProductDirectoryData | None = Field(
+    prior_dist_s1_product: DistS1ProductDirectory | None = Field(
         default=None,
         description='Path to prior DIST-S1 product. If None, no prior product is used and confirmation is not'
         ' performed.',
@@ -85,7 +85,8 @@ class RunConfigData(AlgoConfigData):
     _df_burst_distmetrics: pd.DataFrame | None = None
     _df_mgrs_burst_lut: gpd.GeoDataFrame | None = None
     _product_name: ProductNameData | None = None
-    _product_data_model: ProductDirectoryData | None = None
+    _product_data_model: DistS1ProductDirectory | None = None
+    _product_data_model_no_confirmation: DistS1ProductDirectory | None = None
     _min_acq_date: datetime | None = None
     _processing_datetime: datetime | None = None
     # Validate assignments to all fields
@@ -221,7 +222,7 @@ class RunConfigData(AlgoConfigData):
         return self._product_name.name()
 
     @property
-    def product_data_model(self) -> ProductDirectoryData:
+    def product_data_model(self) -> DistS1ProductDirectory:
         if self._product_data_model is None:
             product_name = self.product_name
             # Use dst_dir if product_dst_dir is None
@@ -230,11 +231,28 @@ class RunConfigData(AlgoConfigData):
                 if self.product_dst_dir is not None
                 else Path(self.dst_dir).resolve()
             )
-            self._product_data_model = ProductDirectoryData(
+            self._product_data_model = DistS1ProductDirectory(
                 dst_dir=dst_dir,
                 product_name=product_name,
             )
         return self._product_data_model
+
+    @property
+    def product_data_model_no_confirmation(self) -> DistS1ProductDirectory:
+        if self._product_data_model_no_confirmation is None:
+            product_name = self.product_name
+            # Use dst_dir if product_dst_dir is None
+            dst_dir = (
+                Path(self.product_dst_dir).resolve()
+                if self.product_dst_dir is not None
+                else Path(self.dst_dir).resolve()
+            )
+            dst_dir = dst_dir / 'product_without_confirmation'
+            self._product_data_model_no_confirmation = DistS1ProductDirectory(
+                dst_dir=dst_dir,
+                product_name=product_name,
+            )
+        return self._product_data_model_no_confirmation
 
     def get_public_attributes(self) -> dict:
         config_dict = {k: v for k, v in self.model_dump().items() if not k.startswith('_')}
@@ -294,7 +312,7 @@ class RunConfigData(AlgoConfigData):
         max_pre_imgs_per_burst_mw: list[int] | None = None,
         delta_lookback_days_mw: list[int] | None = None,
         lookback_strategy: str = 'multi_window',
-        prior_dist_s1_product: ProductDirectoryData | None = None,
+        prior_dist_s1_product: DistS1ProductDirectory | None = None,
     ) -> 'RunConfigData':
         """Transform input table from dist-s1-enumerator into RunConfigData object.
 

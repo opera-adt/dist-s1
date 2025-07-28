@@ -167,8 +167,8 @@ def compute_tile_disturbance_using_previous_product_and_serialize(
     highthresh: float = 5.5,
     nodaylimit: int = 18,
     max_obs_num_year: int = 253,
-    conf_upper_lim: int = 32000,
-    conf_thresh: float = 3**2 * 3.5,
+    confidence_upper_lim: int = 32000,
+    confidence_upper_thresh: float = 3**2 * 3.5,
     metric_value_upper_lim: float = 100,
     base_date_for_confirmation: datetime.datetime | None = None,
     previous_dist_arr_path_list: list[str | None] | None = None,
@@ -270,7 +270,7 @@ def compute_tile_disturbance_using_previous_product_and_serialize(
         prevmean[update_conf] * (count[update_conf] + prevnocount[update_conf]) + currAnomConf[update_conf]
     ) / denom[update_conf]
     tempconf = (mean * count * count).astype(np.int32)
-    conf[update_conf] = np.clip(tempconf[update_conf], 0, conf_upper_lim)
+    conf[update_conf] = np.clip(tempconf[update_conf], 0, confidence_upper_lim)
 
     new_conf = ((status == NODIST) | (status == NODATA)) & disturbed
     conf[new_conf] = np.minimum(currAnom[new_conf], metric_value_upper_lim)
@@ -298,7 +298,7 @@ def compute_tile_disturbance_using_previous_product_and_serialize(
     dur[reset_finish] = 0
 
     hi_mask = updating & (max_anom >= highthresh)
-    conf_hi = hi_mask & (conf >= conf_thresh)
+    conf_hi = hi_mask & (conf >= confidence_upper_thresh)
     first_hi = hi_mask & (dur == 1)
     prov_hi = hi_mask & ~(conf_hi | first_hi) & (status != CONFHI)
     status[conf_hi] = CONFHI
@@ -306,7 +306,7 @@ def compute_tile_disturbance_using_previous_product_and_serialize(
     status[prov_hi] = PROVHI
 
     lo_mask = updating & (max_anom >= lowthresh) & (max_anom < highthresh)
-    conf_lo = lo_mask & (conf >= conf_thresh)
+    conf_lo = lo_mask & (conf >= confidence_upper_thresh)
     first_lo = lo_mask & (dur == 1)
     prov_lo = lo_mask & ~(conf_lo | first_lo) & (status != CONFLO)
     status[conf_lo] = CONFLO

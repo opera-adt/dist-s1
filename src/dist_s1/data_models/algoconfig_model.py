@@ -12,11 +12,11 @@ from dist_s1.data_models.defaults import (
     DEFAULT_APPLY_DESPECKLING,
     DEFAULT_APPLY_LOGIT_TO_INPUTS,
     DEFAULT_BATCH_SIZE_FOR_NORM_PARAM_ESTIMATION,
-    DEFAULT_CONF_THRESH,
-    DEFAULT_CONF_UPPER_LIM,
-    DEFAULT_CONSECUTIVE_NODIST,
+    DEFAULT_CONFIDENCE_THRESH,
+    DEFAULT_CONFIDENCE_UPPER_LIM,
     DEFAULT_DELTA_LOOKBACK_DAYS_MW,
     DEFAULT_DEVICE,
+    DEFAULT_EXCLUDE_CONSECUTIVE_NO_DIST,
     DEFAULT_HIGH_CONFIDENCE_THRESHOLD,
     DEFAULT_INTERPOLATION_METHOD,
     DEFAULT_LOOKBACK_STRATEGY,
@@ -30,8 +30,8 @@ from dist_s1.data_models.defaults import (
     DEFAULT_MODEL_SOURCE,
     DEFAULT_MODEL_WTS_PATH,
     DEFAULT_MODERATE_CONFIDENCE_THRESHOLD,
-    DEFAULT_NOCOUNT_RESET_THRESH,
-    DEFAULT_NODAYLIMIT,
+    DEFAULT_NO_COUNT_RESET_THRESH,
+    DEFAULT_NO_DAY_LIMIT,
     DEFAULT_N_WORKERS_FOR_DESPECKLING,
     DEFAULT_N_WORKERS_FOR_NORM_PARAM_ESTIMATION,
     DEFAULT_PERCENT_RESET_THRESH,
@@ -132,23 +132,25 @@ class AlgoConfigData(BaseModel):
         le=15.0,
         description='High confidence threshold for alerting disturbance.',
     )
-    nodaylimit: int = Field(
-        default=DEFAULT_NODAYLIMIT,
-        description='Number of days to limit confirmation process. Confirmation must occur within first '
-        'observance of disturbance and `nodaylimit` days after.',
+    no_day_limit: int = Field(
+        default=DEFAULT_NO_DAY_LIMIT,
+        description='Number of days to limit confirmation process logic to. Confirmation must occur within first '
+        'observance of disturbance and `no_day_limit` days after first disturbance.',
     )
-    consecutive_nodist: int = Field(
-        default=DEFAULT_CONSECUTIVE_NODIST,
-        description='Boolean activation of consecutive no disturbance tracking. True will apply this logic, '
-        'after 2 `nocount` disturbance must finish.',
+    exclude_consecutive_no_dist: int = Field(
+        default=DEFAULT_EXCLUDE_CONSECUTIVE_NO_DIST,
+        description='Boolean activation of consecutive no disturbance tracking during confirmation. '
+        'True will apply this logic: '
+        'after 2 no disturbances within product sequence, the disturbance must finish or be reset. '
+        'False will not apply this logic.',
     )
     percent_reset_thresh: int = Field(
         default=DEFAULT_PERCENT_RESET_THRESH,
         description='Precentage number threshold to reset disturbance. Values below `percent_reset_thresh` '
         'will reset disturbance.',
     )
-    nocount_reset_thresh: int = Field(
-        default=DEFAULT_NOCOUNT_RESET_THRESH,
+    no_count_reset_thresh: int = Field(
+        default=DEFAULT_NO_COUNT_RESET_THRESH,
         description='If the number of non-disturbed observations `prevnocount` is above `nocount_reset_thresh` '
         'disturbance will reset.',
     )
@@ -158,11 +160,11 @@ class AlgoConfigData(BaseModel):
         'conclude and be reset.',
     )
     conf_upper_lim: int = Field(
-        default=DEFAULT_CONF_UPPER_LIM,
+        default=DEFAULT_CONFIDENCE_UPPER_LIM,
         description='Confidence upper limit for confirmation. Confidence is an accumulation of the metric over time.',
     )
     conf_thresh: float = Field(
-        default=DEFAULT_CONF_THRESH,
+        default=DEFAULT_CONFIDENCE_THRESH,
         description='Confidence threshold for confirmed disturbance during confirmation process.',
     )
     metric_value_upper_lim: float = Field(
