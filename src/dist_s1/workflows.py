@@ -260,19 +260,18 @@ def run_disturbance_merge_workflow(run_config: RunConfigData) -> None:
 
 
 def run_confirmation_of_dist_product_workflow(
-    current_dist_s1_product: Path | str | DistS1ProductDirectory,
-    prior_dist_s1_product: Path | str | DistS1ProductDirectory,
-    dst_dist_product_parent: Path | str | None,
-    no_day_limit: int = DEFAULT_NO_DAY_LIMIT,
-    exclude_consecutive_no_dist: bool = DEFAULT_EXCLUDE_CONSECUTIVE_NO_DIST,
-    percent_reset_thresh: int = DEFAULT_PERCENT_RESET_THRESH,
-    no_count_reset_thresh: int = DEFAULT_NO_COUNT_RESET_THRESH,
-    confidence_upper_lim: int = DEFAULT_CONFIDENCE_UPPER_LIM,
-    confidence_threshold: float = DEFAULT_CONFIDENCE_THRESH,
-    metric_value_upper_lim: float = DEFAULT_METRIC_VALUE_UPPER_LIM,
+    run_config: RunConfigData,
 ) -> None:
-    if not isinstance(current_dist_s1_product, DistS1ProductDirectory):
-        current_dist_s1_product = DistS1ProductDirectory.from_product_path(current_dist_s1_product)
+    current_dist_s1_product = run_config.product_data_model.product_dir_path
+    prior_dist_s1_product = run_config.prior_dist_s1_product
+    dst_dist_product_parent = run_config.product_data_model.product_dir_path
+    no_day_limit = run_config.no_day_limit
+    exclude_consecutive_no_dist = run_config.exclude_consecutive_no_dist
+    percent_reset_thresh = run_config.percent_reset_thresh
+    no_count_reset_thresh = run_config.no_count_reset_thresh
+    confidence_upper_lim = run_config.confidence_upper_lim
+    confidence_threshold = run_config.confidence_threshold
+    metric_value_upper_lim = run_config.metric_value_upper_lim
 
     confirm_disturbance_using_prior_product_and_serialize(
         current_dist_s1_product=current_dist_s1_product,
@@ -289,7 +288,7 @@ def run_confirmation_of_dist_product_workflow(
 
 
 def run_sequential_confirmation_of_dist_products_workflow(
-    product_directory: Path | str | DistS1ProductDirectory,
+    directory_of_dist_s1_products: Path | str | DistS1ProductDirectory,
     prior_dist_s1_product: Path | str | DistS1ProductDirectory,
     dst_dist_product_parent: Path | str | None,
     no_day_limit: int = DEFAULT_NO_DAY_LIMIT,
@@ -300,19 +299,19 @@ def run_sequential_confirmation_of_dist_products_workflow(
     confidence_threshold: float = DEFAULT_CONFIDENCE_THRESH,
     metric_value_upper_lim: float = DEFAULT_METRIC_VALUE_UPPER_LIM,
 ) -> None:
-    product_dirs = sorted(list(product_directory.glob('OPERA*')))
+    product_dirs = sorted(list(directory_of_dist_s1_products.glob('OPERA*')))
     product_dirs = list(Path(p) for p in product_dirs)
     product_dirs = list(filter(lambda x: x.is_dir(), product_dirs))
 
     if len(product_dirs) == 0:
-        raise ValueError(f'No product directories found in the product directory {product_directory}.')
+        raise ValueError(f'No product directories found in the product directory {directory_of_dist_s1_products}.')
     if len(product_dirs) == 1:
-        raise ValueError('Only one product directory provided.')
+        raise ValueError(f'Only one product directory in the product directory {directory_of_dist_s1_products}.')
 
     shutil.copytree(product_dirs[0], dst_dist_product_parent)
     prior_dist_s1_product = dst_dist_product_parent / product_dirs[0].name
     for current_dist_s1_product in product_dirs[1:]:
-        run_confirmation_of_dist_product_workflow(
+        confirm_disturbance_using_prior_product_and_serialize(
             current_dist_s1_product=current_dist_s1_product,
             prior_dist_s1_product=prior_dist_s1_product,
             dst_dist_product_parent=dst_dist_product_parent,
@@ -433,7 +432,18 @@ def run_dist_s1_sas_workflow(run_config: RunConfigData) -> Path:
     _ = run_dist_s1_packaging_workflow_no_confirmation(run_config)
 
     if run_config.confirmation:
-        run_confirmation_of_dist_product_workflow(run_config)
+        run_confirmation_of_dist_product_workflow(
+            current_dist_s1_product=run_config.product_data_model.product_dir_path,
+            prior_dist_s1_product=run_config.prior_dist_s1_product,
+            dst_dist_product_parent=run_config.product_data_model.product_dir_path,
+            no_day_limit=run_config.no_day_limit,
+            exclude_consecutive_no_dist=run_config.exclude_consecutive_no_dist,
+            percent_reset_thresh=run_config.percent_reset_thresh,
+            no_count_reset_thresh=run_config.no_count_reset_thresh,
+            confidence_upper_lim=run_config.confidence_upper_lim,
+            confidence_threshold=run_config.confidence_threshold,
+            metric_value_upper_lim=run_config.metric_value_upper_lim,
+        )
     else:
         src = run_config.product_data_model_no_confirmation.product_dir_path
         dst = run_config.product_data_model.product_dir_path
