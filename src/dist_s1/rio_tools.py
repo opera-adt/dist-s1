@@ -46,16 +46,18 @@ def serialize_one_2d_ds(
 ) -> Path:
     p_out = p.copy()
     if cog:
+        # Unsupported cog fields
+        p_out.pop('tiled', None)
+        p_out.pop('interleave', None)
+        p_out.pop('blockxsize', None)
+        p_out.pop('blockysize', None)
         p_out.update(
             {
                 'driver': 'COG',
-                'compress': 'deflate',
+                'compress': 'DEFLATE',
                 'predictor': 2,
-                'blocksize': 512,
-                'overview_level': 5,
-                'overview_resampling': Resampling.average,
-                'interleave': 'pixel',
-                'tiled': True,
+                'blocksize': 512,  # valid for COG
+                'resampling': Resampling.average,
                 'BIGTIFF': 'IF_SAFER',
             }
         )

@@ -22,6 +22,8 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `base_date` is now `base_date_for_confirmation`.
 - Remove algorithm assignments in localization workflows.
 - Organized `AlgoConfigData` and `RunConfigData` into seperate files
+  - `AlgoConfigData` is an attribute of the `RunConfigData`
+  - Retrieval (and serialization) of the Algorithm Parameters can still be obtained via `get_public_attributes`.
 - Put data/path utils into `data_utils.py`.
 
 ## Added
@@ -36,9 +38,12 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Validation for external model usage
 - Description of Runconfig Variables
 - Cloud-optimized Geotiff Format in Packaging
+  - Ensuring additional profile keys for in default GTiff are not present.
 
 ## Fixed
 - All the tests with the updates above.
+- Correct loading of algo_config.yml in `prep` steps.
+  - Only `from_yml` loads the `algo_config` correctly, but when it is assigned in the `prep` workflows (i.e. the attribute `algo_config` is assigned, this yml is not correctly loaded.
 
 
 ## [1.0.1] - 2025-06-05

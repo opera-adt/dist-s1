@@ -1,4 +1,3 @@
-import warnings
 from datetime import datetime
 from pathlib import Path
 
@@ -9,7 +8,7 @@ from dist_s1_enumerator.asf import append_pass_data, extract_pass_id
 from dist_s1_enumerator.data_models import dist_s1_loc_input_schema
 from dist_s1_enumerator.mgrs_burst_data import get_lut_by_mgrs_tile_ids
 from pandera.pandas import check_input
-from pydantic import ConfigDict, Field, ValidationError, ValidationInfo, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, ValidationInfo, field_validator, model_validator
 
 from dist_s1.data_models.algoconfig_model import AlgoConfigData
 from dist_s1.data_models.data_utils import (
@@ -30,7 +29,7 @@ from dist_s1.data_models.output_models import ProductDirectoryData, ProductNameD
 from dist_s1.water_mask import water_mask_control_flow
 
 
-class RunConfigData(AlgoConfigData):
+class RunConfigData(BaseModel):
     pre_rtc_copol: list[Path | str] = Field(..., description='List of paths to pre-rtc copolarization data.')
     pre_rtc_crosspol: list[Path | str] = Field(..., description='List of paths to pre-rtc crosspolarization data.')
     post_rtc_copol: list[Path | str] = Field(..., description='List of paths to post-rtc copolarization data.')
@@ -72,6 +71,11 @@ class RunConfigData(AlgoConfigData):
         default=None,
         description='Bucket prefix to use for product storage. If None, no bucket prefix is used.',
     )
+    # Algorithm configuration
+    algo_config: AlgoConfigData = Field(
+        default_factory=AlgoConfigData,
+        description='Algorithm configuration parameters.',
+    )
     # Path to external algorithm config file
     algo_config_path: Path | str | None = Field(
         default=None,
@@ -88,37 +92,21 @@ class RunConfigData(AlgoConfigData):
     _product_data_model: ProductDirectoryData | None = None
     _min_acq_date: datetime | None = None
     _processing_datetime: datetime | None = None
+    _algo_config_loaded: bool = False
     # Validate assignments to all fields
     model_config = ConfigDict(validate_assignment=True)
 
     @classmethod
-    def from_yaml(cls, yaml_file: str, fields_to_overwrite: dict | None = None) -> 'RunConfigData':
+    def from_yaml(cls, yaml_file: str) -> 'RunConfigData':
         """Load configuration from a YAML file and initialize RunConfigModel."""
         with Path.open(yaml_file) as file:
             data = yaml.safe_load(file)
-            runconfig_data = data['run_config']
-        if fields_to_overwrite is not None:
-            runconfig_data.update(fields_to_overwrite)
-
-        # Handle algorithm config if specified
-        algo_config_path = runconfig_data.get('algo_config_path')
-        if algo_config_path is not None:
-            algo_config = AlgoConfigData.from_yaml(algo_config_path)
-
-            # Override algorithm parameters with those from external file
-            # Only override if the parameter is not explicitly set in the main config
-            algo_dict = algo_config.model_dump()
-            for field_name, field_value in algo_dict.items():
-                if field_name not in runconfig_data:
-                    runconfig_data[field_name] = field_value
-                    warnings.warn(
-                        f"Algorithm parameter '{field_name}' inherited from external config: {algo_config_path}",
-                        UserWarning,
-                        stacklevel=2,
-                    )
-
-        obj = cls(**runconfig_data)
-        return obj
+        # Nested or flat run config
+        run_params = data['run_config'] if 'run_config' in data.keys() else data
+        config = cls(**run_params)
+        if 'algo_config_path' in run_params.keys():
+            config.algo_config = AlgoConfigData.from_yaml(run_params['algo_config_path'])
+        return config
 
     @field_validator('pre_rtc_copol', 'pre_rtc_crosspol', 'post_rtc_copol', 'post_rtc_crosspol', mode='before')
     def convert_to_paths(cls, values: list[Path | str], info: ValidationInfo) -> list[Path]:
@@ -191,9 +179,20 @@ class RunConfigData(AlgoConfigData):
             raise ValueError('The MGRS tile specified is not processed by DIST-S1')
         return mgrs_tile_id
 
+    @field_validator('algo_config_path', mode='before')
+    def validate_algo_config_path(cls, algo_config_path: Path | str | None) -> Path | None:
+        """Validate that algo_config_path exists if provided."""
+        if algo_config_path is None:
+            return None
+        algo_config_path = Path(algo_config_path) if isinstance(algo_config_path, str) else algo_config_path
+        if not algo_config_path.exists():
+            raise ValueError(f'Algorithm config path does not exist: {algo_config_path}')
+        if not algo_config_path.is_file():
+            raise ValueError(f'Algorithm config path is not a file: {algo_config_path}')
+        return algo_config_path
+
     @property
     def confirmation(self) -> bool:
-        """Returns True if prior_dist_s1_product is not None."""
         return self.prior_dist_s1_product is not None
 
     @property
@@ -224,7 +223,6 @@ class RunConfigData(AlgoConfigData):
     def product_data_model(self) -> ProductDirectoryData:
         if self._product_data_model is None:
             product_name = self.product_name
-            # Use dst_dir if product_dst_dir is None
             dst_dir = (
                 Path(self.product_dst_dir).resolve()
                 if self.product_dst_dir is not None
@@ -236,9 +234,13 @@ class RunConfigData(AlgoConfigData):
             )
         return self._product_data_model
 
-    def get_public_attributes(self) -> dict:
+    def get_public_attributes(self, include_algo_config_params: bool = False) -> dict:
         config_dict = {k: v for k, v in self.model_dump().items() if not k.startswith('_')}
         config_dict.pop('check_input_paths', None)
+        config_dict.pop('algo_config', None)
+        config_dict.pop('algo_config_path', None)
+        if include_algo_config_params:
+            config_dict.update(self.algo_config.model_dump())
         return config_dict
 
     def to_yaml(self, yaml_file: str | Path, algo_param_path: str | Path | None = None) -> None:
@@ -254,34 +256,19 @@ class RunConfigData(AlgoConfigData):
         """
         yaml_file = Path(yaml_file)
 
-        if algo_param_path is not None:
-            algo_param_path = Path(algo_param_path)
+        if algo_param_path is None:
+            algo_param_path = yaml_file.parent / 'algo_params.yml'
+        algo_param_path = Path(algo_param_path)
 
-            # Get algorithm parameters (fields defined in AlgoConfigData)
-            algo_field_names = set(AlgoConfigData.model_fields.keys())
+        config_dict = {k: v for k, v in self.model_dump().items() if not k.startswith('_')}
+        config_dict['algo_config_path'] = str(algo_param_path)
+        config_dict.pop('check_input_paths', None)
+        config_dict.pop('algo_config')
 
-            # Get all public attributes
-            config_dict = self.get_public_attributes()
-
-            # Separate algorithm and run config parameters
-            algo_dict = {k: v for k, v in config_dict.items() if k in algo_field_names}
-            run_dict = {k: v for k, v in config_dict.items() if k not in algo_field_names}
-
-            # Save algorithm config to specified file
-            algo_config = AlgoConfigData(**algo_dict)
-            algo_config.to_yml(algo_param_path)
-
-            # Add reference to algorithm config file in main config
-            run_dict['algo_config_path'] = str(algo_param_path)
-            yml_dict = {'run_config': run_dict}
-        else:
-            # Save everything in one file
-            config_dict = self.get_public_attributes()
-            yml_dict = {'run_config': config_dict}
-
-        # Write main configuration to YAML file
+        yml_dict = {'run_config': config_dict}
         with yaml_file.open('w') as f:
             yaml.dump(yml_dict, f, default_flow_style=False, indent=4, sort_keys=False)
+        self.algo_config.to_yml(algo_param_path)
 
     @classmethod
     @check_input(dist_s1_loc_input_schema, obj_getter=0, lazy=True)
@@ -310,6 +297,15 @@ class RunConfigData(AlgoConfigData):
             from dist_s1.data_models.defaults import DEFAULT_DELTA_LOOKBACK_DAYS_MW
 
             delta_lookback_days_mw = DEFAULT_DELTA_LOOKBACK_DAYS_MW
+
+        # Create algorithm config with provided algorithm parameters
+        algo_config = AlgoConfigData(
+            max_pre_imgs_per_burst_mw=max_pre_imgs_per_burst_mw,
+            delta_lookback_days_mw=delta_lookback_days_mw,
+            lookback_strategy=lookback_strategy,
+            post_date_buffer_days=DEFAULT_POST_DATE_BUFFER_DAYS,
+        )
+
         runconfig_data = RunConfigData(
             pre_rtc_copol=df_pre.loc_path_copol.tolist(),
             pre_rtc_crosspol=df_pre.loc_path_crosspol.tolist(),
@@ -319,11 +315,8 @@ class RunConfigData(AlgoConfigData):
             dst_dir=dst_dir,
             apply_water_mask=apply_water_mask,
             water_mask_path=water_mask_path,
-            max_pre_imgs_per_burst_mw=max_pre_imgs_per_burst_mw,
-            delta_lookback_days_mw=delta_lookback_days_mw,
-            lookback_strategy=lookback_strategy,
             prior_dist_s1_product=prior_dist_s1_product,
-            post_date_buffer_days=DEFAULT_POST_DATE_BUFFER_DAYS,
+            algo_config=algo_config,
         )
         return runconfig_data
 
@@ -505,4 +498,12 @@ class RunConfigData(AlgoConfigData):
         """Set input_data_dir to dst_dir if None."""
         if self.input_data_dir is None:
             self.input_data_dir = self.dst_dir
+        return self
+
+    @model_validator(mode='after')
+    def handle_algo_config_loading(self) -> 'RunConfigData':
+        if self.algo_config_path is not None and self._algo_config_loaded is False:
+            algo_config_data = AlgoConfigData.from_yaml(self.algo_config_path)
+            self.algo_config.__dict__.update(algo_config_data.model_dump())
+            self._algo_config_loaded = True
         return self
