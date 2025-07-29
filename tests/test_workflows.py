@@ -67,7 +67,7 @@ def test_burst_disturbance_workflow(test_dir: Path, test_data_dir: Path, change_
     df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
     config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir)
     config.apply_water_mask = False
-    config.device = 'cpu'
+    config.algo_config.device = 'cpu'
 
     run_burst_disturbance_workflow(config)
 
@@ -90,7 +90,7 @@ def test_dist_s1_sas_workflow(
         dst_dir=tmp_dir,
     )
     config.apply_water_mask = False
-    config.device = 'cpu'
+    config.algo_config.device = 'cpu'
 
     run_dist_s1_sas_workflow(config)
 

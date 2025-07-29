@@ -134,7 +134,7 @@ def package_disturbance_tifs_no_confirmation(run_config: RunConfigData) -> None:
         ),
     ]
 
-    tags = run_config.get_public_attributes()
+    tags = run_config.get_public_attributes(include_algo_config_params=True)
     tags['version'] = dist_s1.__version__
     tags = update_tags_with_opera_ids(tags)
     tags = update_tag_types(tags)
@@ -183,7 +183,7 @@ def package_conf_db_disturbance_tifs(run_config: RunConfigData) -> None:
         p_dict[key] = p
         label_dict[key] = label
 
-    tags = run_config.get_public_attributes()
+    tags = run_config.get_public_attributes(include_algo_config_params=True)
     tags['version'] = dist_s1.__version__
     tags = update_tags_with_opera_ids(tags)
     tags = update_tag_types(tags)

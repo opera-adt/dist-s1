@@ -44,17 +44,16 @@ def test_dist_s1_sas_main(
     # Load and modify runconfig - not the paths are relative to the test_dir
     runconfig_data = RunConfigData.from_yaml(cropped_10SGD_dataset_runconfig)
     # Memory strategy was set to high to create the golden dataset
-    runconfig_data.memory_strategy = 'high'
-    # Force CPU device
-    runconfig_data.device = 'cpu'
-    # Limit workers for CI environment
-    runconfig_data.n_workers_for_despeckling = 4
+    runconfig_data.algo_config.memory_strategy = 'high'
+    runconfig_data.algo_config.device = 'cpu'
+    runconfig_data.algo_config.n_workers_for_despeckling = 4
     # We have a different product_dst_dir than the dst_dir called `tmp2`
     product_dst_dir = (test_dir / 'tmp2').resolve()
     runconfig_data.product_dst_dir = str(product_dst_dir)
 
     tmp_runconfig_yml_path = tmp_dir / 'runconfig.yml'
-    runconfig_data.to_yaml(tmp_runconfig_yml_path)
+    tmp_algo_params_yml_path = tmp_dir / 'algo_params.yml'
+    runconfig_data.to_yaml(tmp_runconfig_yml_path, algo_param_path=tmp_algo_params_yml_path)
 
     # Run the command
     result = cli_runner.invoke(
