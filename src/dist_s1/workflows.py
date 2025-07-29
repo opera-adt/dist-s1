@@ -21,7 +21,6 @@ from dist_s1.data_models.runconfig_model import RunConfigData
 from dist_s1.despeckling import despeckle_and_serialize_rtc_s1
 from dist_s1.dist_processing import (
     compute_burst_disturbance_and_serialize,
-    confirm_disturbance_using_prior_product_and_serialize,
     merge_burst_disturbances_and_serialize,
     merge_burst_metrics_and_serialize,
 )
