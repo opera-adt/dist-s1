@@ -10,7 +10,8 @@ from dist_s1.rio_tools import open_one_ds, serialize_one_2d_ds
 
 def compute_tile_disturbance_arr(
     *,
-    prior_: np.ndarray,
+    current_metric: np.ndarray,
+    prior_status: np.ndarray,
     prior_max_metric: np.ndarray,
     prior_confidence: np.ndarray,
     prior_date: np.ndarray,
@@ -18,7 +19,6 @@ def compute_tile_disturbance_arr(
     percent: np.ndarray,
     duration: np.ndarray,
     last_obs: np.ndarray,
-    current_metric: np.ndarray,
     current_date_days_from_base_date: int,
     alert_low_conf_thresh: float,
     alert_high_conf_thresh: float,
@@ -47,10 +47,10 @@ def compute_tile_disturbance_arr(
 
     # Reset if 365-day timeout, or previous status is finished and current anomaly is above low threshold
     reset_mask = ((current_date_days_from_base_date - prior_date) > 365) | (
-        (prior_ > 6) & (current_metric >= alert_low_conf_thresh)
+        (prior_status > 6) & (current_metric >= alert_low_conf_thresh)
     )
     reset_mask &= valid
-    prior_[reset_mask] = no_disturbance
+    prior_status[reset_mask] = no_disturbance
     percent[reset_mask] = 255
     count[reset_mask] = 0
     prior_max_metric[reset_mask] = 0
@@ -66,7 +66,7 @@ def compute_tile_disturbance_arr(
     disturbed = (current_metric >= alert_low_conf_thresh) & valid
 
     # New disturbance detection logic
-    new_detection = disturbed & ((prior_ == no_disturbance) | (prior_ == nodata))
+    new_detection = disturbed & ((prior_status == no_disturbance) | (prior_status == nodata))
     prior_date[new_detection] = current_date_days_from_base_date
     prior_max_metric[new_detection] = current_metric[new_detection]
     percent[new_detection] = 100
@@ -92,8 +92,8 @@ def compute_tile_disturbance_arr(
     ).astype(np.uint8)
 
     # Reset status for pixels that were NODATA and are now not disturbed
-    status_reset = not_disturbed & (prior_ == nodata)
-    prior_[status_reset] = no_disturbance
+    status_reset = not_disturbed & (prior_status == nodata)
+    prior_status[status_reset] = no_disturbance
     percent[status_reset] = 255
     count[status_reset] = 0
     prior_max_metric[status_reset] = 0
@@ -102,7 +102,7 @@ def compute_tile_disturbance_arr(
     duration[status_reset] = 0
 
     # Update confidence
-    update_conf = (prior_confidence > 0) & (prior_ <= conf_dist_high) & valid
+    update_conf = (prior_confidence > 0) & (prior_status <= conf_dist_high) & valid
     curr_metric_conf = np.minimum(current_metric, metric_value_upper_lim)
     prevmean = np.zeros_like(prior_confidence, dtype=np.float64)
     with np.errstate(divide='ignore', invalid='ignore'):
@@ -119,7 +119,7 @@ def compute_tile_disturbance_arr(
     prior_confidence[update_conf] = np.clip(tempconf[update_conf], 0, conf_upper_lim)
 
     # Update confidence for new disturbances
-    new_conf = ((prior_ == no_disturbance) | (prior_ == nodata)) & disturbed
+    new_conf = ((prior_status == no_disturbance) | (prior_status == nodata)) & disturbed
     prior_confidence[new_conf] = np.minimum(current_metric[new_conf], metric_value_upper_lim)
 
     last_metric_date = prior_date + duration - 1
@@ -128,30 +128,30 @@ def compute_tile_disturbance_arr(
 
     # Updates for active disturbances
     # High threshold disturbances
-    updating_current = (prior_ <= conf_dist_high) | (prior_ == nodata)
+    updating_current = (prior_status <= conf_dist_high) | (prior_status == nodata)
     hi_mask = updating_current & (prior_max_metric >= alert_high_conf_thresh)
     conf_hi = hi_mask & (prior_confidence >= conf_thresh)
     first_hi = hi_mask & (duration == 1)
-    prov_hi = hi_mask & ~(conf_hi | first_hi) & (prior_ != conf_dist_high)
-    prior_[conf_hi] = conf_dist_high
-    prior_[first_hi] = first_dist_high
-    prior_[prov_hi] = prov_dist_high
+    prov_hi = hi_mask & ~(conf_hi | first_hi) & (prior_status != conf_dist_high)
+    prior_status[conf_hi] = conf_dist_high
+    prior_status[first_hi] = first_dist_high
+    prior_status[prov_hi] = prov_dist_high
     # Low threshold disturbances
     lo_mask = (
         updating_current & (prior_max_metric >= alert_low_conf_thresh) & (prior_max_metric < alert_high_conf_thresh)
     )
     conf_lo = lo_mask & (prior_confidence >= conf_thresh)
     first_lo = lo_mask & (duration == 1)
-    prov_lo = lo_mask & ~(conf_lo | first_lo) & (prior_ != conf_dist_low)
-    prior_[conf_lo] = conf_dist_low
-    prior_[first_lo] = first_dist_low
-    prior_[prov_lo] = prov_dist_low
+    prov_lo = lo_mask & ~(conf_lo | first_lo) & (prior_status != conf_dist_low)
+    prior_status[conf_lo] = conf_dist_low
+    prior_status[first_lo] = first_dist_low
+    prior_status[prov_lo] = prov_dist_low
 
     # Reset ongoing disturbances if max_anom drops below lowthresh
-    prior_[updating_current & (prior_max_metric < alert_low_conf_thresh)] = no_disturbance
+    prior_status[updating_current & (prior_max_metric < alert_low_conf_thresh)] = no_disturbance
 
     # Update must finish disturbances
-    status_at_finish_check = prior_.copy()  # Capture status before final finish logic
+    status_at_finish_check = prior_status.copy()  # Capture status before final finish logic
 
     # Initialize must_finish_conditions list
     must_finish_conditions = []
@@ -177,19 +177,19 @@ def compute_tile_disturbance_arr(
     if must_finish_conditions:
         combined_must_finish_criteria = np.logical_or.reduce(must_finish_conditions)
     else:
-        combined_must_finish_criteria = np.full(prior_.shape, False, dtype=bool)
+        combined_must_finish_criteria = np.full(prior_status.shape, False, dtype=bool)
 
     must_finish = (status_at_finish_check <= conf_dist_high) & combined_must_finish_criteria
 
     # Apply finished status
-    prior_[must_finish & (status_at_finish_check == conf_dist_low)] = conf_dist_low_fin
-    prior_[must_finish & (status_at_finish_check == conf_dist_high)] = conf_dist_high_fin
+    prior_status[must_finish & (status_at_finish_check == conf_dist_low)] = conf_dist_low_fin
+    prior_status[must_finish & (status_at_finish_check == conf_dist_high)] = conf_dist_high_fin
 
     # Reset other finished pixels to NODIST
     reset_finish = must_finish & ~(
         (status_at_finish_check == conf_dist_low) | (status_at_finish_check == conf_dist_high)
     )
-    prior_[reset_finish] = no_disturbance
+    prior_status[reset_finish] = no_disturbance
     percent[reset_finish] = 0
     count[reset_finish] = 0
     prior_max_metric[reset_finish] = 0
@@ -201,7 +201,7 @@ def compute_tile_disturbance_arr(
     last_obs[valid] = current_date_days_from_base_date
 
     return {
-        'status': prior_,
+        'status': prior_status,
         'max_metric': prior_max_metric,
         'confidence': prior_confidence,
         'date': prior_date,
@@ -215,7 +215,7 @@ def compute_tile_disturbance_arr(
 def compute_tile_disturbance_using_previous_product_and_serialize(
     current_dist_s1_product: DistS1ProductDirectory | str | Path,
     prior_dist_s1_product: DistS1ProductDirectory | str | Path,
-    dst_dist_product: str | Path | DistS1ProductDirectory = None,
+    dst_dist_product_parent: str | Path | None,
     alert_low_conf_thresh: float = 3.5,
     alert_high_conf_thresh: float = 5.5,
     exclude_consecutive_no_dist: bool = False,
@@ -234,11 +234,16 @@ def compute_tile_disturbance_using_previous_product_and_serialize(
     if not isinstance(prior_dist_s1_product, DistS1ProductDirectory):
         prior_dist_s1_product = DistS1ProductDirectory.from_product_path(prior_dist_s1_product)
 
-    if dst_dist_product is None:
-        dst_dist_product = current_dist_s1_product
+    if dst_dist_product_parent is None:
+        dst_dist_product_directory = current_dist_s1_product.product_dir_path
     else:
-        if not isinstance(dst_dist_product, DistS1ProductDirectory):
-            dst_dist_product = DistS1ProductDirectory.from_product_path(dst_dist_product)
+        dst_dist_product_directory = Path(dst_dist_product_parent) / current_dist_s1_product.product_name
+        dst_dist_product_directory.mkdir(parents=True, exist_ok=True)
+
+    dst_dist_product_directory = DistS1ProductDirectory(
+        dst_dir=dst_dist_product_directory,
+        product_name=current_dist_s1_product.product_name,
+    )
 
     if base_date_for_confirmation is None:
         base_date_for_confirmation = BASE_DATE_FOR_CONFIRMATION
@@ -261,7 +266,7 @@ def compute_tile_disturbance_using_previous_product_and_serialize(
     # Core Confirmation Logic
     dist_arr_dict = compute_tile_disturbance_arr(
         current_metric=current_metric,
-        prior_=prior_status,
+        prior_status=prior_status,
         prior_max_metric=prior_max_metric,
         prior_confidence=prior_confidence,
         prior_date=prior_date,
@@ -291,14 +296,14 @@ def compute_tile_disturbance_using_previous_product_and_serialize(
     p_dist_int16['dtype'] = np.int16
 
     # Serialize output
-    out_status_path = dst_dist_product_dir.layer_path_dict['GEN-DIST-STATUS']
-    out_max_metric_path = dst_dist_product_dir.layer_path_dict['GEN-METRIC-MAX']
-    out_confidence_path = dst_dist_product_dir.layer_path_dict['GEN-DIST-CONF']
-    out_date_path = dst_dist_product_dir.layer_path_dict['GEN-DIST-DATE']
-    out_count_path = dst_dist_product_dir.layer_path_dict['GEN-DIST-COUNT']
-    out_percent_path = dst_dist_product_dir.layer_path_dict['GEN-DIST-PERC']
-    out_duration_path = dst_dist_product_dir.layer_path_dict['GEN-DIST-DUR']
-    out_last_obs_path = dst_dist_product_dir.layer_path_dict['GEN-DIST-LAST-DATE']
+    out_status_path = dst_dist_product_directory.layer_path_dict['GEN-DIST-STATUS']
+    out_max_metric_path = dst_dist_product_directory.layer_path_dict['GEN-METRIC-MAX']
+    out_confidence_path = dst_dist_product_directory.layer_path_dict['GEN-DIST-CONF']
+    out_date_path = dst_dist_product_directory.layer_path_dict['GEN-DIST-DATE']
+    out_count_path = dst_dist_product_directory.layer_path_dict['GEN-DIST-COUNT']
+    out_percent_path = dst_dist_product_directory.layer_path_dict['GEN-DIST-PERC']
+    out_duration_path = dst_dist_product_directory.layer_path_dict['GEN-DIST-DUR']
+    out_last_obs_path = dst_dist_product_directory.layer_path_dict['GEN-DIST-LAST-DATE']
 
     serialize_one_2d_ds(dist_arr_dict['status'], p_dist_int8, out_status_path, cog=True)
     serialize_one_2d_ds(dist_arr_dict['max_metric'], anom_prof, out_max_metric_path, cog=True)

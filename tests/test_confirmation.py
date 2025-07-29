@@ -1,12 +1,8 @@
 import datetime
-import os
-import tempfile
 import warnings
 from pathlib import Path
-from typing import Any
 
 import numpy as np
-import pytest
 import rasterio
 import rasterio.errors
 from rasterio.transform import from_origin

@@ -159,7 +159,7 @@ def compute_burst_disturbance_and_serialize(
     serialize_one_2d_ds(metric, p_metric_ref, out_metric_path)
 
 
-def compute_tile_disturbance_using_previous_product_and_serialize(
+def confirm_disturbance_using_prior_product_and_serialize(
     dist_metric_path: Path,
     dist_metric_date: Path,
     out_path_list: list[str],
