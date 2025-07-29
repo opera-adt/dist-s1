@@ -436,67 +436,6 @@ class RunConfigData(BaseModel):
             self._df_inputs = df
         return self._df_inputs.copy()
 
-    @property
-    def df_prior_dist_products(self) -> pd.DataFrame:
-        VALID_SUFFIXES = (
-            '_GEN-DIST-STATUS.tif',
-            '_GEN-METRIC-MAX.tif',
-            '_GEN-DIST-CONF.tif',
-            '_GEN-DIST-DATE.tif',
-            '_GEN-DIST-COUNT.tif',
-            '_GEN-DIST-PERC.tif',
-            '_GEN-DIST-DUR.tif',
-            '_GEN-DIST-LAST-DATE.tif',
-        )
-
-        if self._df_prior_dist_products is None:
-            if not self.prior_dist_s1_product:
-                self._df_prior_dist_products = pd.DataFrame()
-                return self._df_prior_dist_products.copy()
-
-            # Normalize paths
-            paths = [Path(p) for p in self.prior_dist_s1_product]
-
-            # Group by base name (everything before the DIST suffix)
-            grouped = {}
-            for path in paths:
-                for suffix in VALID_SUFFIXES:
-                    if path.name.endswith(suffix):
-                        key = path.name.replace(suffix, '')
-                        if key not in grouped:
-                            grouped[key] = {}
-                        grouped[key][suffix] = path
-                        break
-
-            # Build rows for DataFrame
-            rows = []
-            for key, files in grouped.items():
-                if all(suffix in files for suffix in VALID_SUFFIXES):
-                    row = {suffix: str(files[suffix]) for suffix in VALID_SUFFIXES}
-                    row['product_key'] = key
-                    rows.append(row)
-                else:
-                    missing = [s for s in VALID_SUFFIXES if s not in files]
-                    raise ValueError(f'Missing files for {key}: {missing}')
-
-            # Rename columns to user-friendly names
-            column_mapping = {
-                '_GEN-DIST-STATUS.tif': 'path_dist_status',
-                '_GEN-METRIC-MAX.tif': 'path_dist_max',
-                '_GEN-DIST-CONF.tif': 'path_dist_conf',
-                '_GEN-DIST-DATE.tif': 'path_dist_date',
-                '_GEN-DIST-COUNT.tif': 'path_dist_count',
-                '_GEN-DIST-PERC.tif': 'path_dist_perc',
-                '_GEN-DIST-DUR.tif': 'path_dist_dur',
-                '_GEN-DIST-LAST-DATE.tif': 'path_dist_last_date',
-            }
-
-            df = pd.DataFrame(rows)
-            df = df.rename(columns=column_mapping)
-            df = df.sort_values(by='product_key').reset_index(drop=True)
-            self._df_prior_dist_products = df
-            return self._df_prior_dist_products.copy()
-
     @model_validator(mode='after')
     def handle_water_mask_control_flow(self) -> 'RunConfigData':
         """Trigger water mask control flow when apply_water_mask is True."""

@@ -230,32 +230,6 @@ class DistS1ProductDirectory(BaseModel):
                         failed_layers.append(layer)
         return len(failed_layers) == 0
 
-    # Validate CONF DB layers. To do: fix the repeated code for a better method
-    def validate_conf_db_layer_paths(self) -> bool:
-        failed_layers = []
-        for layer, path in self.layer_path_dict.items():
-            if layer not in TIF_LAYERS:
-                continue
-            if not path.exists():
-                warn(f'Layer {layer} does not exist at path: {path}', UserWarning)
-                failed_layers.append(layer)
-        return len(failed_layers) == 0
-
-    def validate_conf_db_tif_layer_dtypes(self) -> bool:
-        failed_layers = []
-        for layer, path in self.layer_path_dict.items():
-            if layer not in TIF_LAYERS:
-                continue
-            if path.suffix == '.tif':
-                with rasterio.open(path) as src:
-                    if src.dtypes[0] != TIF_LAYER_DTYPES[layer]:
-                        warn(
-                            f'Layer {layer} has incorrect dtype: {src.dtypes[0]}; should be: {TIF_LAYER_DTYPES[layer]}',
-                            UserWarning,
-                        )
-                        failed_layers.append(layer)
-        return len(failed_layers) == 0
-
     def __eq__(
         self, other: 'DistS1ProductDirectory', *, rtol: float = 1e-05, atol: float = 1e-05, equal_nan: bool = True
     ) -> bool:

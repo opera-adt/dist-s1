@@ -8,6 +8,7 @@ from rasterio.env import Env
 
 import dist_s1
 from dist_s1.constants import BASE_DATE_FOR_CONFIRMATION, DIST_CMAP
+from dist_s1.data_models.output_models import DistS1ProductDirectory
 from dist_s1.data_models.runconfig_model import RunConfigData
 from dist_s1.rio_tools import open_one_ds, serialize_one_2d_ds
 from dist_s1.water_mask import apply_water_mask
@@ -179,12 +180,11 @@ def package_disturbance_tifs_no_confirmation(run_config: RunConfigData) -> None:
         serialize_one_2d_ds(arr, prof, path, colormap=cmap, tags=tags, cog=True)
 
 
-def generate_browse_image(run_config: RunConfigData) -> None:
-    product_data = run_config.product_data_model
+def generate_browse_image(product_data: DistS1ProductDirectory, water_mask_path: Path | str | None = None) -> None:
     with Env(GDAL_PAM_ENABLED='NO'):
         convert_geotiff_to_png(
             product_data.layer_path_dict['GEN-DIST-STATUS'],
             product_data.layer_path_dict['browse'],
             colormap=DIST_CMAP,
-            water_mask_path=run_config.water_mask_path,
+            water_mask_path=water_mask_path,
         )

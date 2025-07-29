@@ -285,6 +285,8 @@ def run_confirmation_of_dist_product_workflow(
         confidence_upper_thresh=confidence_threshold,
         metric_value_upper_lim=metric_value_upper_lim,
     )
+    # Generate browse image for the final product
+    generate_browse_image(run_config.product_data_model, run_config.water_mask_path)
 
 
 def run_sequential_confirmation_of_dist_products_workflow(
@@ -339,11 +341,13 @@ def run_dist_s1_processing_workflow(run_config: RunConfigData) -> RunConfigData:
 
 def run_dist_s1_packaging_workflow_no_confirmation(run_config: RunConfigData) -> Path:
     package_disturbance_tifs_no_confirmation(run_config)
-    product_data = run_config.product_data_model
-    product_data.validate_conf_db_tif_layer_dtypes()
-    product_data.validate_conf_db_layer_paths()
+    generate_browse_image(run_config.product_data_model_no_confirmation, run_config.water_mask_path)
 
-    generate_browse_image(run_config)
+    product_data = run_config.product_data_model_no_confirmation
+    product_data.validate_layer_paths()
+    product_data.validate_tif_layer_dtypes()
+
+    return product_data.product_dir_path
 
 
 def run_dist_s1_sas_prep_workflow(
@@ -447,7 +451,7 @@ def run_dist_s1_sas_workflow(run_config: RunConfigData) -> Path:
     else:
         src = run_config.product_data_model_no_confirmation.product_dir_path
         dst = run_config.product_data_model.product_dir_path
-        shutil.copytree(src, dst)
+        shutil.copytree(src, dst, dirs_exist_ok=True)
 
     # Upload to S3 if bucket is provided
     if run_config.bucket is not None:
