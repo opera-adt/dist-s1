@@ -7,6 +7,7 @@ import torch.multiprocessing as torch_mp
 from tqdm.auto import tqdm
 
 from dist_s1.aws import upload_product_to_s3
+from dist_s1.confirmation import confirm_disturbance_with_prior_product_and_serialize
 from dist_s1.data_models.defaults import (
     DEFAULT_CONFIDENCE_THRESH,
     DEFAULT_CONFIDENCE_UPPER_LIM,
@@ -272,7 +273,7 @@ def run_confirmation_of_dist_product_workflow(
     confidence_threshold = run_config.confidence_threshold
     metric_value_upper_lim = run_config.metric_value_upper_lim
 
-    confirm_disturbance_using_prior_product_and_serialize(
+    confirm_disturbance_with_prior_product_and_serialize(
         current_dist_s1_product=current_dist_s1_product,
         prior_dist_s1_product=prior_dist_s1_product,
         dst_dist_product_parent=dst_dist_product_parent,
@@ -310,7 +311,7 @@ def run_sequential_confirmation_of_dist_products_workflow(
     shutil.copytree(product_dirs[0], dst_dist_product_parent)
     prior_dist_s1_product = dst_dist_product_parent / product_dirs[0].name
     for current_dist_s1_product in product_dirs[1:]:
-        confirm_disturbance_using_prior_product_and_serialize(
+        confirm_disturbance_with_prior_product_and_serialize(
             current_dist_s1_product=current_dist_s1_product,
             prior_dist_s1_product=prior_dist_s1_product,
             dst_dist_product_parent=dst_dist_product_parent,

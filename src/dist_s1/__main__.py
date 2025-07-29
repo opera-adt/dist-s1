@@ -6,7 +6,7 @@ from typing import ParamSpec, TypeVar
 import click
 from distmetrics.model_load import ALLOWED_MODELS
 
-from dist_s1.confirmation import confirm_disturbance_using_prior_product_and_serialize
+from dist_s1.confirmation import confirm_disturbance_with_prior_product_and_serialize
 from dist_s1.data_models.defaults import (
     DEFAULT_APPLY_WATER_MASK,
     DEFAULT_BATCH_SIZE_FOR_NORM_PARAM_ESTIMATION,
@@ -455,7 +455,7 @@ def run_one_confirmation(
     confidence_threshold: float,
     metric_value_upper_lim: float,
 ) -> None:
-    confirm_disturbance_using_prior_product_and_serialize(
+    confirm_disturbance_with_prior_product_and_serialize(
         prior_dist_s1_product=prior_dist_s1_product,
         current_dist_s1_product=current_dist_s1_product,
         dst_dist_product_parent=dst_dist_product_parent,
