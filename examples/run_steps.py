@@ -27,9 +27,9 @@ def main() -> None:
     )
     run_config.apply_water_mask = True
     run_config.water_mask_path = dst_dir / 'water_mask.tif'
-    run_config.memory_strategy = memory_strategy
-    run_config.moderate_confidence_threshold = moderate_confidence_threshold
-    run_config.high_confidence_threshold = high_confidence_threshold
+    run_config.algo_config.memory_strategy = memory_strategy
+    run_config.algo_config.moderate_confidence_threshold = moderate_confidence_threshold
+    run_config.algo_config.high_confidence_threshold = high_confidence_threshold
     run_config.to_yaml('run_config.yml')
 
     run_burst_disturbance_workflow(run_config)

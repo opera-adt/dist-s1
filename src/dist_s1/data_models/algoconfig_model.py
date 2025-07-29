@@ -224,23 +224,11 @@ class AlgoConfigData(BaseModel):
         yaml_file = Path(yaml_file)
         with yaml_file.open() as file:
             data = yaml.safe_load(file)
-            if 'algo_config' in data:
-                algo_data = data['algo_config']
-            else:
+            algo_data = data.get('algo_config')
+            if algo_data is None:
                 algo_data = data.get('algorithm_config', data)
 
-        # Create instance and warn about loaded parameters
         obj = cls(**algo_data)
-
-        # Issue warnings for all parameters that were loaded from file
-        for field_name, field_value in algo_data.items():
-            if hasattr(obj, field_name):
-                warnings.warn(
-                    f"Algorithm parameter '{field_name}' set to {field_value} from external config file: {yaml_file}",
-                    UserWarning,
-                    stacklevel=2,
-                )
-
         return obj
 
     @field_validator('memory_strategy')
@@ -364,7 +352,6 @@ class AlgoConfigData(BaseModel):
         config_dict = self.model_dump()
         yml_dict = {'algo_config': config_dict}
 
-        # Write to YAML file
         yaml_file = Path(yaml_file)
         with yaml_file.open('w') as f:
             yaml.dump(yml_dict, f, default_flow_style=False, indent=4, sort_keys=False)

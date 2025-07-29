@@ -13,7 +13,7 @@ dist-s1 run_sas_prep --mgrs_tile_id '11SLT' \
     --model_dtype 'float32' \
     --n_workers_for_norm_param_estimation 4 \
     --batch_size_for_norm_param_estimation 32 \
-    --stride_for_norm_param_estimation 8 \
+    --stride_for_norm_param_estimation 4 \
     --algo_config_path algo_config.yml \
     --run_config_path run_config.yml && \
 dist-s1 run_sas --run_config_path run_config.yml 
