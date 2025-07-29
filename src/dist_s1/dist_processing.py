@@ -9,6 +9,15 @@ from distmetrics.tf_inference import estimate_normal_params
 from scipy.special import logit
 
 from dist_s1.constants import DISTLABEL2VAL, DIST_CMAP
+from dist_s1.data_models.defaults import (
+    DEFAULT_BATCH_SIZE_FOR_NORM_PARAM_ESTIMATION,
+    DEFAULT_DEVICE,
+    DEFAULT_MEMORY_STRATEGY,
+    DEFAULT_MODEL_COMPILATION,
+    DEFAULT_MODEL_DTYPE,
+    DEFAULT_MODEL_SOURCE,
+    DEFAULT_STRIDE_FOR_NORM_PARAM_ESTIMATION,
+)
 from dist_s1.rio_tools import check_profiles_match, get_mgrs_profile, open_one_ds, serialize_one_2d_ds
 
 
@@ -53,16 +62,15 @@ def compute_burst_disturbance_and_serialize(
     out_metric_path: Path | None = None,
     use_date_encoding: bool = False,
     use_logits: bool = True,
-    model_source: str | Path | None = 'transformer_optimized',
+    model_source: str | Path | None = DEFAULT_MODEL_SOURCE,
     model_cfg_path: str | Path | None = None,
     model_wts_path: str | Path | None = None,
-    memory_strategy: str = 'high',
-    stride: int = 16,
-    batch_size: int = 32,
-    device: str = 'best',
-    model_compilation: bool = False,
-    fill_value: float = 1e-7,
-    model_dtype: np.dtype = 'float32',
+    memory_strategy: str = DEFAULT_MEMORY_STRATEGY,
+    stride: int = DEFAULT_STRIDE_FOR_NORM_PARAM_ESTIMATION,
+    batch_size: int = DEFAULT_BATCH_SIZE_FOR_NORM_PARAM_ESTIMATION,
+    device: str = DEFAULT_DEVICE,
+    model_compilation: bool = DEFAULT_MODEL_COMPILATION,
+    model_dtype: np.dtype = DEFAULT_MODEL_DTYPE,
     raw_data_for_nodata_mask: Path | str | None = None,
 ) -> None:
     model = load_transformer_model(
@@ -94,11 +102,9 @@ def compute_burst_disturbance_and_serialize(
     else:
         mask_2d = np.isnan(post_copol_arr) | np.isnan(post_crosspol_arr)
 
-    if fill_value <= 0:
-        fill_value = 1e-7
-
     # Preserve nodata values for metric
     # Fill nodata values with fill_value for model that is 1e-7
+    fill_value = 1e-7
     pre_copol_arrs = [np.where(np.isnan(arr), fill_value, arr) for arr in pre_copol_arrs]
     pre_crosspol_arrs = [np.where(np.isnan(arr), fill_value, arr) for arr in pre_crosspol_arrs]
     post_copol_arr = np.where(np.isnan(post_copol_arr), fill_value, post_copol_arr)

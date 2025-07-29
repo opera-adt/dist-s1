@@ -7,69 +7,72 @@ import rasterio
 import rasterio.errors
 from rasterio.transform import from_origin
 
-from dist_s1.confirmation import compute_tile_disturbance_using_previous_product_and_serialize
+from dist_s1.dist_processing import label_one_disturbance, label_alert_intermediate
+from dist_s1.packaging import generate_default_dist_arrs_from_metric_status
+from dist_s1.confirmation import confirm_disturbance_arr
+from dist_s1.constants import DISTLABEL2VAL
 
 
-def generate_status_test_series() -> tuple[list[np.ndarray], dict[str, tuple[int, int]]]:
+def generate_status_test_series(
+    provisional_duration: int = 2,
+    confirmed_duration: int = 10,
+    fin_quiet_duration: int = 10,
+    high_anomaly_value: float = 6.0,
+    low_anomaly_value: float = 4.0,
+) -> tuple[list[np.ndarray], dict[str, tuple[int, int]]]:
     # Configuration: Durations required to trigger states
-    PROV_DURATION = 2
-    CONF_DURATION = 10
-    FIN_QUIET_DURATION = 10
 
-    num_arrays = CONF_DURATION + FIN_QUIET_DURATION + 1
+    num_arrays = confirmed_duration + fin_quiet_duration + 1
     final_t = num_arrays - 1
 
-    size = 10
-    arrays = []
-    base = np.zeros((size, size), dtype=np.float32)
+    arr_size = 10
+    metric_ts = []
+    arr_base = np.zeros((arr_size, arr_size), dtype=np.float32)
 
     # Define a unique coordinate for each status's representative pixel.
-    coords = {
-        'NODIST': (0, 0),  # No disturbance
-        'NODATA': (0, 1),  # No data (will be set to NaN)
-        'FIRSTHI': (1, 0),  # First high anomaly
-        'FIRSTLO': (1, 1),  # First low anomaly
-        'PROVHI': (2, 0),  # Provisional high
-        'PROVLO': (2, 1),  # Provisional low
-        'CONFHI': (3, 0),  # Confirmed high
-        'CONFLO': (3, 1),  # Confirmed low
-        'CONFHIFIN': (4, 0),  # Finalized confirmed high
-        'CONFLOFIN': (4, 1),  # Finalized confirmed low
+    label2coords = {
+        'no_disturbance': (0, 0),  # No disturbance
+        'nodata': (0, 1),  # No data (will be set to NaN)
+        'first_high_conf_disturbance': (1, 0),  # First high anomaly
+        'first_low_conf_disturbance': (1, 1),  # First low anomaly
+        'provisional_high_conf_disturbance': (2, 0),  # Provisional high
+        'provisional_low_conf_disturbance': (2, 1),  # Provisional low
+        'confirmed_high_conf_disturbance': (3, 0),  # Confirmed high
+        'confirmed_low_conf_disturbance': (3, 1),  # Confirmed low
+        'finalized_confirmed_high_conf_disturbance': (4, 0),  # Finalized confirmed high
+        'finalized_confirmed_low_conf_disturbance': (4, 1),  # Finalized confirmed low
     }
-
-    # High and low anomaly values.
-    HIGH_ANOMALY_VALUE = 6.0
-    LOW_ANOMALY_VALUE = 4.0
+    assert set(label2coords.keys()) == set(DISTLABEL2VAL.keys())
 
     for t in range(num_arrays):
-        frame = base.copy()
+        metric_at_t = arr_base.copy()
 
-        if final_t - PROV_DURATION < t <= final_t:
-            frame[coords['PROVHI']] = HIGH_ANOMALY_VALUE
+        if final_t - provisional_duration < t <= final_t:
+            metric_at_t[label2coords['provisional_high_conf_disturbance']] = high_anomaly_value
 
-        if final_t - PROV_DURATION < t <= final_t:
-            frame[coords['PROVLO']] = LOW_ANOMALY_VALUE
+        if final_t - provisional_duration < t <= final_t:
+            metric_at_t[label2coords['provisional_low_conf_disturbance']] = low_anomaly_value
 
-        if final_t - CONF_DURATION < t <= final_t:
-            frame[coords['CONFHI']] = HIGH_ANOMALY_VALUE
+        if final_t - confirmed_duration < t <= final_t:
+            metric_at_t[label2coords['confirmed_high_conf_disturbance']] = high_anomaly_value
 
-        if final_t - CONF_DURATION < t <= final_t:
-            frame[coords['CONFLO']] = LOW_ANOMALY_VALUE
+        if final_t - confirmed_duration < t <= final_t:
+            metric_at_t[label2coords['confirmed_low_conf_disturbance']] = low_anomaly_value
 
-        if 0 <= t < CONF_DURATION:
-            frame[coords['CONFHIFIN']] = HIGH_ANOMALY_VALUE
+        if 0 <= t < confirmed_duration:
+            metric_at_t[label2coords['finalized_confirmed_high_conf_disturbance']] = high_anomaly_value
 
-        if 0 <= t < CONF_DURATION:
-            frame[coords['CONFLOFIN']] = LOW_ANOMALY_VALUE
+        if 0 <= t < confirmed_duration:
+            metric_at_t[label2coords['finalized_confirmed_low_conf_disturbance']] = low_anomaly_value
 
         if t == final_t:
-            frame[coords['FIRSTHI']] = HIGH_ANOMALY_VALUE
-            frame[coords['FIRSTLO']] = LOW_ANOMALY_VALUE
-            frame[coords['NODATA']] = np.nan
+            metric_at_t[label2coords['first_high_conf_disturbance']] = high_anomaly_value
+            metric_at_t[label2coords['first_low_conf_disturbance']] = low_anomaly_value
+            metric_at_t[label2coords['nodata']] = np.nan
 
-        arrays.append(frame)
+        metric_ts.append(metric_at_t)
 
-    return arrays, coords
+    return metric_ts, label2coords
 
 
 def write_raster(path: str | Path, array: np.ndarray, dtype: str = 'float32', nodata_val: int = -9999) -> None:
@@ -93,37 +96,32 @@ def read_raster(path: str | Path) -> np.ndarray:
         return src.read(1)
 
 
-def test_disturbance_status_series(tmp_path: Path) -> None:
-    with warnings.catch_warnings():
-        warnings.simplefilter('ignore', rasterio.errors.NotGeoreferencedWarning)
-        arrays, slices = generate_status_test_series()
-        base_date = datetime.datetime(2023, 7, 1)
+def test_disturbance_status_series(
+    tmp_path: Path, moderate_confidence_threshold: float = 3.5, high_confidence_threshold: float = 5.5
+) -> None:
+    metric_ts, label2coords = generate_status_test_series()
+    t0_ref_date = datetime.datetime(2023, 7, 1)
 
-        # Paths to track previous data
-        previous_paths = None
-        output_products = [tmp_path / f'product_{i}' for i in range(len(arrays))]
+    zipped_metric_ts = list(enumerate(metric_ts))
+    t, metric_ts_at_t = zipped_metric_ts[0]
+    X_dist_status_ = label_one_disturbance(metric_ts_at_t, moderate_confidence_threshold, high_confidence_threshold)
+    X_dist_status = label_alert_intermediate(
+        X_dist_status_,
+        moderate_confidence_label=moderate_confidence_threshold,
+        high_confidence_label=high_confidence_threshold,
+    )
 
-        for t, frame in enumerate(arrays):
-            date = base_date + datetime.timedelta(days=t)
-            date_tag = date.strftime('%Y%m%dT000000Z')
-            metric_path = tmp_path / f'dist_metric_dummy1_dummy2_{date_tag}_metric.tif'
-            write_raster(metric_path, frame)
+    for t, metric_at_t in zipped_metric_ts[1:]:
+        current_date = t0_ref_date + datetime.timedelta(days=t)
 
-            output_paths = [tmp_path / f'out_status_{t}_{i}.tif' for i in range(8)]
+        out_dist_arr_dict = confirm_disturbance_arr(
+            current_metric=metric_at_t,
+            current_date=current_date,
+        )
 
-            compute_tile_disturbance_using_previous_product_and_serialize(
-                metric_path,
-                metric_path,
-                [str(p) for p in output_paths],
-                previous_dist_arr_path_list=[str(p) for p in previous_paths] if previous_paths else None,
-                base_date_for_confirmation=base_date,
-                alert_low_conf_thresh=3.5,
-                alert_high_conf_thresh=5.5,
-            )
-
-            # Prepare next timestep input
-            previous_paths = output_paths
-            output_products[t] = output_paths[0]  # status band
+        # Prepare next timestep input
+        previous_paths = output_paths
+        output_products[t] = output_paths[0]  # status band
 
         # Final status map
         final_status = read_raster(output_products[-1])
@@ -140,6 +138,6 @@ def test_disturbance_status_series(tmp_path: Path) -> None:
         }
 
         for label, expected_val in expected_codes.items():
-            r, c = slices[label]
+            r, c = label2coords[label]
             sub = final_status[r, c]
             assert (sub == expected_val).any(), f'{label} block missing expected code {expected_val}'

@@ -8,7 +8,7 @@ from dist_s1.data_models.output_models import DistS1ProductDirectory
 from dist_s1.rio_tools import open_one_ds, serialize_one_2d_ds
 
 
-def compute_tile_disturbance_arr(
+def confirm_disturbance_arr(
     *,
     current_metric: np.ndarray,
     prior_status: np.ndarray,
@@ -212,7 +212,7 @@ def compute_tile_disturbance_arr(
     }
 
 
-def compute_tile_disturbance_using_previous_product_and_serialize(
+def confirm_disturbance_with_prior_product_and_serialize(
     current_dist_s1_product: DistS1ProductDirectory | str | Path,
     prior_dist_s1_product: DistS1ProductDirectory | str | Path,
     dst_dist_product_parent: str | Path | None,
@@ -264,7 +264,7 @@ def compute_tile_disturbance_using_previous_product_and_serialize(
     prior_last_obs, _ = open_one_ds(prior_dist_s1_product.layer_path_dict['GEN-DIST-LAST-DATE'])
 
     # Core Confirmation Logic
-    dist_arr_dict = compute_tile_disturbance_arr(
+    dist_arr_dict = confirm_disturbance_arr(
         current_metric=current_metric,
         prior_status=prior_status,
         prior_max_metric=prior_max_metric,

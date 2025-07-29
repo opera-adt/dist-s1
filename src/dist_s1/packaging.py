@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import rasterio
 from rasterio.enums import Resampling
 from rasterio.env import Env
@@ -85,31 +86,59 @@ def update_tag_types(tags: dict) -> dict:
     return tags
 
 
+def generate_default_dist_arrs_from_metric_status(
+    X_metric: np.ndarray, X_status_arr: np.ndarray, acq_date: pd.Timestamp
+) -> dict[np.ndarray]:
+    # GEN-DIST-COUNT
+    X_count = generate_count_disturbed_no_confirmation(X_status_arr, dtype=np.uint8, nodata_value=255)
+    # GEN-DIST-PERC
+    X_perc = generate_count_disturbed_no_confirmation(X_status_arr, count_value=100, dtype=np.uint8, nodata_value=255)
+    # GEN-DIST-DUR
+    X_dur = generate_count_disturbed_no_confirmation(X_status_arr, dtype=np.int16, nodata_value=-1)
+    # GEN-DIST-DATE - everything is pd.Timestamp
+    date_encoded = (acq_date.to_pydatetime() - BASE_DATE_FOR_CONFIRMATION).days
+    X_date = generate_count_disturbed_no_confirmation(
+        X_status_arr, dtype=np.int16, nodata_value=-1, count_value=date_encoded
+    )
+    # GEN-DIST-LAST-DATE - last date of valid observation
+    X_last_date = X_dur.copy()
+    X_last_date[X_status_arr != 255] = date_encoded
+    # GEN-DIST-CONF
+    X_conf = X_metric.copy()
+    X_conf[X_conf < 3.5] = 0
+    # GEN-DIST-STATUS-ACQ
+    X_status_acq = X_status_arr.copy()
+    # GEN-METRIC-MAX
+    X_metric_max = X_metric.copy()
+
+    out_arr_dict = {
+        'GEN-DIST-COUNT': X_count,
+        'GEN-DIST-PERC': X_perc,
+        'GEN-DIST-DUR': X_dur,
+        'GEN-DIST-DATE': X_date,
+        'GEN-DIST-LAST-DATE': X_last_date,
+        'GEN-DIST-CONF': X_conf,
+        'GEN-DIST-STATUS-ACQ': X_status_acq,
+        'GEN-METRIC-MAX': X_metric_max,
+    }
+    return out_arr_dict
+
+
 def package_disturbance_tifs_no_confirmation(run_config: RunConfigData) -> None:
     product_data = run_config.product_data_model_no_confirmation
 
     X_dist, p_dist = open_one_ds(run_config.final_unformatted_tif_paths['alert_status_path'])
     X_metric, p_metric = open_one_ds(run_config.final_unformatted_tif_paths['metric_status_path'])
 
-    # GEN-DIST-COUNT
-    X_count = generate_count_disturbed_no_confirmation(X_dist, dtype=np.uint8, nodata_value=255)
-    # GEN-DIST-PERC
-    X_perc = generate_count_disturbed_no_confirmation(X_dist, count_value=100, dtype=np.uint8, nodata_value=255)
-    # GEN-DIST-DUR
-    X_dur = generate_count_disturbed_no_confirmation(X_dist, dtype=np.int16, nodata_value=-1)
-    # GEN-DIST-DATE - everything is pd.Timestamp
-    date_encoded = (run_config.min_acq_date.to_pydatetime() - BASE_DATE_FOR_CONFIRMATION).days
-    X_date = generate_count_disturbed_no_confirmation(X_dist, dtype=np.int16, nodata_value=-1, count_value=date_encoded)
-    # GEN-DIST-LAST-DATE - last date of valid observation
-    X_last_date = X_dur.copy()
-    X_last_date[X_dist != 255] = date_encoded
-    # GEN-DIST-CONF
-    X_conf = X_metric.copy()
-    X_conf[X_conf < 3.5] = 0
-    # GEN-DIST-STATUS-ACQ
-    X_status_acq = X_dist.copy()
-    # GEN-METRIC-MAX
-    X_metric_max = X_metric.copy()
+    out_arr_dict = generate_default_dist_arrs_from_metric_status(X_metric, X_dist, run_config.min_acq_date)
+    X_count = out_arr_dict['GEN-DIST-COUNT']
+    X_perc = out_arr_dict['GEN-DIST-PERC']
+    X_dur = out_arr_dict['GEN-DIST-DUR']
+    X_date = out_arr_dict['GEN-DIST-DATE']
+    X_last_date = out_arr_dict['GEN-DIST-LAST-DATE']
+    X_conf = out_arr_dict['GEN-DIST-CONF']
+    X_status_acq = out_arr_dict['GEN-DIST-STATUS-ACQ']
+    X_metric_max = out_arr_dict['GEN-METRIC-MAX']
 
     # array, profile, path, colormap
     serialization_inputs = [

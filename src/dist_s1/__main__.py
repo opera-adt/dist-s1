@@ -10,7 +10,7 @@ from dist_s1.confirmation import confirm_disturbance_using_prior_product_and_ser
 from dist_s1.data_models.defaults import (
     DEFAULT_APPLY_WATER_MASK,
     DEFAULT_BATCH_SIZE_FOR_NORM_PARAM_ESTIMATION,
-    DEFAULT_CONFIDENCE_THRESHOLD,
+    DEFAULT_CONFIDENCE_THRESH,
     DEFAULT_CONFIDENCE_UPPER_LIM,
     DEFAULT_DELTA_LOOKBACK_DAYS_MW,
     DEFAULT_DEVICE,
@@ -100,7 +100,7 @@ def common_options_for_confirmation_workflow(func: Callable) -> Callable:
         '--confidence_threshold',
         type=float,
         required=False,
-        default=DEFAULT_CONFIDENCE_THRESHOLD,
+        default=DEFAULT_CONFIDENCE_THRESH,
         help='Confidence threshold.',
     )
     @click.option(
