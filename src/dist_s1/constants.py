@@ -12,14 +12,14 @@ BASE_DATE_FOR_CONFIRMATION = pd.Timestamp('2020-12-31', tz='UTC')
 DISTLABEL2VAL = {
     'nodata': 255,
     'no_disturbance': 0,
-    'first_moderate_conf_disturbance': 1,
-    'provisional_moderate_conf_disturbance': 2,
-    'confirmed_moderate_conf_disturbance': 3,
+    'first_low_conf_disturbance': 1,
+    'provisional_low_conf_disturbance': 2,
+    'confirmed_low_conf_disturbance': 3,
     'first_high_conf_disturbance': 4,
     'provisional_high_conf_disturbance': 5,
     'confirmed_high_conf_disturbance': 6,
-    'confirmed_low_conf_finished': 7,
-    'confirmed_high_conf_finished': 8,
+    'confirmed_low_conf_disturbance_finished': 7,
+    'confirmed_high_conf_disturbance_finished': 8,
 }
 DISTVAL2LABEL = {v: k for k, v in DISTLABEL2VAL.items()}
 

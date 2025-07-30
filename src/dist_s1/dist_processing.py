@@ -25,27 +25,14 @@ def compute_logit_mdist(arr_logit: np.ndarray, mean_logit: np.ndarray, sigma_log
     return np.abs(arr_logit - mean_logit) / sigma_logit
 
 
-def label_one_disturbance(
-    mdist: np.ndarray, moderate_confidence_threshold: float, high_confidence_threshold: float
+def label_alert_status_from_metric(
+    mdist: np.ndarray, low_confidence_threshold: float, high_confidence_threshold: float
 ) -> np.ndarray:
     nodata_mask = np.isnan(mdist)
     dist_labels = np.zeros_like(mdist)
-    dist_labels[mdist >= moderate_confidence_threshold] = 1
-    dist_labels[mdist >= high_confidence_threshold] = 2
+    dist_labels[mdist >= low_confidence_threshold] = DISTLABEL2VAL['first_low_conf_disturbance']
+    dist_labels[mdist >= high_confidence_threshold] = DISTLABEL2VAL['first_high_conf_disturbance']
     dist_labels[nodata_mask] = 255
-    return dist_labels
-
-
-def label_alert_intermediate(
-    intermediate_labels: np.ndarray,
-    *,
-    moderate_confidence_label: float,
-    high_confidence_label: float,
-) -> np.ndarray:
-    # Note nodata is taken care of in the intermediate labels
-    dist_labels = np.zeros_like(intermediate_labels, dtype=np.uint8)
-    dist_labels[intermediate_labels == moderate_confidence_label] = DISTLABEL2VAL['first_moderate_conf_disturbance']
-    dist_labels[intermediate_labels == high_confidence_label] = DISTLABEL2VAL['first_high_conf_disturbance']
     return dist_labels
 
 
@@ -138,19 +125,10 @@ def compute_burst_disturbance_and_serialize(
     metric = np.nanmax(z_score_per_channel, axis=0)
     metric[mask_2d] = np.nan
 
-    # Intermediate (single comparison with baseline using moderate/high confidence thresholds):
-    # 0 - No disturbance
-    # 1 - Moderate confidence
-    # 2 - High confidence
-    # 255 - Nodata
-    intermediate_labels = label_one_disturbance(metric, moderate_confidence_threshold, high_confidence_threshold)
-
-    # Translates intermediate labels to disturbance labels dictated in constants.py
-    # See labels (0, 1, 2) provided in previuos function
-    alert_intermediate = label_alert_intermediate(
-        intermediate_labels,
-        moderate_confidence_label=1,
-        high_confidence_label=2,
+    alert_status = label_alert_status_from_metric(
+        metric,
+        low_confidence_threshold=moderate_confidence_threshold,
+        high_confidence_threshold=high_confidence_threshold,
     )
 
     p_dist_ref = p_ref.copy()
@@ -161,7 +139,7 @@ def compute_burst_disturbance_and_serialize(
     p_metric_ref['nodata'] = np.nan
     p_metric_ref['dtype'] = np.float32
 
-    serialize_one_2d_ds(alert_intermediate, p_dist_ref, out_dist_path, colormap=DIST_CMAP)
+    serialize_one_2d_ds(alert_status, p_dist_ref, out_dist_path, colormap=DIST_CMAP)
     serialize_one_2d_ds(metric, p_metric_ref, out_metric_path)
 
 

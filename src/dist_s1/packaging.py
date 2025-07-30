@@ -8,7 +8,7 @@ from rasterio.env import Env
 
 import dist_s1
 from dist_s1.constants import BASE_DATE_FOR_CONFIRMATION, DIST_CMAP
-from dist_s1.data_models.output_models import DistS1ProductDirectory
+from dist_s1.data_models.output_models import TIF_LAYER_DTYPES, DistS1ProductDirectory
 from dist_s1.data_models.runconfig_model import RunConfigData
 from dist_s1.rio_tools import open_one_ds, serialize_one_2d_ds
 from dist_s1.water_mask import apply_water_mask
@@ -87,7 +87,7 @@ def update_tag_types(tags: dict) -> dict:
     return tags
 
 
-def generate_default_dist_arrs_from_metric_status(
+def generate_default_dist_arrs_from_metric_and_alert_status(
     X_metric: np.ndarray, X_status_arr: np.ndarray, acq_date: pd.Timestamp
 ) -> dict[np.ndarray]:
     # GEN-DIST-COUNT
@@ -113,14 +113,16 @@ def generate_default_dist_arrs_from_metric_status(
     X_metric_max = X_metric.copy()
 
     out_arr_dict = {
-        'GEN-DIST-COUNT': X_count,
-        'GEN-DIST-PERC': X_perc,
-        'GEN-DIST-DUR': X_dur,
-        'GEN-DIST-DATE': X_date,
-        'GEN-DIST-LAST-DATE': X_last_date,
-        'GEN-DIST-CONF': X_conf,
-        'GEN-DIST-STATUS-ACQ': X_status_acq,
-        'GEN-METRIC-MAX': X_metric_max,
+        'GEN-DIST-STATUS': X_status_arr.astype(TIF_LAYER_DTYPES['GEN-DIST-STATUS']),
+        'GEN-METRIC': X_metric.astype(TIF_LAYER_DTYPES['GEN-METRIC']),
+        'GEN-DIST-COUNT': X_count.astype(TIF_LAYER_DTYPES['GEN-DIST-COUNT']),
+        'GEN-DIST-PERC': X_perc.astype(TIF_LAYER_DTYPES['GEN-DIST-PERC']),
+        'GEN-DIST-DUR': X_dur.astype(TIF_LAYER_DTYPES['GEN-DIST-DUR']),
+        'GEN-DIST-DATE': X_date.astype(TIF_LAYER_DTYPES['GEN-DIST-DATE']),
+        'GEN-DIST-LAST-DATE': X_last_date.astype(TIF_LAYER_DTYPES['GEN-DIST-LAST-DATE']),
+        'GEN-DIST-CONF': X_conf.astype(TIF_LAYER_DTYPES['GEN-DIST-CONF']),
+        'GEN-DIST-STATUS-ACQ': X_status_acq.astype(TIF_LAYER_DTYPES['GEN-DIST-STATUS-ACQ']),
+        'GEN-METRIC-MAX': X_metric_max.astype(TIF_LAYER_DTYPES['GEN-METRIC-MAX']),
     }
     return out_arr_dict
 
@@ -131,7 +133,7 @@ def package_disturbance_tifs_no_confirmation(run_config: RunConfigData) -> None:
     X_dist, p_dist = open_one_ds(run_config.final_unformatted_tif_paths['alert_status_path'])
     X_metric, p_metric = open_one_ds(run_config.final_unformatted_tif_paths['metric_status_path'])
 
-    out_arr_dict = generate_default_dist_arrs_from_metric_status(X_metric, X_dist, run_config.min_acq_date)
+    out_arr_dict = generate_default_dist_arrs_from_metric_and_alert_status(X_metric, X_dist, run_config.min_acq_date)
     X_count = out_arr_dict['GEN-DIST-COUNT']
     X_perc = out_arr_dict['GEN-DIST-PERC']
     X_dur = out_arr_dict['GEN-DIST-DUR']

@@ -1,25 +1,25 @@
-import datetime
 from pathlib import Path
 
 import numpy as np
 
 from dist_s1.constants import BASE_DATE_FOR_CONFIRMATION, DISTLABEL2VAL
-from dist_s1.data_models.output_models import DistS1ProductDirectory
+from dist_s1.data_models.output_models import TIF_LAYER_DTYPES, DistS1ProductDirectory
+from dist_s1.dist_processing import label_alert_status_from_metric
 from dist_s1.rio_tools import open_one_ds, serialize_one_2d_ds
 
 
 def confirm_disturbance_arr(
     *,
     current_metric: np.ndarray,
-    prior_status: np.ndarray,
+    current_date_days_from_base_date: int,
+    prior_alert_status: np.ndarray,
     prior_max_metric: np.ndarray,
     prior_confidence: np.ndarray,
     prior_date: np.ndarray,
-    count: np.ndarray,
-    percent: np.ndarray,
-    duration: np.ndarray,
-    last_obs: np.ndarray,
-    current_date_days_from_base_date: int,
+    prior_count: np.ndarray,
+    prior_percent: np.ndarray,
+    prior_duration: np.ndarray,
+    prior_last_obs: np.ndarray,
     alert_low_conf_thresh: float,
     alert_high_conf_thresh: float,
     exclude_consecutive_no_dist: bool,
@@ -32,183 +32,219 @@ def confirm_disturbance_arr(
     metric_value_upper_lim: float,
 ) -> dict[np.ndarray]:
     # Status codes
-    no_disturbance = DISTLABEL2VAL['no_disturbance']
-    first_dist_low = DISTLABEL2VAL['first_low_conf_disturbance']
-    prov_dist_low = DISTLABEL2VAL['provisional_low_conf_disturbance']
-    conf_dist_low = DISTLABEL2VAL['confirmed_low_conf_disturbance']
-    first_dist_high = DISTLABEL2VAL['first_high_conf_disturbance']
-    prov_dist_high = DISTLABEL2VAL['provisional_high_conf_disturbance']
-    conf_dist_high = DISTLABEL2VAL['confirmed_high_conf_disturbance']
-    conf_dist_low_fin = DISTLABEL2VAL['confirmed_low_conf_finished']
-    conf_dist_high_fin = DISTLABEL2VAL['confirmed_high_conf_finished']
-    nodata = DISTLABEL2VAL['nodata']
+    no_disturbance_label = DISTLABEL2VAL['no_disturbance']
+    first_dist_low_label = DISTLABEL2VAL['first_low_conf_disturbance']
+    prov_dist_low_label = DISTLABEL2VAL['provisional_low_conf_disturbance']
+    conf_dist_low_label = DISTLABEL2VAL['confirmed_low_conf_disturbance']
+    first_dist_high_label = DISTLABEL2VAL['first_high_conf_disturbance']
+    prov_dist_high_label = DISTLABEL2VAL['provisional_high_conf_disturbance']
+    conf_dist_high_label = DISTLABEL2VAL['confirmed_high_conf_disturbance']
+    conf_dist_low_fin_label = DISTLABEL2VAL['confirmed_low_conf_disturbance_finished']
+    conf_dist_high_fin_label = DISTLABEL2VAL['confirmed_high_conf_disturbance_finished']
+    nodata_label = DISTLABEL2VAL['nodata']
 
-    valid = current_metric >= 0
-
+    # Masks
+    valid_data_mask = current_metric >= 0
     # Reset if 365-day timeout, or previous status is finished and current anomaly is above low threshold
     reset_mask = ((current_date_days_from_base_date - prior_date) > 365) | (
-        (prior_status > 6) & (current_metric >= alert_low_conf_thresh)
+        (prior_alert_status > 6) & (current_metric >= alert_low_conf_thresh)
     )
-    reset_mask &= valid
-    prior_status[reset_mask] = no_disturbance
-    percent[reset_mask] = 255
-    count[reset_mask] = 0
-    prior_max_metric[reset_mask] = 0
-    prior_confidence[reset_mask] = 0
-    prior_date[reset_mask] = 0
-    duration[reset_mask] = 0
+    reset_mask &= valid_data_mask
+
+    # Initializization
+    current_percent = prior_percent.copy()
+    current_count = prior_count.copy()
+    current_duration = prior_duration.copy()
+    current_last_obs = prior_last_obs.copy()
+    current_max_metric = prior_max_metric.copy()
+    current_confidence = prior_confidence.copy()
+    current_date = prior_date.copy()
+    current_last_obs = prior_last_obs.copy()
+    current_alert_status = prior_alert_status.copy()
+
+    current_alert_status[reset_mask] = no_disturbance_label
+    current_percent[reset_mask] = 255
+    current_count[reset_mask] = 0
+    current_max_metric[reset_mask] = 0
+    current_confidence[reset_mask] = 0
+    current_date[reset_mask] = 0
+    current_last_obs[reset_mask] = 0
 
     with np.errstate(divide='ignore', invalid='ignore'):
-        prevnocount = np.where(
-            (percent > 0) & (percent <= 100), ((100.0 - percent) / percent * count).astype(np.int32), 0
+        prior_no_count = np.where(
+            (current_percent > 0) & (current_percent <= 100),
+            ((100.0 - current_percent) / current_percent * current_count).astype(np.int32),
+            0,
         )
 
-    disturbed = (current_metric >= alert_low_conf_thresh) & valid
+    current_disturbed_mask = (current_metric >= alert_low_conf_thresh) & valid_data_mask
 
     # New disturbance detection logic
-    new_detection = disturbed & ((prior_status == no_disturbance) | (prior_status == nodata))
-    prior_date[new_detection] = current_date_days_from_base_date
-    prior_max_metric[new_detection] = current_metric[new_detection]
-    percent[new_detection] = 100
-    count[new_detection] = 1
+    new_detection = current_disturbed_mask & (
+        (prior_alert_status == no_disturbance_label) | (prior_alert_status == nodata_label)
+    )
+    current_date[new_detection] = current_date_days_from_base_date
+    current_max_metric[new_detection] = current_metric[new_detection]
+    current_percent[new_detection] = 100
+    current_count[new_detection] = 1
+    current_duration[new_detection] = 1
 
     # Ongoing disturbance detection logic
-    continuing = disturbed & ~new_detection
-    prior_max_metric[continuing] = np.maximum(prior_max_metric[continuing], current_metric[continuing])
-    can_increment = continuing & (count < max_obs_num_year)
-    count[can_increment] += 1
-    percent[can_increment] = (
-        (count[can_increment] * 100.0) / (count[can_increment] + prevnocount[can_increment])
+    continuing_dist_mask = current_disturbed_mask & ~new_detection
+    current_max_metric[continuing_dist_mask] = np.maximum(
+        current_max_metric[continuing_dist_mask], current_metric[continuing_dist_mask]
+    )
+    can_increment = continuing_dist_mask & (current_count < max_obs_num_year)
+    current_count[can_increment] += 1
+    current_percent[can_increment] = (
+        (current_count[can_increment] * 100.0) / (current_count[can_increment] + prior_no_count[can_increment])
     ).astype(np.uint8)
 
-    duration[disturbed] = current_date_days_from_base_date - prior_date[disturbed] + 1
+    current_duration[continuing_dist_mask] = current_date_days_from_base_date - prior_date[continuing_dist_mask] + 1
 
     # Track valid obs but not anomalous or not above low threshold (adjust percent)
-    not_disturbed = (~disturbed) & valid
-    adjust_percent = not_disturbed & (percent > 0) & (percent <= 100) & (count < max_obs_num_year + 1)
-    prevcount = count.copy()
-    percent[adjust_percent] = (
-        (count[adjust_percent] * 100.0) / (prevcount[adjust_percent] + prevnocount[adjust_percent] + 1)
+    current_not_disturbed_mask = (~current_disturbed_mask) & valid_data_mask
+    adjust_percent = (
+        current_not_disturbed_mask
+        & (current_percent > 0)
+        & (current_percent <= 100)
+        & (current_count < max_obs_num_year + 1)
+    )
+    current_percent[adjust_percent] = (
+        (current_count[adjust_percent] * 100.0) / (prior_count[adjust_percent] + prior_no_count[adjust_percent] + 1)
     ).astype(np.uint8)
 
     # Reset status for pixels that were NODATA and are now not disturbed
-    status_reset = not_disturbed & (prior_status == nodata)
-    prior_status[status_reset] = no_disturbance
-    percent[status_reset] = 255
-    count[status_reset] = 0
-    prior_max_metric[status_reset] = 0
-    prior_confidence[status_reset] = 0
-    prior_date[status_reset] = 0
-    duration[status_reset] = 0
+    status_reset = current_not_disturbed_mask & (prior_alert_status == nodata_label)
+    current_alert_status[status_reset] = no_disturbance_label
+    current_percent[status_reset] = 255
+    current_count[status_reset] = 0
+    current_max_metric[status_reset] = 0
+    current_confidence[status_reset] = 0
+    current_date[status_reset] = 0
+    current_last_obs[status_reset] = 0
 
     # Update confidence
-    update_conf = (prior_confidence > 0) & (prior_status <= conf_dist_high) & valid
-    curr_metric_conf = np.minimum(current_metric, metric_value_upper_lim)
-    prevmean = np.zeros_like(prior_confidence, dtype=np.float64)
+    update_conf = (prior_confidence > 0) & (prior_alert_status <= conf_dist_high_label) & valid_data_mask
+    current_metric_conf = np.minimum(current_metric, metric_value_upper_lim)
+    prior_mean = np.zeros_like(prior_confidence, dtype=np.float64)
     with np.errstate(divide='ignore', invalid='ignore'):
-        prevmean[update_conf] = prior_confidence[update_conf].astype(np.float64) / (
-            count[update_conf].astype(np.float64) ** 2
+        prior_mean[update_conf] = prior_confidence[update_conf].astype(np.float64) / (
+            current_count[update_conf].astype(np.float64) ** 2
         )
-    mean = np.zeros_like(prevmean)
-    denom = count + prevnocount + 1
+    current_mean = np.zeros_like(prior_mean)
+    denom = current_count + prior_no_count + 1
     with np.errstate(divide='ignore', invalid='ignore'):
-        mean[update_conf] = (
-            prevmean[update_conf] * (count[update_conf] + prevnocount[update_conf]) + curr_metric_conf[update_conf]
+        current_mean[update_conf] = (
+            prior_mean[update_conf] * (current_count[update_conf] + prior_no_count[update_conf])
+            + current_metric_conf[update_conf]
         ) / denom[update_conf]
-    tempconf = (mean * count.astype(np.float64) * count.astype(np.float64)).astype(np.int32)
-    prior_confidence[update_conf] = np.clip(tempconf[update_conf], 0, conf_upper_lim)
+    tempconf = (current_mean * current_count.astype(np.float64) * current_count.astype(np.float64)).astype(np.int32)
+    current_confidence[update_conf] = np.clip(tempconf[update_conf], 0, conf_upper_lim)
 
     # Update confidence for new disturbances
-    new_conf = ((prior_status == no_disturbance) | (prior_status == nodata)) & disturbed
-    prior_confidence[new_conf] = np.minimum(current_metric[new_conf], metric_value_upper_lim)
+    conf_update_mask = (
+        (prior_alert_status == no_disturbance_label) | (prior_alert_status == nodata_label)
+    ) & current_disturbed_mask
+    current_confidence[conf_update_mask] = np.minimum(current_metric[conf_update_mask], metric_value_upper_lim)
 
-    last_metric_date = prior_date + duration - 1
+    latest_dist_date = prior_date + current_duration - 1
 
-    nocount = (last_obs > last_metric_date).astype(np.int8) + (current_metric < alert_low_conf_thresh).astype(np.int8)
+    # consecutive_no_dist_count can be 0, 1, or 2 value
+    consecutive_no_dist_count = (current_last_obs > latest_dist_date).astype(np.uint8) + (
+        current_metric < alert_low_conf_thresh
+    ).astype(np.uint8)
 
-    # Updates for active disturbances
+    # Mask for active disturbances
+    updating_current = (prior_alert_status <= conf_dist_high_label) | (prior_alert_status == nodata_label)
+
     # High threshold disturbances
-    updating_current = (prior_status <= conf_dist_high) | (prior_status == nodata)
-    hi_mask = updating_current & (prior_max_metric >= alert_high_conf_thresh)
-    conf_hi = hi_mask & (prior_confidence >= conf_thresh)
-    first_hi = hi_mask & (duration == 1)
-    prov_hi = hi_mask & ~(conf_hi | first_hi) & (prior_status != conf_dist_high)
-    prior_status[conf_hi] = conf_dist_high
-    prior_status[first_hi] = first_dist_high
-    prior_status[prov_hi] = prov_dist_high
+    high_dist_mask = updating_current & (current_max_metric >= alert_high_conf_thresh)
+    confirmed_hi_mask = high_dist_mask & (current_confidence >= conf_thresh)
+    first_hi_mask = high_dist_mask & (current_duration == 1)
+    prov_hi_mask = high_dist_mask & ~(confirmed_hi_mask | first_hi_mask) & (prior_alert_status != conf_dist_high_label)
+    current_alert_status[confirmed_hi_mask] = conf_dist_high_label
+    current_alert_status[first_hi_mask] = first_dist_high_label
+    current_alert_status[prov_hi_mask] = prov_dist_high_label
+
     # Low threshold disturbances
-    lo_mask = (
-        updating_current & (prior_max_metric >= alert_low_conf_thresh) & (prior_max_metric < alert_high_conf_thresh)
+    low_dist_mask = (
+        updating_current & (current_max_metric >= alert_low_conf_thresh) & (current_max_metric < alert_high_conf_thresh)
     )
-    conf_lo = lo_mask & (prior_confidence >= conf_thresh)
-    first_lo = lo_mask & (duration == 1)
-    prov_lo = lo_mask & ~(conf_lo | first_lo) & (prior_status != conf_dist_low)
-    prior_status[conf_lo] = conf_dist_low
-    prior_status[first_lo] = first_dist_low
-    prior_status[prov_lo] = prov_dist_low
+    confirmed_lo_mask = low_dist_mask & (current_confidence >= conf_thresh)
+    first_lo_mask = low_dist_mask & (current_duration == 1)
+    prov_lo_mask = low_dist_mask & ~(confirmed_lo_mask | first_lo_mask) & (prior_alert_status != conf_dist_low_label)
+    current_alert_status[confirmed_lo_mask] = conf_dist_low_label
+    current_alert_status[first_lo_mask] = first_dist_low_label
+    current_alert_status[prov_lo_mask] = prov_dist_low_label
 
     # Reset ongoing disturbances if max_anom drops below lowthresh
-    prior_status[updating_current & (prior_max_metric < alert_low_conf_thresh)] = no_disturbance
-
-    # Update must finish disturbances
-    status_at_finish_check = prior_status.copy()  # Capture status before final finish logic
+    current_alert_status[updating_current & (current_max_metric < alert_low_conf_thresh)] = no_disturbance_label
 
     # Initialize must_finish_conditions list
     must_finish_conditions = []
 
     # Condition A: Observation gap too large
     must_finish_conditions.append(
-        ((current_date_days_from_base_date - last_metric_date) >= no_day_limit) & (last_metric_date > 0)
+        ((current_date_days_from_base_date - latest_dist_date) >= no_day_limit) & (latest_dist_date > 0)
     )
     # Condition B: Short disturbance with low current metric
-    must_finish_conditions.append((duration == 1) & (current_metric < alert_low_conf_thresh))
+    must_finish_conditions.append((current_duration == 1) & (current_metric < alert_low_conf_thresh))
     # Condition C: Conditional nocount logic (used if `consecutive_nodist` is set to True)
     if not exclude_consecutive_no_dist:
-        must_finish_conditions.append(nocount == 2)
+        must_finish_conditions.append(consecutive_no_dist_count == 2)
     # Condition D: Percent below threshold
     # If the percent of disturbed observations drops below threshold, it triggers reset.
-    must_finish_conditions.append(percent < percent_reset_thresh)
+    must_finish_conditions.append(current_percent < percent_reset_thresh)
     # Condition E: Number of non-disturbed observations (prevnocount) below threshold
     # If the number of non-disturbed observations in a series (prevnocount) is high,
     # the disturbance resets.
-    must_finish_conditions.append(prevnocount >= no_count_reset_thresh)
+    must_finish_conditions.append(prior_no_count >= no_count_reset_thresh)
 
     # Combine all must_finish_conditions with OR
     if must_finish_conditions:
         combined_must_finish_criteria = np.logical_or.reduce(must_finish_conditions)
     else:
-        combined_must_finish_criteria = np.full(prior_status.shape, False, dtype=bool)
+        combined_must_finish_criteria = np.full(prior_alert_status.shape, False, dtype=bool)
 
-    must_finish = (status_at_finish_check <= conf_dist_high) & combined_must_finish_criteria
+    must_finish = (current_alert_status <= conf_dist_high_label) & combined_must_finish_criteria
 
     # Apply finished status
-    prior_status[must_finish & (status_at_finish_check == conf_dist_low)] = conf_dist_low_fin
-    prior_status[must_finish & (status_at_finish_check == conf_dist_high)] = conf_dist_high_fin
+    prior_alert_status[must_finish & (current_alert_status == conf_dist_low_label)] = conf_dist_low_fin_label
+    prior_alert_status[must_finish & (current_alert_status == conf_dist_high_label)] = conf_dist_high_fin_label
 
     # Reset other finished pixels to NODIST
     reset_finish = must_finish & ~(
-        (status_at_finish_check == conf_dist_low) | (status_at_finish_check == conf_dist_high)
+        (current_alert_status == conf_dist_low_label) | (current_alert_status == conf_dist_high_label)
     )
-    prior_status[reset_finish] = no_disturbance
-    percent[reset_finish] = 0
-    count[reset_finish] = 0
-    prior_max_metric[reset_finish] = 0
-    prior_confidence[reset_finish] = 0
-    prior_date[reset_finish] = 0
-    duration[reset_finish] = 0
+    current_alert_status[reset_finish] = no_disturbance_label
+    current_percent[reset_finish] = 0
+    current_count[reset_finish] = 0
+    current_max_metric[reset_finish] = 0
+    current_confidence[reset_finish] = 0
+    current_date[reset_finish] = 0
+    current_duration[reset_finish] = 0
 
     # Update last observation date for all valid pixels
-    last_obs[valid] = current_date_days_from_base_date
+    current_last_obs[valid_data_mask] = current_date_days_from_base_date
+
+    alert_acq_status = label_alert_status_from_metric(
+        current_metric,
+        low_confidence_threshold=alert_low_conf_thresh,
+        high_confidence_threshold=alert_high_conf_thresh,
+    )
 
     return {
-        'status': prior_status,
-        'max_metric': prior_max_metric,
-        'confidence': prior_confidence,
-        'date': prior_date,
-        'count': count,
-        'percent': percent,
-        'duration': duration,
-        'last_obs': last_obs,
+        'GEN-METRIC': current_metric.astype(TIF_LAYER_DTYPES['GEN-METRIC']),
+        'GEN-METRIC-MAX': current_max_metric.astype(TIF_LAYER_DTYPES['GEN-METRIC-MAX']),
+        'GEN-DIST-STATUS-ACQ': alert_acq_status.astype(TIF_LAYER_DTYPES['GEN-DIST-STATUS-ACQ']),
+        'GEN-DIST-STATUS': current_alert_status.astype(TIF_LAYER_DTYPES['GEN-DIST-STATUS']),
+        'GEN-DIST-CONF': current_confidence.astype(TIF_LAYER_DTYPES['GEN-DIST-CONF']),
+        'GEN-DIST-DATE': current_date.astype(TIF_LAYER_DTYPES['GEN-DIST-DATE']),
+        'GEN-DIST-COUNT': current_count.astype(TIF_LAYER_DTYPES['GEN-DIST-COUNT']),
+        'GEN-DIST-PERC': current_percent.astype(TIF_LAYER_DTYPES['GEN-DIST-PERC']),
+        'GEN-DIST-DUR': current_duration.astype(TIF_LAYER_DTYPES['GEN-DIST-DUR']),
+        'GEN-DIST-LAST-DATE': current_last_obs.astype(TIF_LAYER_DTYPES['GEN-DIST-LAST-DATE']),
     }
 
 
@@ -226,7 +262,6 @@ def confirm_disturbance_with_prior_product_and_serialize(
     conf_upper_lim: int = 32000,
     conf_thresh: float = 3**2 * 3.5,
     metric_value_upper_lim: float = 100,
-    base_date_for_confirmation: datetime.datetime | None = None,
 ) -> None:
     if not isinstance(current_dist_s1_product, DistS1ProductDirectory):
         current_dist_s1_product = DistS1ProductDirectory.from_product_path(current_dist_s1_product)
@@ -245,12 +280,9 @@ def confirm_disturbance_with_prior_product_and_serialize(
         product_name=current_dist_s1_product.product_name,
     )
 
-    if base_date_for_confirmation is None:
-        base_date_for_confirmation = BASE_DATE_FOR_CONFIRMATION
-
     # Get dist_date from a sample path pattern
     dist_date = current_dist_s1_product.acq_datetime
-    current_date_days_from_base_date = (dist_date - base_date_for_confirmation).days
+    current_date_days_from_base_date = (dist_date - BASE_DATE_FOR_CONFIRMATION).days
 
     # Load product arrays
     current_metric, anom_prof = open_one_ds(current_dist_s1_product.layer_path_dict['GEN-METRIC'])
@@ -266,7 +298,7 @@ def confirm_disturbance_with_prior_product_and_serialize(
     # Core Confirmation Logic
     dist_arr_dict = confirm_disturbance_arr(
         current_metric=current_metric,
-        prior_status=prior_status,
+        prior_alert_status=prior_status,
         prior_max_metric=prior_max_metric,
         prior_confidence=prior_confidence,
         prior_date=prior_date,
@@ -297,6 +329,7 @@ def confirm_disturbance_with_prior_product_and_serialize(
 
     # Serialize output
     out_status_path = dst_dist_product_directory.layer_path_dict['GEN-DIST-STATUS']
+    out_status_acq_path = dst_dist_product_directory.layer_path_dict['GEN-DIST-STATUS-ACQ']
     out_max_metric_path = dst_dist_product_directory.layer_path_dict['GEN-METRIC-MAX']
     out_confidence_path = dst_dist_product_directory.layer_path_dict['GEN-DIST-CONF']
     out_date_path = dst_dist_product_directory.layer_path_dict['GEN-DIST-DATE']
@@ -305,11 +338,12 @@ def confirm_disturbance_with_prior_product_and_serialize(
     out_duration_path = dst_dist_product_directory.layer_path_dict['GEN-DIST-DUR']
     out_last_obs_path = dst_dist_product_directory.layer_path_dict['GEN-DIST-LAST-DATE']
 
-    serialize_one_2d_ds(dist_arr_dict['status'], p_dist_int8, out_status_path, cog=True)
-    serialize_one_2d_ds(dist_arr_dict['max_metric'], anom_prof, out_max_metric_path, cog=True)
-    serialize_one_2d_ds(dist_arr_dict['confidence'], p_dist_int16, out_confidence_path, cog=True)
-    serialize_one_2d_ds(dist_arr_dict['date'], p_dist_int16, out_date_path, cog=True)
-    serialize_one_2d_ds(dist_arr_dict['count'], p_dist_int8, out_count_path, cog=True)
-    serialize_one_2d_ds(dist_arr_dict['percent'], p_dist_int8, out_percent_path, cog=True)
-    serialize_one_2d_ds(dist_arr_dict['duration'], p_dist_int16, out_duration_path, cog=True)
-    serialize_one_2d_ds(dist_arr_dict['last_obs'], p_dist_int16, out_last_obs_path, cog=True)
+    serialize_one_2d_ds(dist_arr_dict['GEN-DIST-STATUS'], p_dist_int8, out_status_path, cog=True)
+    serialize_one_2d_ds(dist_arr_dict['GEN-DIST-STATUS-ACQ'], p_dist_int8, out_status_acq_path, cog=True)
+    serialize_one_2d_ds(dist_arr_dict['GEN-METRIC-MAX'], anom_prof, out_max_metric_path, cog=True)
+    serialize_one_2d_ds(dist_arr_dict['GEN-DIST-CONF'], p_dist_int16, out_confidence_path, cog=True)
+    serialize_one_2d_ds(dist_arr_dict['GEN-DIST-DATE'], p_dist_int16, out_date_path, cog=True)
+    serialize_one_2d_ds(dist_arr_dict['GEN-DIST-COUNT'], p_dist_int8, out_count_path, cog=True)
+    serialize_one_2d_ds(dist_arr_dict['GEN-DIST-PERC'], p_dist_int8, out_percent_path, cog=True)
+    serialize_one_2d_ds(dist_arr_dict['GEN-DIST-DUR'], p_dist_int16, out_duration_path, cog=True)
+    serialize_one_2d_ds(dist_arr_dict['GEN-DIST-LAST-DATE'], p_dist_int16, out_last_obs_path, cog=True)
