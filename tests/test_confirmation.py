@@ -125,6 +125,6 @@ def test_disturbance_status_series(
         metric_ts_pixel = [m[r, c] for m in metric_ts]
         assert status_ts_pixel
         assert metric_ts_pixel
-        if expected_val == 7:
-            breakpoint()
+        # if expected_val == 7:
+        #    breakpoint()
         assert (sub == expected_val).any(), f'{label} block missing expected code {expected_val}'
