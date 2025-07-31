@@ -2,7 +2,7 @@ from pathlib import Path
 
 import numpy as np
 
-from dist_s1.constants import BASE_DATE_FOR_CONFIRMATION, DISTLABEL2VAL
+from dist_s1.constants import BASE_DATE_FOR_CONFIRMATION, DISTLABEL2VAL, TIF_LAYERS, TIF_LAYER_NODATA_VALUES
 from dist_s1.data_models.output_models import TIF_LAYER_DTYPES, DistS1ProductDirectory
 from dist_s1.dist_processing import label_alert_status_from_metric
 from dist_s1.packaging import update_profile
@@ -267,6 +267,7 @@ def confirm_disturbance_with_prior_product_and_serialize(
     conf_upper_lim: int = 32000,
     conf_thresh: float = 3**2 * 3.5,
     metric_value_upper_lim: float = 100,
+    product_tags: dict | None = None,
 ) -> None:
     if not isinstance(current_dist_s1_product, DistS1ProductDirectory):
         current_dist_s1_product = DistS1ProductDirectory.from_product_path(current_dist_s1_product)
@@ -290,27 +291,22 @@ def confirm_disturbance_with_prior_product_and_serialize(
     current_date_days_from_base_date = (current_date_ts - BASE_DATE_FOR_CONFIRMATION).days
 
     # Load product arrays
+    prior_arr_dict = {
+        layer_name: open_one_ds(prior_dist_s1_product.layer_path_dict[layer_name])[0] for layer_name in TIF_LAYERS
+    }
     current_metric, anom_prof = open_one_ds(current_dist_s1_product.layer_path_dict['GEN-METRIC'])
-    prior_status, _ = open_one_ds(prior_dist_s1_product.layer_path_dict['GEN-DIST-STATUS'])
-    prior_max_metric, _ = open_one_ds(prior_dist_s1_product.layer_path_dict['GEN-METRIC-MAX'])
-    prior_confidence, _ = open_one_ds(prior_dist_s1_product.layer_path_dict['GEN-DIST-CONF'])
-    prior_date, _ = open_one_ds(prior_dist_s1_product.layer_path_dict['GEN-DIST-DATE'])
-    prior_count, _ = open_one_ds(prior_dist_s1_product.layer_path_dict['GEN-DIST-COUNT'])
-    prior_percent, _ = open_one_ds(prior_dist_s1_product.layer_path_dict['GEN-DIST-PERC'])
-    prior_duration, _ = open_one_ds(prior_dist_s1_product.layer_path_dict['GEN-DIST-DUR'])
-    prior_last_obs, _ = open_one_ds(prior_dist_s1_product.layer_path_dict['GEN-DIST-LAST-DATE'])
 
     # Core Confirmation Logic
-    dist_arr_dict = confirm_disturbance_arr(
+    confirmed_arr_dict = confirm_disturbance_arr(
         current_metric=current_metric,
-        prior_alert_status=prior_status,
-        prior_max_metric=prior_max_metric,
-        prior_confidence=prior_confidence,
-        prior_date=prior_date,
-        prior_count=prior_count,
-        prior_percent=prior_percent,
-        prior_duration=prior_duration,
-        prior_last_obs=prior_last_obs,
+        prior_alert_status=prior_arr_dict['GEN-DIST-STATUS'],
+        prior_max_metric=prior_arr_dict['GEN-METRIC-MAX'],
+        prior_confidence=prior_arr_dict['GEN-DIST-CONF'],
+        prior_date=prior_arr_dict['GEN-DIST-DATE'],
+        prior_count=prior_arr_dict['GEN-DIST-COUNT'],
+        prior_percent=prior_arr_dict['GEN-DIST-PERC'],
+        prior_duration=prior_arr_dict['GEN-DIST-DUR'],
+        prior_last_obs=prior_arr_dict['GEN-DIST-LAST-DATE'],
         current_date_days_from_base_date=current_date_days_from_base_date,
         alert_low_conf_thresh=alert_low_conf_thresh,
         alert_high_conf_thresh=alert_high_conf_thresh,
@@ -324,35 +320,21 @@ def confirm_disturbance_with_prior_product_and_serialize(
         metric_value_upper_lim=metric_value_upper_lim,
     )
 
-    # Serialize output
-    out_status_path = dst_dist_product_directory.layer_path_dict['GEN-DIST-STATUS']
-    out_status_acq_path = dst_dist_product_directory.layer_path_dict['GEN-DIST-STATUS-ACQ']
-    out_max_metric_path = dst_dist_product_directory.layer_path_dict['GEN-METRIC-MAX']
-    out_confidence_path = dst_dist_product_directory.layer_path_dict['GEN-DIST-CONF']
-    out_date_path = dst_dist_product_directory.layer_path_dict['GEN-DIST-DATE']
-    out_count_path = dst_dist_product_directory.layer_path_dict['GEN-DIST-COUNT']
-    out_percent_path = dst_dist_product_directory.layer_path_dict['GEN-DIST-PERC']
-    out_duration_path = dst_dist_product_directory.layer_path_dict['GEN-DIST-DUR']
-    out_last_obs_path = dst_dist_product_directory.layer_path_dict['GEN-DIST-LAST-DATE']
+    # Path Accounting
+    out_paths_dict = {layer_name: dst_dist_product_directory.layer_path_dict[layer_name] for layer_name in TIF_LAYERS}
 
-    # Profiles Updates
-    p_status = update_profile(anom_prof, TIF_LAYER_DTYPES['GEN-DIST-STATUS'], 255)
-    p_status_acq = update_profile(anom_prof, TIF_LAYER_DTYPES['GEN-DIST-STATUS-ACQ'], 255)
-    p_max_metric = update_profile(anom_prof, TIF_LAYER_DTYPES['GEN-METRIC-MAX'], np.nan)
-    p_confidence = update_profile(anom_prof, TIF_LAYER_DTYPES['GEN-DIST-CONF'], np.nan)
-    p_date = update_profile(anom_prof, TIF_LAYER_DTYPES['GEN-DIST-DATE'], -1)
-    p_count = update_profile(anom_prof, TIF_LAYER_DTYPES['GEN-DIST-COUNT'], 255)
-    p_percent = update_profile(anom_prof, TIF_LAYER_DTYPES['GEN-DIST-PERC'], 255)
-    p_duration = update_profile(anom_prof, TIF_LAYER_DTYPES['GEN-DIST-DUR'], -1)
-    p_last_obs = update_profile(anom_prof, TIF_LAYER_DTYPES['GEN-DIST-LAST-DATE'], -1)
+    # Update profiles
+    out_profiles_dict = {
+        layer_name: update_profile(anom_prof, TIF_LAYER_DTYPES[layer_name], TIF_LAYER_NODATA_VALUES[layer_name])
+        for layer_name in TIF_LAYERS
+    }
 
     # Serialize output
-    serialize_one_2d_ds(dist_arr_dict['GEN-DIST-STATUS'], p_status, out_status_path, cog=True)
-    serialize_one_2d_ds(dist_arr_dict['GEN-DIST-STATUS-ACQ'], p_status_acq, out_status_acq_path, cog=True)
-    serialize_one_2d_ds(dist_arr_dict['GEN-METRIC-MAX'], p_max_metric, out_max_metric_path, cog=True)
-    serialize_one_2d_ds(dist_arr_dict['GEN-DIST-CONF'], p_confidence, out_confidence_path, cog=True)
-    serialize_one_2d_ds(dist_arr_dict['GEN-DIST-DATE'], p_date, out_date_path, cog=True)
-    serialize_one_2d_ds(dist_arr_dict['GEN-DIST-COUNT'], p_count, out_count_path, cog=True)
-    serialize_one_2d_ds(dist_arr_dict['GEN-DIST-PERC'], p_percent, out_percent_path, cog=True)
-    serialize_one_2d_ds(dist_arr_dict['GEN-DIST-DUR'], p_duration, out_duration_path, cog=True)
-    serialize_one_2d_ds(dist_arr_dict['GEN-DIST-LAST-DATE'], p_last_obs, out_last_obs_path, cog=True)
+    for layer_name in TIF_LAYERS:
+        serialize_one_2d_ds(
+            confirmed_arr_dict[layer_name],
+            out_profiles_dict[layer_name],
+            out_paths_dict[layer_name],
+            cog=True,
+            tags=product_tags,
+        )

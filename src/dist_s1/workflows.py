@@ -28,6 +28,7 @@ from dist_s1.dist_processing import (
 from dist_s1.localize_rtc_s1 import localize_rtc_s1
 from dist_s1.packaging import (
     generate_browse_image,
+    get_product_tags,
     package_disturbance_tifs_no_confirmation,
 )
 
@@ -272,6 +273,7 @@ def run_confirmation_of_dist_product_workflow(
     confidence_upper_lim = run_config.confidence_upper_lim
     confidence_threshold = run_config.confidence_threshold
     metric_value_upper_lim = run_config.metric_value_upper_lim
+    product_tags = get_product_tags(run_config)
 
     confirm_disturbance_with_prior_product_and_serialize(
         current_dist_s1_product=current_dist_s1_product,
@@ -284,6 +286,7 @@ def run_confirmation_of_dist_product_workflow(
         confidence_upper_lim=confidence_upper_lim,
         confidence_upper_thresh=confidence_threshold,
         metric_value_upper_lim=metric_value_upper_lim,
+        product_tags=product_tags,
     )
     # Generate browse image for the final product
     generate_browse_image(run_config.product_data_model, run_config.water_mask_path)

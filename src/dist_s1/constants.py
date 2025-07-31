@@ -1,9 +1,11 @@
+import numpy as np
 import pandas as pd
 
 
 PRODUCT_VERSION = '0.1'
 
 MODEL_CONTEXT_LENGTH = 10
+
 
 # Confirmation
 BASE_DATE_FOR_CONFIRMATION = pd.Timestamp('2020-12-31', tz='UTC')
@@ -22,6 +24,35 @@ DISTLABEL2VAL = {
     'confirmed_high_conf_disturbance_finished': 8,
 }
 DISTVAL2LABEL = {v: k for k, v in DISTLABEL2VAL.items()}
+
+TIF_LAYER_DTYPES = {
+    'GEN-DIST-STATUS': 'uint8',
+    'GEN-METRIC': 'float32',
+    'GEN-DIST-STATUS-ACQ': 'uint8',
+    'GEN-METRIC-MAX': 'float32',
+    'GEN-DIST-CONF': 'float32',
+    'GEN-DIST-DATE': 'int16',
+    'GEN-DIST-COUNT': 'uint8',
+    'GEN-DIST-PERC': 'uint8',
+    'GEN-DIST-DUR': 'int16',
+    'GEN-DIST-LAST-DATE': 'int16',
+}
+TIF_LAYER_NODATA_VALUES = {
+    'GEN-DIST-STATUS': 255,
+    'GEN-DIST-STATUS-ACQ': 255,
+    'GEN-METRIC': np.nan,
+    'GEN-METRIC-MAX': np.nan,
+    'GEN-DIST-CONF': np.nan,
+    'GEN-DIST-DATE': -1,
+    'GEN-DIST-COUNT': 255,
+    'GEN-DIST-PERC': 255,
+    'GEN-DIST-DUR': -1,
+    'GEN-DIST-LAST-DATE': -1,
+}
+TIF_LAYERS = TIF_LAYER_DTYPES.keys()
+EXPECTED_FORMAT_STRING = (
+    'OPERA_L3_DIST-ALERT-S1_T{mgrs_tile_id}_{acq_datetime}_{proc_datetime}_S1_30_v{PRODUCT_VERSION}'
+)
 
 
 # Colormaps

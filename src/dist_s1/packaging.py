@@ -7,8 +7,15 @@ from rasterio.enums import Resampling
 from rasterio.env import Env
 
 import dist_s1
-from dist_s1.constants import BASE_DATE_FOR_CONFIRMATION, DISTLABEL2VAL, DIST_CMAP
-from dist_s1.data_models.output_models import TIF_LAYER_DTYPES, DistS1ProductDirectory
+from dist_s1.constants import (
+    BASE_DATE_FOR_CONFIRMATION,
+    DISTLABEL2VAL,
+    DIST_CMAP,
+    TIF_LAYERS,
+    TIF_LAYER_DTYPES,
+    TIF_LAYER_NODATA_VALUES,
+)
+from dist_s1.data_models.output_models import DistS1ProductDirectory
 from dist_s1.data_models.runconfig_model import RunConfigData
 from dist_s1.rio_tools import open_one_ds, serialize_one_2d_ds
 from dist_s1.water_mask import apply_water_mask
@@ -137,6 +144,14 @@ def generate_default_dist_arrs_from_metric_and_alert_status(
     return out_arr_dict
 
 
+def get_product_tags(run_config: RunConfigData) -> dict:
+    tags = run_config.get_public_attributes(include_algo_config_params=True)
+    tags['version'] = dist_s1.__version__
+    tags = update_tags_with_opera_ids(tags)
+    tags = update_tag_types(tags)
+    return tags
+
+
 def package_disturbance_tifs_no_confirmation(run_config: RunConfigData) -> None:
     product_data = run_config.product_data_model_no_confirmation
 
@@ -144,73 +159,21 @@ def package_disturbance_tifs_no_confirmation(run_config: RunConfigData) -> None:
     X_metric, p_metric = open_one_ds(run_config.final_unformatted_tif_paths['metric_status_path'])
 
     out_arr_dict = generate_default_dist_arrs_from_metric_and_alert_status(X_metric, X_dist, run_config.min_acq_date)
-    X_count = out_arr_dict['GEN-DIST-COUNT']
-    X_perc = out_arr_dict['GEN-DIST-PERC']
-    X_dur = out_arr_dict['GEN-DIST-DUR']
-    X_date = out_arr_dict['GEN-DIST-DATE']
-    X_last_date = out_arr_dict['GEN-DIST-LAST-DATE']
-    X_conf = out_arr_dict['GEN-DIST-CONF']
-    X_status_acq = out_arr_dict['GEN-DIST-STATUS-ACQ']
-    X_metric_max = out_arr_dict['GEN-METRIC-MAX']
+    cmap_dict = {'GEN-DIST-STATUS': DIST_CMAP, 'GEN-DIST-STATUS-ACQ': DIST_CMAP}
+    cmap_dict.update({layer_name: None for layer_name in TIF_LAYERS if layer_name not in cmap_dict})
 
     # array, profile, path, colormap
     serialization_inputs = [
-        (X_dist, p_dist, product_data.layer_path_dict['GEN-DIST-STATUS'], DIST_CMAP),
-        (X_metric, p_metric, product_data.layer_path_dict['GEN-METRIC'], None),
         (
-            X_count,
-            update_profile(p_dist, TIF_LAYER_DTYPES['GEN-DIST-COUNT'], 255),
-            product_data.layer_path_dict['GEN-DIST-COUNT'],
-            None,
-        ),
-        (
-            X_perc,
-            update_profile(p_dist, TIF_LAYER_DTYPES['GEN-DIST-PERC'], 255),
-            product_data.layer_path_dict['GEN-DIST-PERC'],
-            None,
-        ),
-        (
-            X_dur,
-            update_profile(p_dist, TIF_LAYER_DTYPES['GEN-DIST-DUR'], -1),
-            product_data.layer_path_dict['GEN-DIST-DUR'],
-            None,
-        ),
-        (
-            X_date,
-            update_profile(p_dist, TIF_LAYER_DTYPES['GEN-DIST-DATE'], -1),
-            product_data.layer_path_dict['GEN-DIST-DATE'],
-            None,
-        ),
-        (
-            X_last_date,
-            update_profile(p_dist, TIF_LAYER_DTYPES['GEN-DIST-LAST-DATE'], -1),
-            product_data.layer_path_dict['GEN-DIST-LAST-DATE'],
-            None,
-        ),
-        (
-            X_conf,
-            update_profile(p_metric, TIF_LAYER_DTYPES['GEN-DIST-CONF'], -1),
-            product_data.layer_path_dict['GEN-DIST-CONF'],
-            None,
-        ),
-        (
-            X_status_acq,
-            update_profile(p_dist, np.uint8, 255),
-            product_data.layer_path_dict['GEN-DIST-STATUS-ACQ'],
-            DIST_CMAP,
-        ),
-        (
-            X_metric_max,
-            update_profile(p_metric, np.float32, np.nan),
-            product_data.layer_path_dict['GEN-METRIC-MAX'],
-            None,
-        ),
+            out_arr_dict[layer_name],  # array
+            update_profile(p_dist, TIF_LAYER_DTYPES[layer_name], TIF_LAYER_NODATA_VALUES[layer_name]),  # profile
+            product_data.layer_path_dict[layer_name],  # path
+            cmap_dict[layer_name],  # colormap
+        )
+        for layer_name in TIF_LAYERS
     ]
 
-    tags = run_config.get_public_attributes(include_algo_config_params=True)
-    tags['version'] = dist_s1.__version__
-    tags = update_tags_with_opera_ids(tags)
-    tags = update_tag_types(tags)
+    tags = get_product_tags(run_config)
 
     if run_config.apply_water_mask:
         serialization_inputs = [

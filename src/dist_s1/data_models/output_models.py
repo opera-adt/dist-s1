@@ -7,27 +7,10 @@ import numpy as np
 import rasterio
 from pydantic import BaseModel, field_validator, model_validator
 
-from dist_s1.constants import PRODUCT_VERSION
+from dist_s1.constants import EXPECTED_FORMAT_STRING, PRODUCT_VERSION, TIF_LAYERS, TIF_LAYER_DTYPES
 from dist_s1.rio_tools import get_mgrs_profile
 from dist_s1.water_mask import apply_water_mask
 
-
-TIF_LAYER_DTYPES = {
-    'GEN-DIST-STATUS': 'uint8',
-    'GEN-METRIC': 'float32',
-    'GEN-DIST-STATUS-ACQ': 'uint8',
-    'GEN-METRIC-MAX': 'float32',
-    'GEN-DIST-CONF': 'float32',
-    'GEN-DIST-DATE': 'int16',
-    'GEN-DIST-COUNT': 'uint8',
-    'GEN-DIST-PERC': 'uint8',
-    'GEN-DIST-DUR': 'int16',
-    'GEN-DIST-LAST-DATE': 'int16',
-}
-TIF_LAYERS = TIF_LAYER_DTYPES.keys()
-EXPECTED_FORMAT_STRING = (
-    'OPERA_L3_DIST-ALERT-S1_T{mgrs_tile_id}_{acq_datetime}_{proc_datetime}_S1_30_v{PRODUCT_VERSION}'
-)
 
 PRODUCT_TAGS_FOR_EQUALITY = [
     'pre_rtc_opera_ids',
