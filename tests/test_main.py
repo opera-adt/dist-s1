@@ -19,7 +19,7 @@ def test_dist_s1_sas_main(
     test_dir: Path,
     change_local_dir: Callable[[Path], None],
     cropped_10SGD_dataset_runconfig: Path,
-    test_opera_golden_dummy_dataset: Path,
+    test_opera_golden_cropped_dataset: Path,
 ) -> None:
     """Test the dist-s1 sas main function.
 
@@ -44,7 +44,7 @@ def test_dist_s1_sas_main(
     if product_dst_dir.exists():
         shutil.rmtree(product_dst_dir)
 
-    product_data_golden = DistS1ProductDirectory.from_product_path(test_opera_golden_dummy_dataset)
+    product_data_golden = DistS1ProductDirectory.from_product_path(test_opera_golden_cropped_dataset)
 
     # Load and modify runconfig - not the paths are relative to the test_dir
     runconfig_data = RunConfigData.from_yaml(cropped_10SGD_dataset_runconfig)
@@ -78,7 +78,6 @@ def test_dist_s1_sas_main(
     assert product_dst_dir.exists()
     assert result.exit_code == 0
 
-    breakpoint()
     assert out_product_data == product_data_golden
 
     shutil.rmtree(tmp_dir)

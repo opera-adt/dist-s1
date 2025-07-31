@@ -157,12 +157,42 @@ def package_disturbance_tifs_no_confirmation(run_config: RunConfigData) -> None:
     serialization_inputs = [
         (X_dist, p_dist, product_data.layer_path_dict['GEN-DIST-STATUS'], DIST_CMAP),
         (X_metric, p_metric, product_data.layer_path_dict['GEN-METRIC'], None),
-        (X_count, update_profile(p_dist, np.uint8, 255), product_data.layer_path_dict['GEN-DIST-COUNT'], None),
-        (X_perc, update_profile(p_dist, np.uint8, 255), product_data.layer_path_dict['GEN-DIST-PERC'], None),
-        (X_dur, update_profile(p_dist, np.int16, -1), product_data.layer_path_dict['GEN-DIST-DUR'], None),
-        (X_date, update_profile(p_dist, np.int16, -1), product_data.layer_path_dict['GEN-DIST-DATE'], None),
-        (X_last_date, update_profile(p_dist, np.int16, -1), product_data.layer_path_dict['GEN-DIST-LAST-DATE'], None),
-        (X_conf, update_profile(p_metric, np.int16, -1), product_data.layer_path_dict['GEN-DIST-CONF'], None),
+        (
+            X_count,
+            update_profile(p_dist, TIF_LAYER_DTYPES['GEN-DIST-COUNT'], 255),
+            product_data.layer_path_dict['GEN-DIST-COUNT'],
+            None,
+        ),
+        (
+            X_perc,
+            update_profile(p_dist, TIF_LAYER_DTYPES['GEN-DIST-PERC'], 255),
+            product_data.layer_path_dict['GEN-DIST-PERC'],
+            None,
+        ),
+        (
+            X_dur,
+            update_profile(p_dist, TIF_LAYER_DTYPES['GEN-DIST-DUR'], -1),
+            product_data.layer_path_dict['GEN-DIST-DUR'],
+            None,
+        ),
+        (
+            X_date,
+            update_profile(p_dist, TIF_LAYER_DTYPES['GEN-DIST-DATE'], -1),
+            product_data.layer_path_dict['GEN-DIST-DATE'],
+            None,
+        ),
+        (
+            X_last_date,
+            update_profile(p_dist, TIF_LAYER_DTYPES['GEN-DIST-LAST-DATE'], -1),
+            product_data.layer_path_dict['GEN-DIST-LAST-DATE'],
+            None,
+        ),
+        (
+            X_conf,
+            update_profile(p_metric, TIF_LAYER_DTYPES['GEN-DIST-CONF'], -1),
+            product_data.layer_path_dict['GEN-DIST-CONF'],
+            None,
+        ),
         (
             X_status_acq,
             update_profile(p_dist, np.uint8, 255),

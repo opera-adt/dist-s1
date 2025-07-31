@@ -5,6 +5,7 @@ import numpy as np
 from dist_s1.constants import BASE_DATE_FOR_CONFIRMATION, DISTLABEL2VAL
 from dist_s1.data_models.output_models import TIF_LAYER_DTYPES, DistS1ProductDirectory
 from dist_s1.dist_processing import label_alert_status_from_metric
+from dist_s1.packaging import update_profile
 from dist_s1.rio_tools import open_one_ds, serialize_one_2d_ds
 
 
@@ -322,14 +323,6 @@ def confirm_disturbance_with_prior_product_and_serialize(
         conf_thresh=conf_thresh,
         metric_value_upper_lim=metric_value_upper_lim,
     )
-    # Prepare profiles for serialization
-    p_dist_int8 = anom_prof.copy()
-    p_dist_int8['nodata'] = 255
-    p_dist_int8['dtype'] = np.uint8
-
-    p_dist_int16 = anom_prof.copy()
-    p_dist_int16['nodata'] = 255
-    p_dist_int16['dtype'] = np.int16
 
     # Serialize output
     out_status_path = dst_dist_product_directory.layer_path_dict['GEN-DIST-STATUS']
@@ -342,12 +335,24 @@ def confirm_disturbance_with_prior_product_and_serialize(
     out_duration_path = dst_dist_product_directory.layer_path_dict['GEN-DIST-DUR']
     out_last_obs_path = dst_dist_product_directory.layer_path_dict['GEN-DIST-LAST-DATE']
 
-    serialize_one_2d_ds(dist_arr_dict['GEN-DIST-STATUS'], p_dist_int8, out_status_path, cog=True)
-    serialize_one_2d_ds(dist_arr_dict['GEN-DIST-STATUS-ACQ'], p_dist_int8, out_status_acq_path, cog=True)
-    serialize_one_2d_ds(dist_arr_dict['GEN-METRIC-MAX'], anom_prof, out_max_metric_path, cog=True)
-    serialize_one_2d_ds(dist_arr_dict['GEN-DIST-CONF'], p_dist_int16, out_confidence_path, cog=True)
-    serialize_one_2d_ds(dist_arr_dict['GEN-DIST-DATE'], p_dist_int16, out_date_path, cog=True)
-    serialize_one_2d_ds(dist_arr_dict['GEN-DIST-COUNT'], p_dist_int8, out_count_path, cog=True)
-    serialize_one_2d_ds(dist_arr_dict['GEN-DIST-PERC'], p_dist_int8, out_percent_path, cog=True)
-    serialize_one_2d_ds(dist_arr_dict['GEN-DIST-DUR'], p_dist_int16, out_duration_path, cog=True)
-    serialize_one_2d_ds(dist_arr_dict['GEN-DIST-LAST-DATE'], p_dist_int16, out_last_obs_path, cog=True)
+    # Profiles Updates
+    p_status = update_profile(anom_prof, TIF_LAYER_DTYPES['GEN-DIST-STATUS'], 255)
+    p_status_acq = update_profile(anom_prof, TIF_LAYER_DTYPES['GEN-DIST-STATUS-ACQ'], 255)
+    p_max_metric = update_profile(anom_prof, TIF_LAYER_DTYPES['GEN-METRIC-MAX'], np.nan)
+    p_confidence = update_profile(anom_prof, TIF_LAYER_DTYPES['GEN-DIST-CONF'], np.nan)
+    p_date = update_profile(anom_prof, TIF_LAYER_DTYPES['GEN-DIST-DATE'], -1)
+    p_count = update_profile(anom_prof, TIF_LAYER_DTYPES['GEN-DIST-COUNT'], 255)
+    p_percent = update_profile(anom_prof, TIF_LAYER_DTYPES['GEN-DIST-PERC'], 255)
+    p_duration = update_profile(anom_prof, TIF_LAYER_DTYPES['GEN-DIST-DUR'], -1)
+    p_last_obs = update_profile(anom_prof, TIF_LAYER_DTYPES['GEN-DIST-LAST-DATE'], -1)
+
+    # Serialize output
+    serialize_one_2d_ds(dist_arr_dict['GEN-DIST-STATUS'], p_status, out_status_path, cog=True)
+    serialize_one_2d_ds(dist_arr_dict['GEN-DIST-STATUS-ACQ'], p_status_acq, out_status_acq_path, cog=True)
+    serialize_one_2d_ds(dist_arr_dict['GEN-METRIC-MAX'], p_max_metric, out_max_metric_path, cog=True)
+    serialize_one_2d_ds(dist_arr_dict['GEN-DIST-CONF'], p_confidence, out_confidence_path, cog=True)
+    serialize_one_2d_ds(dist_arr_dict['GEN-DIST-DATE'], p_date, out_date_path, cog=True)
+    serialize_one_2d_ds(dist_arr_dict['GEN-DIST-COUNT'], p_count, out_count_path, cog=True)
+    serialize_one_2d_ds(dist_arr_dict['GEN-DIST-PERC'], p_percent, out_percent_path, cog=True)
+    serialize_one_2d_ds(dist_arr_dict['GEN-DIST-DUR'], p_duration, out_duration_path, cog=True)
+    serialize_one_2d_ds(dist_arr_dict['GEN-DIST-LAST-DATE'], p_last_obs, out_last_obs_path, cog=True)

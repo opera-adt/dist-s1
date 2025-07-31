@@ -29,6 +29,8 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Variables for confirmation processing (use snake case wherever possible)
 - Now have an output product without confirmation and a product with confirmation (for provenance)
 - De-couple confirmation and packaging in workflow logic
+- Confidence is now float32 (not int16) - this needs to happen because our metrics is a float32.
+- Updated golden dataset to reflect new changes.
 
 ## Added
 - Constants for CLI and `RunConfigData` - allows for consistent data parsing.

@@ -41,12 +41,12 @@ def test_data_dir() -> Path:
 
 
 @pytest.fixture
-def test_opera_golden_dummy_dataset() -> Path:
+def test_opera_golden_cropped_dataset() -> Path:
     """Fixture to provide the path to the test_out directory."""
     test_dir = Path(__file__)
     golden_datasets_dir = test_dir.parent / 'test_data' / 'golden_datasets' / '10SGD'
     golden_dummy_dataset = (
-        golden_datasets_dir / 'OPERA_L3_DIST-ALERT-S1_T10SGD_20250102T015857Z_20250716T154103Z_S1_30_v0.1'
+        golden_datasets_dir / 'OPERA_L3_DIST-ALERT-S1_T10SGD_20250102T015857Z_20250731T141259Z_S1_30_v0.1'
     ).resolve()
     return golden_dummy_dataset
 
