@@ -29,7 +29,7 @@ def label_alert_status_from_metric(
     mdist: np.ndarray, low_confidence_threshold: float, high_confidence_threshold: float
 ) -> np.ndarray:
     nodata_mask = np.isnan(mdist)
-    dist_labels = np.zeros_like(mdist)
+    dist_labels = np.zeros_like(mdist, dtype=np.uint8)
     dist_labels[mdist >= low_confidence_threshold] = DISTLABEL2VAL['first_low_conf_disturbance']
     dist_labels[mdist >= high_confidence_threshold] = DISTLABEL2VAL['first_high_conf_disturbance']
     dist_labels[nodata_mask] = 255

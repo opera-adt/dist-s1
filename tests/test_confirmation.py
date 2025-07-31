@@ -82,7 +82,9 @@ def test_disturbance_status_series(
         low_confidence_threshold=moderate_confidence_threshold,
         high_confidence_threshold=high_confidence_threshold,
     )
-    prior_arrs_dict = generate_default_dist_arrs_from_metric_and_alert_status(X_metric_t, X_dist_status, t0_ref_date)
+    prior_dist_arr_dict = generate_default_dist_arrs_from_metric_and_alert_status(
+        X_metric_t, X_dist_status, t0_ref_date
+    )
     status_series = []
     status_series.append(X_dist_status)
 
@@ -93,14 +95,14 @@ def test_disturbance_status_series(
         current_dist_arr_dict = confirm_disturbance_arr(
             current_metric=X_metric_t,
             current_date_days_from_base_date=current_date_days_from_base_date,
-            prior_alert_status=prior_arrs_dict['GEN-DIST-STATUS'],
-            prior_max_metric=prior_arrs_dict['GEN-METRIC-MAX'],
-            prior_confidence=prior_arrs_dict['GEN-DIST-CONF'],
-            prior_date=prior_arrs_dict['GEN-DIST-DATE'],
-            prior_count=prior_arrs_dict['GEN-DIST-COUNT'],
-            prior_percent=prior_arrs_dict['GEN-DIST-PERC'],
-            prior_duration=prior_arrs_dict['GEN-DIST-DUR'],
-            prior_last_obs=prior_arrs_dict['GEN-DIST-LAST-DATE'],
+            prior_alert_status=prior_dist_arr_dict['GEN-DIST-STATUS'],
+            prior_max_metric=prior_dist_arr_dict['GEN-METRIC-MAX'],
+            prior_confidence=prior_dist_arr_dict['GEN-DIST-CONF'],
+            prior_date=prior_dist_arr_dict['GEN-DIST-DATE'],
+            prior_count=prior_dist_arr_dict['GEN-DIST-COUNT'],
+            prior_percent=prior_dist_arr_dict['GEN-DIST-PERC'],
+            prior_duration=prior_dist_arr_dict['GEN-DIST-DUR'],
+            prior_last_obs=prior_dist_arr_dict['GEN-DIST-LAST-DATE'],
             alert_low_conf_thresh=moderate_confidence_threshold,
             alert_high_conf_thresh=high_confidence_threshold,
             exclude_consecutive_no_dist=False,
@@ -114,17 +116,16 @@ def test_disturbance_status_series(
         )
         current_status = current_dist_arr_dict['GEN-DIST-STATUS']
         status_series.append(current_status)
-        prior_arrs_dict = current_dist_arr_dict
+        prior_dist_arr_dict = current_dist_arr_dict
 
-    for label, expected_val in DISTLABEL2VAL.items():
+    for label, status_expected in DISTLABEL2VAL.items():
         r, c = label2coords[label]
-        sub = current_status[r, c]
+        status_actual = current_status[r, c]
 
         # Debugging
         status_ts_pixel = [s[r, c] for s in status_series]
         metric_ts_pixel = [m[r, c] for m in metric_ts]
         assert status_ts_pixel
         assert metric_ts_pixel
-        # if expected_val == 7:
-        #    breakpoint()
-        assert (sub == expected_val).any(), f'{label} block missing expected code {expected_val}'
+
+        assert (status_actual == status_expected).any(), f'{label} block missing expected code {status_expected}'
