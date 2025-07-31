@@ -7,19 +7,19 @@ from rasterio.enums import Resampling
 from rasterio.env import Env
 
 import dist_s1
-from dist_s1.constants import BASE_DATE_FOR_CONFIRMATION, DIST_CMAP
+from dist_s1.constants import BASE_DATE_FOR_CONFIRMATION, DISTLABEL2VAL, DIST_CMAP
 from dist_s1.data_models.output_models import TIF_LAYER_DTYPES, DistS1ProductDirectory
 from dist_s1.data_models.runconfig_model import RunConfigData
 from dist_s1.rio_tools import open_one_ds, serialize_one_2d_ds
 from dist_s1.water_mask import apply_water_mask
 
 
-def generate_count_disturbed_no_confirmation(
-    dist_status_arr: np.ndarray, count_value: int = 1, dtype: np.dtype = np.uint8, nodata_value: int | float = 255
+def generate_dist_indicator(
+    dist_status_arr: np.ndarray, ind_val: int = 1, dtype: np.dtype = np.uint8, dst_nodata_value: int | float = 255
 ) -> np.ndarray:
     X_count = np.zeros_like(dist_status_arr, dtype=dtype)
-    X_count[dist_status_arr == 255] = nodata_value
-    X_count[dist_status_arr > 0] = count_value
+    X_count[dist_status_arr == 255] = dst_nodata_value
+    X_count[(dist_status_arr > 0) & (dist_status_arr < 255)] = ind_val
     return X_count
 
 
@@ -88,27 +88,37 @@ def update_tag_types(tags: dict) -> dict:
 
 
 def generate_default_dist_arrs_from_metric_and_alert_status(
-    X_metric: np.ndarray, X_status_arr: np.ndarray, acq_date: pd.Timestamp
+    X_metric: np.ndarray,
+    X_status_arr: np.ndarray,
+    acq_date: pd.Timestamp,
 ) -> dict[np.ndarray]:
     # GEN-DIST-COUNT
-    X_count = generate_count_disturbed_no_confirmation(X_status_arr, dtype=np.uint8, nodata_value=255)
+    X_count = generate_dist_indicator(X_status_arr, dtype=np.uint8, dst_nodata_value=255)
+
     # GEN-DIST-PERC
-    X_perc = generate_count_disturbed_no_confirmation(X_status_arr, count_value=100, dtype=np.uint8, nodata_value=255)
+    X_perc = generate_dist_indicator(X_status_arr, ind_val=100, dtype=np.uint8, dst_nodata_value=255)
+
     # GEN-DIST-DUR
-    X_dur = generate_count_disturbed_no_confirmation(X_status_arr, dtype=np.int16, nodata_value=-1)
+    X_dur = generate_dist_indicator(X_status_arr, dtype=np.int16, dst_nodata_value=-1)
+
     # GEN-DIST-DATE - everything is pd.Timestamp
     date_encoded = (acq_date.to_pydatetime() - BASE_DATE_FOR_CONFIRMATION).days
-    X_date = generate_count_disturbed_no_confirmation(
-        X_status_arr, dtype=np.int16, nodata_value=-1, count_value=date_encoded
-    )
+    X_date = generate_dist_indicator(X_status_arr, dtype=np.int16, dst_nodata_value=-1, ind_val=date_encoded)
+
     # GEN-DIST-LAST-DATE - last date of valid observation
-    X_last_date = X_dur.copy()
+    X_last_date = np.full_like(X_status_arr, -1, dtype=np.int16)
     X_last_date[X_status_arr != 255] = date_encoded
+
     # GEN-DIST-CONF
-    X_conf = X_metric.copy()
-    X_conf[X_conf < 3.5] = 0
+    X_conf = np.full_like(X_metric, -1, dtype=np.float32)
+    dist_labels = [DISTLABEL2VAL[key] for key in ['first_low_conf_disturbance', 'first_high_conf_disturbance']]
+    new_disturbed_mask = np.isin(X_status_arr, dist_labels)
+    X_conf[new_disturbed_mask] = X_metric[new_disturbed_mask]
+    X_conf[~new_disturbed_mask & (X_status_arr != 255)] = 0
+
     # GEN-DIST-STATUS-ACQ
     X_status_acq = X_status_arr.copy()
+
     # GEN-METRIC-MAX
     X_metric_max = X_metric.copy()
 

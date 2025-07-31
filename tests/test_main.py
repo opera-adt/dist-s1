@@ -37,7 +37,12 @@ def test_dist_s1_sas_main(
     # Store original working directory
     change_local_dir(test_dir)
     tmp_dir = test_dir / 'tmp'
+    if tmp_dir.exists():
+        shutil.rmtree(tmp_dir)
     tmp_dir.mkdir(parents=True, exist_ok=True)
+    product_dst_dir = (test_dir / 'tmp2').resolve()
+    if product_dst_dir.exists():
+        shutil.rmtree(product_dst_dir)
 
     product_data_golden = DistS1ProductDirectory.from_product_path(test_opera_golden_dummy_dataset)
 
@@ -48,7 +53,6 @@ def test_dist_s1_sas_main(
     runconfig_data.algo_config.device = 'cpu'
     runconfig_data.algo_config.n_workers_for_despeckling = 4
     # We have a different product_dst_dir than the dst_dir called `tmp2`
-    product_dst_dir = (test_dir / 'tmp2').resolve()
     runconfig_data.product_dst_dir = str(product_dst_dir)
 
     tmp_runconfig_yml_path = tmp_dir / 'runconfig.yml'
@@ -74,6 +78,7 @@ def test_dist_s1_sas_main(
     assert product_dst_dir.exists()
     assert result.exit_code == 0
 
+    breakpoint()
     assert out_product_data == product_data_golden
 
     shutil.rmtree(tmp_dir)
