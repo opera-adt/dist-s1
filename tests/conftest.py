@@ -46,7 +46,7 @@ def test_opera_golden_cropped_dataset() -> Path:
     test_dir = Path(__file__)
     golden_datasets_dir = test_dir.parent / 'test_data' / 'golden_datasets' / '10SGD'
     golden_dummy_dataset = (
-        golden_datasets_dir / 'OPERA_L3_DIST-ALERT-S1_T10SGD_20250102T015857Z_20250801T154642Z_S1_30_v0.1'
+        golden_datasets_dir / 'OPERA_L3_DIST-ALERT-S1_T10SGD_20250102T015857Z_20250801T163749Z_S1_30_v0.1'
     ).resolve()
     return golden_dummy_dataset
 

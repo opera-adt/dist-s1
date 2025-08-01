@@ -42,7 +42,7 @@ TIF_LAYER_NODATA_VALUES = {
     'GEN-DIST-STATUS-ACQ': 255,
     'GEN-METRIC': np.nan,
     'GEN-METRIC-MAX': np.nan,
-    'GEN-DIST-CONF': np.nan,
+    'GEN-DIST-CONF': -1,
     'GEN-DIST-DATE': -1,
     'GEN-DIST-COUNT': 255,
     'GEN-DIST-PERC': 255,

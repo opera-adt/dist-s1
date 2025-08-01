@@ -100,28 +100,38 @@ def generate_default_dist_arrs_from_metric_and_alert_status(
     acq_date: pd.Timestamp,
 ) -> dict[np.ndarray]:
     # GEN-DIST-COUNT
-    X_count = generate_dist_indicator(X_status_arr, dtype=np.uint8, dst_nodata_value=255)
+    X_count = generate_dist_indicator(
+        X_status_arr, dtype=np.uint8, dst_nodata_value=TIF_LAYER_NODATA_VALUES['GEN-DIST-COUNT']
+    )
 
     # GEN-DIST-PERC
-    X_perc = generate_dist_indicator(X_status_arr, ind_val=100, dtype=np.uint8, dst_nodata_value=255)
+    X_perc = generate_dist_indicator(
+        X_status_arr, ind_val=100, dtype=np.uint8, dst_nodata_value=TIF_LAYER_NODATA_VALUES['GEN-DIST-PERC']
+    )
 
     # GEN-DIST-DUR
-    X_dur = generate_dist_indicator(X_status_arr, dtype=np.int16, dst_nodata_value=-1)
+    X_dur = generate_dist_indicator(
+        X_status_arr, dtype=np.int16, dst_nodata_value=TIF_LAYER_NODATA_VALUES['GEN-DIST-DUR']
+    )
 
     # GEN-DIST-DATE - everything is pd.Timestamp
     date_encoded = (acq_date.to_pydatetime() - BASE_DATE_FOR_CONFIRMATION).days
-    X_date = generate_dist_indicator(X_status_arr, dtype=np.int16, dst_nodata_value=-1, ind_val=date_encoded)
+    X_date = generate_dist_indicator(
+        X_status_arr, dtype=np.int16, dst_nodata_value=TIF_LAYER_NODATA_VALUES['GEN-DIST-DATE'], ind_val=date_encoded
+    )
 
     # GEN-DIST-LAST-DATE - last date of valid observation
     X_last_date = np.full_like(X_status_arr, -1, dtype=np.int16)
     X_last_date[X_status_arr != 255] = date_encoded
 
     # GEN-DIST-CONF
-    X_conf = np.full_like(X_metric, -1, dtype=np.float32)
+    X_conf = np.full_like(X_metric, TIF_LAYER_NODATA_VALUES['GEN-DIST-CONF'], dtype=np.float32)
     dist_labels = [DISTLABEL2VAL[key] for key in ['first_low_conf_disturbance', 'first_high_conf_disturbance']]
     new_disturbed_mask = np.isin(X_status_arr, dist_labels)
     X_conf[new_disturbed_mask] = X_metric[new_disturbed_mask]
-    X_conf[~new_disturbed_mask & (X_status_arr != 255)] = 0
+
+    valid_data_mask = ~np.isnan(X_metric)
+    X_conf[~new_disturbed_mask & valid_data_mask] = 0
 
     # GEN-DIST-STATUS-ACQ
     X_status_acq = X_status_arr.copy()

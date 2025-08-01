@@ -52,7 +52,8 @@ def test_dist_s1_sas_main(
     runconfig_data.algo_config.memory_strategy = 'high'
     runconfig_data.algo_config.device = 'cpu'
     runconfig_data.algo_config.n_workers_for_despeckling = 4
-    runconfig_data.apply_water_mask = False
+    runconfig_data.apply_water_mask = True
+
     # We have a different product_dst_dir than the dst_dir called `tmp2`
     runconfig_data.product_dst_dir = str(product_dst_dir)
 

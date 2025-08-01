@@ -89,7 +89,7 @@ def test_dist_s1_sas_workflow(
         df_product,
         dst_dir=tmp_dir,
     )
-    config.apply_water_mask = False
+    config.apply_water_mask = True
     config.algo_config.device = 'cpu'
 
     run_dist_s1_sas_workflow(config)
