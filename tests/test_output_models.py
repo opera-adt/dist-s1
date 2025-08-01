@@ -6,10 +6,10 @@ import numpy as np
 import pytest
 import rasterio
 
-from dist_s1.data_models.output_models import ProductDirectoryData
+from dist_s1.data_models.output_models import DistS1ProductDirectory
 
 
-def test_product_directory_data_from_product_path(test_dir: Path, test_opera_golden_dummy_dataset: Path) -> None:
+def test_product_directory_data_from_product_path(test_dir: Path, test_opera_golden_cropped_dataset: Path) -> None:
     """Tests that a copied directory with a different procesing timestamp is equal.
 
     Also tests if we replace a layer by a random array of the same shape and dtype, the product is not equal.
@@ -17,7 +17,7 @@ def test_product_directory_data_from_product_path(test_dir: Path, test_opera_gol
     tmp_dir = test_dir / 'tmp'
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
-    product_dir_path = Path(test_opera_golden_dummy_dataset)
+    product_dir_path = Path(test_opera_golden_cropped_dataset)
     product_name_dir = product_dir_path.name
     tokens = product_name_dir.split('_')
     # Change processing timestamp
@@ -42,8 +42,8 @@ def test_product_directory_data_from_product_path(test_dir: Path, test_opera_gol
         path.rename(out_path)
         new_product_file_paths.append(out_path)
 
-    golden_data = ProductDirectoryData.from_product_path(product_dir_path)
-    copied_data = ProductDirectoryData.from_product_path(product_new_dir_path)
+    golden_data = DistS1ProductDirectory.from_product_path(product_dir_path)
+    copied_data = DistS1ProductDirectory.from_product_path(product_new_dir_path)
 
     assert golden_data == copied_data
 
@@ -73,7 +73,7 @@ def test_generate_product_path_with_placeholders(test_dir: Path) -> None:
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
     # Generate product with placeholders
-    product_data = ProductDirectoryData.generate_product_path_with_placeholders(
+    product_data = DistS1ProductDirectory.generate_product_path_with_placeholders(
         mgrs_tile_id=mgrs_tile_id,
         acq_datetime=acq_datetime,
         dst_dir=tmp_dir,
@@ -111,7 +111,7 @@ def test_generate_product_path_with_placeholders(test_dir: Path) -> None:
 
     # This should raise a FileNotFoundError
     with pytest.raises(FileNotFoundError):
-        ProductDirectoryData.generate_product_path_with_placeholders(
+        DistS1ProductDirectory.generate_product_path_with_placeholders(
             mgrs_tile_id=mgrs_tile_id,
             acq_datetime=acq_datetime,
             dst_dir=tmp_dir,

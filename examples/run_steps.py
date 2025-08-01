@@ -3,7 +3,7 @@ from pathlib import Path
 from dist_s1.workflows import (
     run_burst_disturbance_workflow,
     run_dist_s1_localization_workflow,
-    run_dist_s1_packaging_workflow,
+    run_dist_s1_packaging_workflow_no_confirmation,
     run_disturbance_merge_workflow,
 )
 
@@ -34,7 +34,7 @@ def main() -> None:
 
     run_burst_disturbance_workflow(run_config)
     run_disturbance_merge_workflow(run_config)
-    run_dist_s1_packaging_workflow(run_config)
+    run_dist_s1_packaging_workflow_no_confirmation(run_config)
 
 
 if __name__ == '__main__':

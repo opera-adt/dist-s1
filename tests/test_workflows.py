@@ -7,7 +7,7 @@ import geopandas as gpd
 from pytest import MonkeyPatch
 from pytest_mock import MockerFixture
 
-from dist_s1.data_models.output_models import ProductDirectoryData
+from dist_s1.data_models.output_models import DistS1ProductDirectory
 from dist_s1.data_models.runconfig_model import RunConfigData
 from dist_s1.rio_tools import check_profiles_match, open_one_profile
 from dist_s1.workflows import (
@@ -75,7 +75,7 @@ def test_burst_disturbance_workflow(test_dir: Path, test_data_dir: Path, change_
 
 
 def test_dist_s1_sas_workflow(
-    test_dir: Path, test_data_dir: Path, change_local_dir: Callable, test_opera_golden_dummy_dataset: Path
+    test_dir: Path, test_data_dir: Path, change_local_dir: Callable, test_opera_golden_cropped_dataset: Path
 ) -> None:
     # Ensure that validation is relative to the test directory
     change_local_dir(test_dir)
@@ -95,12 +95,12 @@ def test_dist_s1_sas_workflow(
     run_dist_s1_sas_workflow(config)
 
     product_data = config.product_data_model
-    product_data_golden = ProductDirectoryData.from_product_path(test_opera_golden_dummy_dataset)
+    product_data_golden = DistS1ProductDirectory.from_product_path(test_opera_golden_cropped_dataset)
 
     assert product_data == product_data_golden
 
-    if ERASE_WORKFLOW_OUTPUTS:
-        shutil.rmtree(tmp_dir)
+    # if ERASE_WORKFLOW_OUTPUTS:
+    #     shutil.rmtree(tmp_dir)
 
 
 def test_dist_s1_workflow_interface(

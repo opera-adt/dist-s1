@@ -1,3 +1,4 @@
+import shutil
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -6,18 +7,28 @@ import torch.multiprocessing as torch_mp
 from tqdm.auto import tqdm
 
 from dist_s1.aws import upload_product_to_s3
+from dist_s1.confirmation import confirm_disturbance_with_prior_product_and_serialize
+from dist_s1.data_models.defaults import (
+    DEFAULT_CONFIDENCE_THRESH,
+    DEFAULT_CONFIDENCE_UPPER_LIM,
+    DEFAULT_EXCLUDE_CONSECUTIVE_NO_DIST,
+    DEFAULT_METRIC_VALUE_UPPER_LIM,
+    DEFAULT_NO_COUNT_RESET_THRESH,
+    DEFAULT_NO_DAY_LIMIT,
+    DEFAULT_PERCENT_RESET_THRESH,
+)
+from dist_s1.data_models.output_models import DistS1ProductDirectory
 from dist_s1.data_models.runconfig_model import RunConfigData
 from dist_s1.despeckling import despeckle_and_serialize_rtc_s1
 from dist_s1.dist_processing import (
     compute_burst_disturbance_and_serialize,
-    compute_tile_disturbance_using_previous_product_and_serialize,
     merge_burst_disturbances_and_serialize,
     merge_burst_metrics_and_serialize,
 )
 from dist_s1.localize_rtc_s1 import localize_rtc_s1
 from dist_s1.packaging import (
     generate_browse_image,
-    package_conf_db_disturbance_tifs,
+    get_product_tags,
     package_disturbance_tifs_no_confirmation,
 )
 
@@ -27,7 +38,7 @@ torch_mp.set_start_method('spawn', force=True)
 
 
 @dataclass
-class BurstProcessingArgs:
+class DistBurstProcessingArgs:
     """Container for burst processing arguments to make multiprocessing more readable."""
 
     pre_copol_paths: list[str]
@@ -53,7 +64,7 @@ class BurstProcessingArgs:
     use_date_encoding: bool
 
 
-def _dist_processing_one_burst_wrapper(args: BurstProcessingArgs) -> str:
+def _dist_processing_one_burst_wrapper(args: DistBurstProcessingArgs) -> str:
     compute_burst_disturbance_and_serialize(
         pre_copol_paths=args.pre_copol_paths,
         pre_crosspol_paths=args.pre_crosspol_paths,
@@ -192,7 +203,7 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
         copol_post_path = df_post['loc_path_copol'].iloc[0]
 
         # Create BurstProcessingArgs object for this burst
-        burst_args = BurstProcessingArgs(
+        burst_args = DistBurstProcessingArgs(
             pre_copol_paths=pre_copol_paths,
             pre_crosspol_paths=pre_crosspol_paths,
             post_copol_path=post_copol_paths[0],
@@ -249,44 +260,75 @@ def run_disturbance_merge_workflow(run_config: RunConfigData) -> None:
     merge_burst_disturbances_and_serialize(dist_burst_paths, dst_dist_path, run_config.mgrs_tile_id)
 
 
-def run_disturbance_confirmation(run_config: RunConfigData) -> None:
-    print('Running disturbance confirmation')
-    # Use previous DIST-S1 product to confirm the disturbance
-    df_prior_dist_products = run_config.df_prior_dist_products
+def run_confirmation_of_dist_product_workflow(
+    run_config: RunConfigData,
+) -> None:
+    current_dist_s1_product = run_config.product_data_model.product_dir_path
+    prior_dist_s1_product = run_config.prior_dist_s1_product
+    dst_dist_product_parent = run_config.product_data_model.product_dir_path
+    no_day_limit = run_config.no_day_limit
+    exclude_consecutive_no_dist = run_config.exclude_consecutive_no_dist
+    percent_reset_thresh = run_config.percent_reset_thresh
+    no_count_reset_thresh = run_config.no_count_reset_thresh
+    confidence_upper_lim = run_config.confidence_upper_lim
+    confidence_threshold = run_config.confidence_threshold
+    metric_value_upper_lim = run_config.metric_value_upper_lim
+    product_tags = get_product_tags(run_config)
 
-    if df_prior_dist_products.empty:
-        print('No previous product found for confirmation. Assuming this is the first product.')
-        prev_prod_paths = None
-    else:
-        ordered_columns = [
-            'path_dist_status',
-            'path_dist_max',
-            'path_dist_conf',
-            'path_dist_date',
-            'path_dist_count',
-            'path_dist_perc',
-            'path_dist_dur',
-            'path_dist_last_date',
-        ]
-        prev_prod_paths = df_prior_dist_products[ordered_columns].values.flatten().tolist()
-
-    final_unformated_conf_tif_paths = [
-        run_config.final_unformatted_tif_paths['dist_status_path'],
-        run_config.final_unformatted_tif_paths['dist_max_path'],
-        run_config.final_unformatted_tif_paths['dist_conf_path'],
-        run_config.final_unformatted_tif_paths['dist_date_path'],
-        run_config.final_unformatted_tif_paths['dist_count_path'],
-        run_config.final_unformatted_tif_paths['dist_perc_path'],
-        run_config.final_unformatted_tif_paths['dist_dur_path'],
-        run_config.final_unformatted_tif_paths['dist_last_date_path'],
-    ]
-    out_pattern_sample = run_config.product_data_model.layer_path_dict['GEN-DIST-STATUS']
-    compute_tile_disturbance_using_previous_product_and_serialize(
-        dist_metric_path=run_config.final_unformatted_tif_paths['metric_status_path'],
-        dist_metric_date=out_pattern_sample,
-        out_path_list=final_unformated_conf_tif_paths,
-        previous_dist_arr_path_list=prev_prod_paths,
+    confirm_disturbance_with_prior_product_and_serialize(
+        current_dist_s1_product=current_dist_s1_product,
+        prior_dist_s1_product=prior_dist_s1_product,
+        dst_dist_product_parent=dst_dist_product_parent,
+        no_day_limit=no_day_limit,
+        exclude_consecutive_no_dist=exclude_consecutive_no_dist,
+        percent_reset_thresh=percent_reset_thresh,
+        no_count_reset_thresh=no_count_reset_thresh,
+        confidence_upper_lim=confidence_upper_lim,
+        confidence_upper_thresh=confidence_threshold,
+        metric_value_upper_lim=metric_value_upper_lim,
+        product_tags=product_tags,
     )
+    # Generate browse image for the final product
+    generate_browse_image(run_config.product_data_model, run_config.water_mask_path)
+
+
+def run_sequential_confirmation_of_dist_products_workflow(
+    directory_of_dist_s1_products: Path | str | DistS1ProductDirectory,
+    prior_dist_s1_product: Path | str | DistS1ProductDirectory,
+    dst_dist_product_parent: Path | str | None,
+    no_day_limit: int = DEFAULT_NO_DAY_LIMIT,
+    exclude_consecutive_no_dist: bool = DEFAULT_EXCLUDE_CONSECUTIVE_NO_DIST,
+    percent_reset_thresh: int = DEFAULT_PERCENT_RESET_THRESH,
+    no_count_reset_thresh: int = DEFAULT_NO_COUNT_RESET_THRESH,
+    confidence_upper_lim: int = DEFAULT_CONFIDENCE_UPPER_LIM,
+    confidence_threshold: float = DEFAULT_CONFIDENCE_THRESH,
+    metric_value_upper_lim: float = DEFAULT_METRIC_VALUE_UPPER_LIM,
+) -> None:
+    product_dirs = sorted(list(directory_of_dist_s1_products.glob('OPERA*')))
+    product_dirs = list(Path(p) for p in product_dirs)
+    product_dirs = list(filter(lambda x: x.is_dir(), product_dirs))
+
+    if len(product_dirs) == 0:
+        raise ValueError(f'No product directories found in the product directory {directory_of_dist_s1_products}.')
+    if len(product_dirs) == 1:
+        raise ValueError(f'Only one product directory in the product directory {directory_of_dist_s1_products}.')
+
+    shutil.copytree(product_dirs[0], dst_dist_product_parent)
+    prior_dist_s1_product = dst_dist_product_parent / product_dirs[0].name
+    for current_dist_s1_product in product_dirs[1:]:
+        confirm_disturbance_with_prior_product_and_serialize(
+            current_dist_s1_product=current_dist_s1_product,
+            prior_dist_s1_product=prior_dist_s1_product,
+            dst_dist_product_parent=dst_dist_product_parent,
+            no_day_limit=no_day_limit,
+            exclude_consecutive_no_dist=exclude_consecutive_no_dist,
+            percent_reset_thresh=percent_reset_thresh,
+            no_count_reset_thresh=no_count_reset_thresh,
+            confidence_upper_lim=confidence_upper_lim,
+            confidence_threshold=confidence_threshold,
+            metric_value_upper_lim=metric_value_upper_lim,
+        )
+        prior_dist_s1_product = dst_dist_product_parent / current_dist_s1_product.name
 
 
 def run_dist_s1_processing_workflow(run_config: RunConfigData) -> RunConfigData:
@@ -300,21 +342,15 @@ def run_dist_s1_processing_workflow(run_config: RunConfigData) -> RunConfigData:
     return run_config
 
 
-def run_dist_s1_packaging_workflow(run_config: RunConfigData) -> Path:
-    if not run_config.confirmation:
-        print('No confirmation requested, skipping confirmation step')
-        package_disturbance_tifs_no_confirmation(run_config)
+def run_dist_s1_packaging_workflow_no_confirmation(run_config: RunConfigData) -> Path:
+    package_disturbance_tifs_no_confirmation(run_config)
+    generate_browse_image(run_config.product_data_model_no_confirmation, run_config.water_mask_path)
 
-    if run_config.confirmation:
-        print('Using previous product for confirmation')
-        run_disturbance_confirmation(run_config)
-        package_conf_db_disturbance_tifs(run_config)
+    product_data = run_config.product_data_model_no_confirmation
+    product_data.validate_layer_paths()
+    product_data.validate_tif_layer_dtypes()
 
-    product_data = run_config.product_data_model
-    product_data.validate_conf_db_tif_layer_dtypes()
-    product_data.validate_conf_db_layer_paths()
-
-    generate_browse_image(run_config)
+    return product_data.product_dir_path
 
 
 def run_dist_s1_sas_prep_workflow(
@@ -400,7 +436,25 @@ def run_dist_s1_sas_prep_workflow(
 
 def run_dist_s1_sas_workflow(run_config: RunConfigData) -> Path:
     _ = run_dist_s1_processing_workflow(run_config)
-    _ = run_dist_s1_packaging_workflow(run_config)
+    _ = run_dist_s1_packaging_workflow_no_confirmation(run_config)
+
+    if run_config.confirmation:
+        run_confirmation_of_dist_product_workflow(
+            current_dist_s1_product=run_config.product_data_model.product_dir_path,
+            prior_dist_s1_product=run_config.prior_dist_s1_product,
+            dst_dist_product_parent=run_config.product_data_model.product_dir_path,
+            no_day_limit=run_config.no_day_limit,
+            exclude_consecutive_no_dist=run_config.exclude_consecutive_no_dist,
+            percent_reset_thresh=run_config.percent_reset_thresh,
+            no_count_reset_thresh=run_config.no_count_reset_thresh,
+            confidence_upper_lim=run_config.confidence_upper_lim,
+            confidence_threshold=run_config.confidence_threshold,
+            metric_value_upper_lim=run_config.metric_value_upper_lim,
+        )
+    else:
+        src = run_config.product_data_model_no_confirmation.product_dir_path
+        dst = run_config.product_data_model.product_dir_path
+        shutil.copytree(src, dst, dirs_exist_ok=True)
 
     # Upload to S3 if bucket is provided
     if run_config.bucket is not None:

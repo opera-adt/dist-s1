@@ -9,7 +9,7 @@ import pytest
 from pydantic import ValidationError
 
 from dist_s1.data_models.algoconfig_model import AlgoConfigData
-from dist_s1.data_models.output_models import ProductDirectoryData
+from dist_s1.data_models.output_models import DistS1ProductDirectory
 from dist_s1.data_models.runconfig_model import RunConfigData
 
 
@@ -135,7 +135,7 @@ def test_input_data_model_from_cropped_dataset(test_dir: Path, test_data_dir: Pa
 
 
 def test_confirmation_property_behavior(
-    test_dir: Path, test_data_dir: Path, test_opera_golden_dummy_dataset: Path, change_local_dir: Callable
+    test_dir: Path, test_data_dir: Path, test_opera_golden_cropped_dataset: Path, change_local_dir: Callable
 ) -> None:
     """Test that confirmation property correctly reflects prior_dist_s1_product state."""
     change_local_dir(test_dir)
@@ -144,7 +144,7 @@ def test_confirmation_property_behavior(
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
     df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
-    product_dir = ProductDirectoryData.from_product_path(test_opera_golden_dummy_dataset)
+    product_dir = DistS1ProductDirectory.from_product_path(test_opera_golden_cropped_dataset)
 
     # Test 1: confirmation is False when prior_dist_s1_product is None (default)
     config = RunConfigData.from_product_df(

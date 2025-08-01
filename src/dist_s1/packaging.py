@@ -1,23 +1,32 @@
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import rasterio
 from rasterio.enums import Resampling
 from rasterio.env import Env
 
 import dist_s1
-from dist_s1.constants import BASE_DATE_FOR_CONFIRMATION, DIST_CMAP
+from dist_s1.constants import (
+    BASE_DATE_FOR_CONFIRMATION,
+    DISTLABEL2VAL,
+    DIST_CMAP,
+    TIF_LAYERS,
+    TIF_LAYER_DTYPES,
+    TIF_LAYER_NODATA_VALUES,
+)
+from dist_s1.data_models.output_models import DistS1ProductDirectory
 from dist_s1.data_models.runconfig_model import RunConfigData
 from dist_s1.rio_tools import open_one_ds, serialize_one_2d_ds
 from dist_s1.water_mask import apply_water_mask
 
 
-def generate_count_disturbed_no_confirmation(
-    dist_status_arr: np.ndarray, count_value: int = 1, dtype: np.dtype = np.uint8, nodata_value: int | float = 255
+def generate_dist_indicator(
+    dist_status_arr: np.ndarray, ind_val: int = 1, dtype: np.dtype = np.uint8, dst_nodata_value: int | float = 255
 ) -> np.ndarray:
     X_count = np.zeros_like(dist_status_arr, dtype=dtype)
-    X_count[dist_status_arr == 255] = nodata_value
-    X_count[dist_status_arr > 0] = count_value
+    X_count[dist_status_arr == 255] = dst_nodata_value
+    X_count[(dist_status_arr > 0) & (dist_status_arr < 255)] = ind_val
     return X_count
 
 
@@ -85,59 +94,86 @@ def update_tag_types(tags: dict) -> dict:
     return tags
 
 
-def package_disturbance_tifs_no_confirmation(run_config: RunConfigData) -> None:
-    X_dist, p_dist = open_one_ds(run_config.final_unformatted_tif_paths['alert_status_path'])
-    X_metric, p_metric = open_one_ds(run_config.final_unformatted_tif_paths['metric_status_path'])
-
+def generate_default_dist_arrs_from_metric_and_alert_status(
+    X_metric: np.ndarray,
+    X_status_arr: np.ndarray,
+    acq_date: pd.Timestamp,
+) -> dict[np.ndarray]:
     # GEN-DIST-COUNT
-    X_count = generate_count_disturbed_no_confirmation(X_dist, dtype=np.uint8, nodata_value=255)
+    X_count = generate_dist_indicator(X_status_arr, dtype=np.uint8, dst_nodata_value=255)
+
     # GEN-DIST-PERC
-    X_perc = generate_count_disturbed_no_confirmation(X_dist, count_value=100, dtype=np.uint8, nodata_value=255)
+    X_perc = generate_dist_indicator(X_status_arr, ind_val=100, dtype=np.uint8, dst_nodata_value=255)
+
     # GEN-DIST-DUR
-    X_dur = generate_count_disturbed_no_confirmation(X_dist, dtype=np.int16, nodata_value=-1)
+    X_dur = generate_dist_indicator(X_status_arr, dtype=np.int16, dst_nodata_value=-1)
+
     # GEN-DIST-DATE - everything is pd.Timestamp
-    date_encoded = (run_config.min_acq_date.to_pydatetime() - BASE_DATE_FOR_CONFIRMATION).days
-    X_date = generate_count_disturbed_no_confirmation(X_dist, dtype=np.int16, nodata_value=-1, count_value=date_encoded)
+    date_encoded = (acq_date.to_pydatetime() - BASE_DATE_FOR_CONFIRMATION).days
+    X_date = generate_dist_indicator(X_status_arr, dtype=np.int16, dst_nodata_value=-1, ind_val=date_encoded)
+
     # GEN-DIST-LAST-DATE - last date of valid observation
-    X_last_date = X_dur.copy()
-    X_last_date[X_dist != 255] = date_encoded
+    X_last_date = np.full_like(X_status_arr, -1, dtype=np.int16)
+    X_last_date[X_status_arr != 255] = date_encoded
+
     # GEN-DIST-CONF
-    X_conf = X_metric.copy()
-    X_conf[X_conf < 3.5] = 0
+    X_conf = np.full_like(X_metric, -1, dtype=np.float32)
+    dist_labels = [DISTLABEL2VAL[key] for key in ['first_low_conf_disturbance', 'first_high_conf_disturbance']]
+    new_disturbed_mask = np.isin(X_status_arr, dist_labels)
+    X_conf[new_disturbed_mask] = X_metric[new_disturbed_mask]
+    X_conf[~new_disturbed_mask & (X_status_arr != 255)] = 0
+
     # GEN-DIST-STATUS-ACQ
-    X_status_acq = X_dist.copy()
+    X_status_acq = X_status_arr.copy()
+
     # GEN-METRIC-MAX
     X_metric_max = X_metric.copy()
 
-    product_data = run_config.product_data_model
-    # array, profile, path, colormap
-    serialization_inputs = [
-        (X_dist, p_dist, product_data.layer_path_dict['GEN-DIST-STATUS'], DIST_CMAP),
-        (X_metric, p_metric, product_data.layer_path_dict['GEN-METRIC'], None),
-        (X_count, update_profile(p_dist, np.uint8, 255), product_data.layer_path_dict['GEN-DIST-COUNT'], None),
-        (X_perc, update_profile(p_dist, np.uint8, 255), product_data.layer_path_dict['GEN-DIST-PERC'], None),
-        (X_dur, update_profile(p_dist, np.int16, -1), product_data.layer_path_dict['GEN-DIST-DUR'], None),
-        (X_date, update_profile(p_dist, np.int16, -1), product_data.layer_path_dict['GEN-DIST-DATE'], None),
-        (X_last_date, update_profile(p_dist, np.int16, -1), product_data.layer_path_dict['GEN-DIST-LAST-DATE'], None),
-        (X_conf, update_profile(p_metric, np.int16, -1), product_data.layer_path_dict['GEN-DIST-CONF'], None),
-        (
-            X_status_acq,
-            update_profile(p_dist, np.uint8, 255),
-            product_data.layer_path_dict['GEN-DIST-STATUS-ACQ'],
-            DIST_CMAP,
-        ),
-        (
-            X_metric_max,
-            update_profile(p_metric, np.float32, np.nan),
-            product_data.layer_path_dict['GEN-METRIC-MAX'],
-            None,
-        ),
-    ]
+    out_arr_dict = {
+        'GEN-DIST-STATUS': X_status_arr.astype(TIF_LAYER_DTYPES['GEN-DIST-STATUS']),
+        'GEN-METRIC': X_metric.astype(TIF_LAYER_DTYPES['GEN-METRIC']),
+        'GEN-DIST-COUNT': X_count.astype(TIF_LAYER_DTYPES['GEN-DIST-COUNT']),
+        'GEN-DIST-PERC': X_perc.astype(TIF_LAYER_DTYPES['GEN-DIST-PERC']),
+        'GEN-DIST-DUR': X_dur.astype(TIF_LAYER_DTYPES['GEN-DIST-DUR']),
+        'GEN-DIST-DATE': X_date.astype(TIF_LAYER_DTYPES['GEN-DIST-DATE']),
+        'GEN-DIST-LAST-DATE': X_last_date.astype(TIF_LAYER_DTYPES['GEN-DIST-LAST-DATE']),
+        'GEN-DIST-CONF': X_conf.astype(TIF_LAYER_DTYPES['GEN-DIST-CONF']),
+        'GEN-DIST-STATUS-ACQ': X_status_acq.astype(TIF_LAYER_DTYPES['GEN-DIST-STATUS-ACQ']),
+        'GEN-METRIC-MAX': X_metric_max.astype(TIF_LAYER_DTYPES['GEN-METRIC-MAX']),
+    }
+    return out_arr_dict
 
+
+def get_product_tags(run_config: RunConfigData) -> dict:
     tags = run_config.get_public_attributes(include_algo_config_params=True)
     tags['version'] = dist_s1.__version__
     tags = update_tags_with_opera_ids(tags)
     tags = update_tag_types(tags)
+    return tags
+
+
+def package_disturbance_tifs_no_confirmation(run_config: RunConfigData) -> None:
+    product_data = run_config.product_data_model_no_confirmation
+
+    X_dist, p_dist = open_one_ds(run_config.final_unformatted_tif_paths['alert_status_path'])
+    X_metric, p_metric = open_one_ds(run_config.final_unformatted_tif_paths['metric_status_path'])
+
+    out_arr_dict = generate_default_dist_arrs_from_metric_and_alert_status(X_metric, X_dist, run_config.min_acq_date)
+    cmap_dict = {'GEN-DIST-STATUS': DIST_CMAP, 'GEN-DIST-STATUS-ACQ': DIST_CMAP}
+    cmap_dict.update({layer_name: None for layer_name in TIF_LAYERS if layer_name not in cmap_dict})
+
+    # array, profile, path, colormap
+    serialization_inputs = [
+        (
+            out_arr_dict[layer_name],  # array
+            update_profile(p_dist, TIF_LAYER_DTYPES[layer_name], TIF_LAYER_NODATA_VALUES[layer_name]),  # profile
+            product_data.layer_path_dict[layer_name],  # path
+            cmap_dict[layer_name],  # colormap
+        )
+        for layer_name in TIF_LAYERS
+    ]
+
+    tags = get_product_tags(run_config)
 
     if run_config.apply_water_mask:
         serialization_inputs = [
@@ -149,69 +185,11 @@ def package_disturbance_tifs_no_confirmation(run_config: RunConfigData) -> None:
         serialize_one_2d_ds(arr, prof, path, colormap=cmap, tags=tags, cog=True)
 
 
-def package_conf_db_disturbance_tifs(run_config: RunConfigData) -> None:
-    print('Packaging CONF DB disturbance tifs')
-    # Map from field name in run_config to output key in product_data.layer_path_dict
-    disturbance_layers = [
-        {'key': 'dist_status_path', 'label': 'GEN-DIST-STATUS'},
-        {'key': 'alert_delta0_path', 'label': 'GEN-DIST-STATUS-ACQ'},
-        {'key': 'dist_max_path', 'label': 'GEN-METRIC-MAX'},
-        {'key': 'dist_conf_path', 'label': 'GEN-DIST-CONF'},
-        {'key': 'dist_date_path', 'label': 'GEN-DIST-DATE'},
-        {'key': 'dist_count_path', 'label': 'GEN-DIST-COUNT'},
-        {'key': 'dist_perc_path', 'label': 'GEN-DIST-PERC'},
-        {'key': 'dist_dur_path', 'label': 'GEN-DIST-DUR'},
-        {'key': 'dist_last_date_path', 'label': 'GEN-DIST-LAST-DATE'},
-        {'key': 'metric_status_path', 'label': 'GEN-METRIC'},
-    ]
-
-    X_dict = {}
-    p_dict = {}
-    label_dict = {}
-
-    for item in disturbance_layers:
-        key = item['key']
-        label = item['label']
-
-        path = run_config.final_unformatted_tif_paths[key]
-        X, p = open_one_ds(path)
-
-        if run_config.apply_water_mask:
-            X = apply_water_mask(X, p, run_config.water_mask_path)
-
-        X_dict[key] = X
-        p_dict[key] = p
-        label_dict[key] = label
-
-    tags = run_config.get_public_attributes(include_algo_config_params=True)
-    tags['version'] = dist_s1.__version__
-    tags = update_tags_with_opera_ids(tags)
-    tags = update_tag_types(tags)
-
-    product_data = run_config.product_data_model
-
-    for item in disturbance_layers:
-        key = item['key']
-        label = item['label']
-
-        X = X_dict[key]
-        p = p_dict[key]
-        out_path = product_data.layer_path_dict[label]
-        if 'STATUS' in label:
-            colormap = DIST_CMAP
-        else:
-            colormap = None
-        print('Exporting', out_path)
-
-        serialize_one_2d_ds(X, p, out_path, colormap=colormap, tags=tags)
-
-
-def generate_browse_image(run_config: RunConfigData) -> None:
-    product_data = run_config.product_data_model
+def generate_browse_image(product_data: DistS1ProductDirectory, water_mask_path: Path | str | None = None) -> None:
     with Env(GDAL_PAM_ENABLED='NO'):
         convert_geotiff_to_png(
             product_data.layer_path_dict['GEN-DIST-STATUS'],
             product_data.layer_path_dict['browse'],
             colormap=DIST_CMAP,
-            water_mask_path=run_config.water_mask_path,
+            water_mask_path=water_mask_path,
         )

@@ -6,9 +6,12 @@ from typing import ParamSpec, TypeVar
 import click
 from distmetrics.model_load import ALLOWED_MODELS
 
-from .data_models.defaults import (
+from dist_s1.confirmation import confirm_disturbance_with_prior_product_and_serialize
+from dist_s1.data_models.defaults import (
     DEFAULT_APPLY_WATER_MASK,
     DEFAULT_BATCH_SIZE_FOR_NORM_PARAM_ESTIMATION,
+    DEFAULT_CONFIDENCE_THRESH,
+    DEFAULT_CONFIDENCE_UPPER_LIM,
     DEFAULT_DELTA_LOOKBACK_DAYS_MW,
     DEFAULT_DEVICE,
     DEFAULT_DST_DIR,
@@ -17,18 +20,26 @@ from .data_models.defaults import (
     DEFAULT_LOOKBACK_STRATEGY,
     DEFAULT_MAX_PRE_IMGS_PER_BURST_MW,
     DEFAULT_MEMORY_STRATEGY,
+    DEFAULT_METRIC_VALUE_UPPER_LIM,
     DEFAULT_MODEL_COMPILATION,
     DEFAULT_MODEL_DTYPE,
     DEFAULT_MODERATE_CONFIDENCE_THRESHOLD,
+    DEFAULT_NO_COUNT_RESET_THRESH,
     DEFAULT_N_WORKERS_FOR_DESPECKLING,
     DEFAULT_N_WORKERS_FOR_NORM_PARAM_ESTIMATION,
+    DEFAULT_PERCENT_RESET_THRESH,
     DEFAULT_POST_DATE_BUFFER_DAYS,
     DEFAULT_STRIDE_FOR_NORM_PARAM_ESTIMATION,
     DEFAULT_TQDM_ENABLED,
     DEFAULT_USE_DATE_ENCODING,
 )
-from .data_models.runconfig_model import RunConfigData
-from .workflows import run_dist_s1_sas_prep_workflow, run_dist_s1_sas_workflow, run_dist_s1_workflow
+from dist_s1.data_models.runconfig_model import RunConfigData
+from dist_s1.workflows import (
+    run_dist_s1_sas_prep_workflow,
+    run_dist_s1_sas_workflow,
+    run_dist_s1_workflow,
+    run_sequential_confirmation_of_dist_products_workflow,
+)
 
 
 P = ParamSpec('P')  # Captures all parameter types
@@ -48,7 +59,65 @@ def cli() -> None:
     pass
 
 
-def common_options(func: Callable) -> Callable:
+def common_options_for_confirmation_workflow(func: Callable) -> Callable:
+    @click.option(
+        '--dst_dist_product_parent', type=str, required=True, help='Path to parent directory for new DIST-S1 product.'
+    )
+    @click.option(
+        '--no_day_limit',
+        type=int,
+        required=False,
+        help='No day limit in the confirmation logic - logic is constrained to this number.',
+    )
+    @click.option(
+        '--exclude_consecutive_no_dist',
+        type=bool,
+        required=False,
+        help='Whether to exclude consecutive no disturbance.',
+    )
+    @click.option(
+        '--percent_reset_thresh',
+        type=int,
+        required=False,
+        default=DEFAULT_PERCENT_RESET_THRESH,
+        help='Percent reset threshold.',
+    )
+    @click.option(
+        '--no_count_reset_thresh',
+        type=int,
+        required=False,
+        default=DEFAULT_NO_COUNT_RESET_THRESH,
+        help='No count reset threshold.',
+    )
+    @click.option(
+        '--confidence_upper_lim',
+        type=int,
+        required=False,
+        default=DEFAULT_CONFIDENCE_UPPER_LIM,
+        help='Confidence upper limit.',
+    )
+    @click.option(
+        '--confidence_threshold',
+        type=float,
+        required=False,
+        default=DEFAULT_CONFIDENCE_THRESH,
+        help='Confidence threshold.',
+    )
+    @click.option(
+        '--metric_value_upper_lim',
+        type=float,
+        required=False,
+        default=DEFAULT_METRIC_VALUE_UPPER_LIM,
+        help='Metric value upper limit.',
+    )
+    @functools.wraps(func)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
+def common_options_for_dist_workflow(func: Callable) -> Callable:
     @click.option('--mgrs_tile_id', type=str, required=True, help='MGRS tile ID.')
     @click.option('--post_date', type=str, required=True, help='Post acquisition date.')
     @click.option(
@@ -256,13 +325,13 @@ def common_options(func: Callable) -> Callable:
 
 # Load parameter as list of integers
 @cli.command()
-@common_options
+@common_options_for_dist_workflow
 def parse_pre_imgs_per_burst_mw(max_pre_imgs_per_burst_mw: list[int], **kwargs: dict[str, object]) -> None:
     print('Parsed list:', max_pre_imgs_per_burst_mw)
 
 
 @cli.command()
-@common_options
+@common_options_for_dist_workflow
 def parse_delta_lookback_days_mw(delta_lookback_days_mw: list[int], **kwargs: dict[str, object]) -> None:
     print('Parsed list:', delta_lookback_days_mw)
 
@@ -286,7 +355,7 @@ def parse_delta_lookback_days_mw(delta_lookback_days_mw: list[int], **kwargs: di
         'If provided, the main config will reference this file.'
     ),
 )
-@common_options
+@common_options_for_dist_workflow
 def run_sas_prep(
     mgrs_tile_id: str,
     post_date: str,
@@ -365,9 +434,71 @@ def run_sas(run_config_path: str | Path, algo_config_path: str | Path | None = N
     run_dist_s1_sas_workflow(run_config)
 
 
+@cli.command(name='run_one_confirmation')
+@click.option('--prior_dist_s1_product', type=str, required=True, help='Path to prior DIST-S1 product.')
+@click.option(
+    '--current_dist_s1_product',
+    type=str,
+    required=True,
+    help='Path to current DIST-S1 product. Confirmed product inherits name from this product.',
+)
+@common_options_for_confirmation_workflow
+def run_one_confirmation(
+    prior_dist_s1_product: str | Path,
+    current_dist_s1_product: str | Path,
+    dst_dist_product_parent: str | Path | None,
+    no_day_limit: int,
+    exclude_consecutive_no_dist: bool,
+    percent_reset_thresh: int,
+    no_count_reset_thresh: int,
+    confidence_upper_lim: int,
+    confidence_threshold: float,
+    metric_value_upper_lim: float,
+) -> None:
+    confirm_disturbance_with_prior_product_and_serialize(
+        prior_dist_s1_product=prior_dist_s1_product,
+        current_dist_s1_product=current_dist_s1_product,
+        dst_dist_product_parent=dst_dist_product_parent,
+        no_day_limit=no_day_limit,
+        exclude_consecutive_no_dist=exclude_consecutive_no_dist,
+        percent_reset_thresh=percent_reset_thresh,
+        no_count_reset_thresh=no_count_reset_thresh,
+        confidence_upper_lim=confidence_upper_lim,
+        confidence_threshold=confidence_threshold,
+        metric_value_upper_lim=metric_value_upper_lim,
+    )
+
+
+@cli.command(name='run_sequential_confirmation')
+@click.option('--directory_of_dist_s1_products', type=str, required=True, help='Path to product directory.')
+@common_options_for_confirmation_workflow
+def run_sequential_confirmation(
+    directory_of_dist_s1_products: str | Path,
+    dst_dist_product_parent: str | Path | None,
+    no_day_limit: int,
+    exclude_consecutive_no_dist: bool,
+    percent_reset_thresh: int,
+    no_count_reset_thresh: int,
+    confidence_upper_lim: int,
+    confidence_threshold: float,
+    metric_value_upper_lim: float,
+) -> None:
+    run_sequential_confirmation_of_dist_products_workflow(
+        directory_of_dist_s1_products=directory_of_dist_s1_products,
+        dst_dist_product_parent=dst_dist_product_parent,
+        no_day_limit=no_day_limit,
+        exclude_consecutive_no_dist=exclude_consecutive_no_dist,
+        percent_reset_thresh=percent_reset_thresh,
+        no_count_reset_thresh=no_count_reset_thresh,
+        confidence_upper_lim=confidence_upper_lim,
+        confidence_threshold=confidence_threshold,
+        metric_value_upper_lim=metric_value_upper_lim,
+    )
+
+
 # Effectively runs the two workflows above in sequence
 @cli.command(name='run')
-@common_options
+@common_options_for_dist_workflow
 def run(
     mgrs_tile_id: str,
     post_date: str,

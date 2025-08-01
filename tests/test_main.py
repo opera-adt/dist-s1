@@ -10,7 +10,7 @@ from pytest import MonkeyPatch
 from pytest_mock import MockerFixture
 
 from dist_s1.__main__ import cli as dist_s1
-from dist_s1.data_models.output_models import ProductDirectoryData
+from dist_s1.data_models.output_models import DistS1ProductDirectory
 from dist_s1.data_models.runconfig_model import RunConfigData
 
 
@@ -19,7 +19,7 @@ def test_dist_s1_sas_main(
     test_dir: Path,
     change_local_dir: Callable[[Path], None],
     cropped_10SGD_dataset_runconfig: Path,
-    test_opera_golden_dummy_dataset: Path,
+    test_opera_golden_cropped_dataset: Path,
 ) -> None:
     """Test the dist-s1 sas main function.
 
@@ -37,9 +37,14 @@ def test_dist_s1_sas_main(
     # Store original working directory
     change_local_dir(test_dir)
     tmp_dir = test_dir / 'tmp'
+    if tmp_dir.exists():
+        shutil.rmtree(tmp_dir)
     tmp_dir.mkdir(parents=True, exist_ok=True)
+    product_dst_dir = (test_dir / 'tmp2').resolve()
+    if product_dst_dir.exists():
+        shutil.rmtree(product_dst_dir)
 
-    product_data_golden = ProductDirectoryData.from_product_path(test_opera_golden_dummy_dataset)
+    product_data_golden = DistS1ProductDirectory.from_product_path(test_opera_golden_cropped_dataset)
 
     # Load and modify runconfig - not the paths are relative to the test_dir
     runconfig_data = RunConfigData.from_yaml(cropped_10SGD_dataset_runconfig)
@@ -48,7 +53,6 @@ def test_dist_s1_sas_main(
     runconfig_data.algo_config.device = 'cpu'
     runconfig_data.algo_config.n_workers_for_despeckling = 4
     # We have a different product_dst_dir than the dst_dir called `tmp2`
-    product_dst_dir = (test_dir / 'tmp2').resolve()
     runconfig_data.product_dst_dir = str(product_dst_dir)
 
     tmp_runconfig_yml_path = tmp_dir / 'runconfig.yml'
@@ -68,7 +72,7 @@ def test_dist_s1_sas_main(
 
     # If we get here, check the product contents
     product_data_path = product_directories[0]
-    out_product_data = ProductDirectoryData.from_product_path(product_data_path)
+    out_product_data = DistS1ProductDirectory.from_product_path(product_data_path)
 
     # Check the product_dst_dir exists
     assert product_dst_dir.exists()

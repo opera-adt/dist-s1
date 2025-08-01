@@ -25,7 +25,7 @@ from dist_s1.data_models.defaults import (
     DEFAULT_INPUT_DATA_DIR,
     DEFAULT_POST_DATE_BUFFER_DAYS,
 )
-from dist_s1.data_models.output_models import ProductDirectoryData, ProductNameData
+from dist_s1.data_models.output_models import DistS1ProductDirectory, ProductNameData
 from dist_s1.water_mask import water_mask_control_flow
 
 
@@ -34,7 +34,7 @@ class RunConfigData(BaseModel):
     pre_rtc_crosspol: list[Path | str] = Field(..., description='List of paths to pre-rtc crosspolarization data.')
     post_rtc_copol: list[Path | str] = Field(..., description='List of paths to post-rtc copolarization data.')
     post_rtc_crosspol: list[Path | str] = Field(..., description='List of paths to post-rtc crosspolarization data.')
-    prior_dist_s1_product: ProductDirectoryData | None = Field(
+    prior_dist_s1_product: DistS1ProductDirectory | None = Field(
         default=None,
         description='Path to prior DIST-S1 product. If None, no prior product is used and confirmation is not'
         ' performed.',
@@ -89,7 +89,8 @@ class RunConfigData(BaseModel):
     _df_burst_distmetrics: pd.DataFrame | None = None
     _df_mgrs_burst_lut: gpd.GeoDataFrame | None = None
     _product_name: ProductNameData | None = None
-    _product_data_model: ProductDirectoryData | None = None
+    _product_data_model: DistS1ProductDirectory | None = None
+    _product_data_model_no_confirmation: DistS1ProductDirectory | None = None
     _min_acq_date: datetime | None = None
     _processing_datetime: datetime | None = None
     _algo_config_loaded: bool = False
@@ -220,7 +221,7 @@ class RunConfigData(BaseModel):
         return self._product_name.name()
 
     @property
-    def product_data_model(self) -> ProductDirectoryData:
+    def product_data_model(self) -> DistS1ProductDirectory:
         if self._product_data_model is None:
             product_name = self.product_name
             dst_dir = (
@@ -228,17 +229,33 @@ class RunConfigData(BaseModel):
                 if self.product_dst_dir is not None
                 else Path(self.dst_dir).resolve()
             )
-            self._product_data_model = ProductDirectoryData(
+            self._product_data_model = DistS1ProductDirectory(
                 dst_dir=dst_dir,
                 product_name=product_name,
             )
         return self._product_data_model
 
+    @property
+    def product_data_model_no_confirmation(self) -> DistS1ProductDirectory:
+        if self._product_data_model_no_confirmation is None:
+            product_name = self.product_name
+            # Use dst_dir if product_dst_dir is None
+            dst_dir = (
+                Path(self.product_dst_dir).resolve()
+                if self.product_dst_dir is not None
+                else Path(self.dst_dir).resolve()
+            )
+            dst_dir = dst_dir / 'product_without_confirmation'
+            self._product_data_model_no_confirmation = DistS1ProductDirectory(
+                dst_dir=dst_dir,
+                product_name=product_name,
+            )
+        return self._product_data_model_no_confirmation
+
     def get_public_attributes(self, include_algo_config_params: bool = False) -> dict:
         config_dict = {k: v for k, v in self.model_dump().items() if not k.startswith('_')}
         config_dict.pop('check_input_paths', None)
         config_dict.pop('algo_config', None)
-        config_dict.pop('algo_config_path', None)
         if include_algo_config_params:
             config_dict.update(self.algo_config.model_dump())
         return config_dict
@@ -281,7 +298,7 @@ class RunConfigData(BaseModel):
         max_pre_imgs_per_burst_mw: list[int] | None = None,
         delta_lookback_days_mw: list[int] | None = None,
         lookback_strategy: str = 'multi_window',
-        prior_dist_s1_product: ProductDirectoryData | None = None,
+        prior_dist_s1_product: DistS1ProductDirectory | None = None,
     ) -> 'RunConfigData':
         """Transform input table from dist-s1-enumerator into RunConfigData object.
 
@@ -418,67 +435,6 @@ class RunConfigData(BaseModel):
             df = df.sort_values(by=['jpl_burst_id', 'acq_dt']).reset_index(drop=True)
             self._df_inputs = df
         return self._df_inputs.copy()
-
-    @property
-    def df_prior_dist_products(self) -> pd.DataFrame:
-        VALID_SUFFIXES = (
-            '_GEN-DIST-STATUS.tif',
-            '_GEN-METRIC-MAX.tif',
-            '_GEN-DIST-CONF.tif',
-            '_GEN-DIST-DATE.tif',
-            '_GEN-DIST-COUNT.tif',
-            '_GEN-DIST-PERC.tif',
-            '_GEN-DIST-DUR.tif',
-            '_GEN-DIST-LAST-DATE.tif',
-        )
-
-        if self._df_prior_dist_products is None:
-            if not self.prior_dist_s1_product:
-                self._df_prior_dist_products = pd.DataFrame()
-                return self._df_prior_dist_products.copy()
-
-            # Normalize paths
-            paths = [Path(p) for p in self.prior_dist_s1_product]
-
-            # Group by base name (everything before the DIST suffix)
-            grouped = {}
-            for path in paths:
-                for suffix in VALID_SUFFIXES:
-                    if path.name.endswith(suffix):
-                        key = path.name.replace(suffix, '')
-                        if key not in grouped:
-                            grouped[key] = {}
-                        grouped[key][suffix] = path
-                        break
-
-            # Build rows for DataFrame
-            rows = []
-            for key, files in grouped.items():
-                if all(suffix in files for suffix in VALID_SUFFIXES):
-                    row = {suffix: str(files[suffix]) for suffix in VALID_SUFFIXES}
-                    row['product_key'] = key
-                    rows.append(row)
-                else:
-                    missing = [s for s in VALID_SUFFIXES if s not in files]
-                    raise ValueError(f'Missing files for {key}: {missing}')
-
-            # Rename columns to user-friendly names
-            column_mapping = {
-                '_GEN-DIST-STATUS.tif': 'path_dist_status',
-                '_GEN-METRIC-MAX.tif': 'path_dist_max',
-                '_GEN-DIST-CONF.tif': 'path_dist_conf',
-                '_GEN-DIST-DATE.tif': 'path_dist_date',
-                '_GEN-DIST-COUNT.tif': 'path_dist_count',
-                '_GEN-DIST-PERC.tif': 'path_dist_perc',
-                '_GEN-DIST-DUR.tif': 'path_dist_dur',
-                '_GEN-DIST-LAST-DATE.tif': 'path_dist_last_date',
-            }
-
-            df = pd.DataFrame(rows)
-            df = df.rename(columns=column_mapping)
-            df = df.sort_values(by='product_key').reset_index(drop=True)
-            self._df_prior_dist_products = df
-            return self._df_prior_dist_products.copy()
 
     @model_validator(mode='after')
     def handle_water_mask_control_flow(self) -> 'RunConfigData':
