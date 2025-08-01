@@ -1,6 +1,6 @@
 interpolation_method: bilinear
-moderate_confidence_threshold: 4.2
-high_confidence_threshold: 6.8
+low_confidence_alert_threshold: 4.2
+high_confidence_alert_threshold: 6.8
 device: cpu
 apply_despeckling: false
 apply_logit_to_inputs: false

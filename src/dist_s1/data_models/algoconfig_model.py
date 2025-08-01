@@ -12,14 +12,15 @@ from dist_s1.data_models.defaults import (
     DEFAULT_APPLY_DESPECKLING,
     DEFAULT_APPLY_LOGIT_TO_INPUTS,
     DEFAULT_BATCH_SIZE_FOR_NORM_PARAM_ESTIMATION,
-    DEFAULT_CONFIDENCE_THRESH,
     DEFAULT_CONFIDENCE_UPPER_LIM,
+    DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
     DEFAULT_DELTA_LOOKBACK_DAYS_MW,
     DEFAULT_DEVICE,
     DEFAULT_EXCLUDE_CONSECUTIVE_NO_DIST,
-    DEFAULT_HIGH_CONFIDENCE_THRESHOLD,
+    DEFAULT_HIGH_CONFIDENCE_ALERT_THRESHOLD,
     DEFAULT_INTERPOLATION_METHOD,
     DEFAULT_LOOKBACK_STRATEGY,
+    DEFAULT_LOW_CONFIDENCE_ALERT_THRESHOLD,
     DEFAULT_MAX_OBS_NUM_YEAR,
     DEFAULT_MAX_PRE_IMGS_PER_BURST_MW,
     DEFAULT_MEMORY_STRATEGY,
@@ -29,7 +30,6 @@ from dist_s1.data_models.defaults import (
     DEFAULT_MODEL_DTYPE,
     DEFAULT_MODEL_SOURCE,
     DEFAULT_MODEL_WTS_PATH,
-    DEFAULT_MODERATE_CONFIDENCE_THRESHOLD,
     DEFAULT_NO_COUNT_RESET_THRESH,
     DEFAULT_NO_DAY_LIMIT,
     DEFAULT_N_WORKERS_FOR_DESPECKLING,
@@ -120,17 +120,17 @@ class AlgoConfigData(BaseModel):
         default=DEFAULT_DELTA_LOOKBACK_DAYS_MW,
         description='Delta lookback days for each window relative to post-image acquisition date',
     )
-    moderate_confidence_threshold: float = Field(
-        default=DEFAULT_MODERATE_CONFIDENCE_THRESHOLD,
+    low_confidence_alert_threshold: float = Field(
+        default=DEFAULT_LOW_CONFIDENCE_ALERT_THRESHOLD,
         ge=0.0,
         le=15.0,
-        description='Moderate confidence threshold for alerting disturbance.',
+        description='Low confidence alert threshold for detecting disturbance between baseline and post-image.',
     )
-    high_confidence_threshold: float = Field(
-        default=DEFAULT_HIGH_CONFIDENCE_THRESHOLD,
+    high_confidence_alert_threshold: float = Field(
+        default=DEFAULT_HIGH_CONFIDENCE_ALERT_THRESHOLD,
         ge=0.0,
         le=15.0,
-        description='High confidence threshold for alerting disturbance.',
+        description='High confidence alert threshold for detecting disturbance between baseline and post-image.',
     )
     no_day_limit: int = Field(
         default=DEFAULT_NO_DAY_LIMIT,
@@ -163,9 +163,9 @@ class AlgoConfigData(BaseModel):
         default=DEFAULT_CONFIDENCE_UPPER_LIM,
         description='Confidence upper limit for confirmation. Confidence is an accumulation of the metric over time.',
     )
-    conf_thresh: float = Field(
-        default=DEFAULT_CONFIDENCE_THRESH,
-        description='Confidence threshold for confirmed disturbance during confirmation process.',
+    confirmation_confidence_threshold: float = Field(
+        default=DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
+        description='This is the threshold for the confirmation process to determine if a disturbance is confirmed.',
     )
     metric_value_upper_lim: float = Field(
         default=DEFAULT_METRIC_VALUE_UPPER_LIM, description='Metric upper limit set during confirmation'
@@ -263,16 +263,18 @@ class AlgoConfigData(BaseModel):
             n_workers = mp.cpu_count()
         return n_workers
 
-    @field_validator('moderate_confidence_threshold')
-    def validate_moderate_threshold(cls, moderate_threshold: float, info: ValidationInfo) -> float:
-        """Validate that moderate_confidence_threshold is less than high_confidence_threshold."""
-        high_threshold = info.data.get('high_confidence_threshold')
-        if high_threshold is not None and moderate_threshold >= high_threshold:
+    @field_validator('low_confidence_alert_threshold')
+    def validate_low_confidence_alert_threshold(
+        cls, low_confidence_alert_threshold: float, info: ValidationInfo
+    ) -> float:
+        """Validate that low_confidence_alert_threshold is less than high_confidence_alert_threshold."""
+        high_threshold = info.data.get('high_confidence_alert_threshold')
+        if high_threshold is not None and low_confidence_alert_threshold >= high_threshold:
             raise ValueError(
-                f'moderate_confidence_threshold ({moderate_threshold}) must be less than '
-                f'high_confidence_threshold ({high_threshold})'
+                f'low_confidence_alert_threshold ({low_confidence_alert_threshold}) must be less than '
+                f'high_confidence_alert_threshold ({high_threshold})'
             )
-        return moderate_threshold
+        return low_confidence_alert_threshold
 
     @field_validator('model_dtype')
     def validate_model_dtype(cls, model_dtype: str) -> str:

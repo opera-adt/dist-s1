@@ -79,8 +79,8 @@ def test_disturbance_status_series(
     t, X_metric_t = zipped_metric_ts[0]
     X_dist_status = label_alert_status_from_metric(
         X_metric_t,
-        low_confidence_threshold=moderate_confidence_threshold,
-        high_confidence_threshold=high_confidence_threshold,
+        low_confidence_alert_threshold=moderate_confidence_threshold,
+        high_confidence_alert_threshold=high_confidence_threshold,
     )
     prior_dist_arr_dict = generate_default_dist_arrs_from_metric_and_alert_status(
         X_metric_t, X_dist_status, t0_ref_date

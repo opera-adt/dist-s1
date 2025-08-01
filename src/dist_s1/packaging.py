@@ -10,7 +10,7 @@ import dist_s1
 from dist_s1.constants import (
     BASE_DATE_FOR_CONFIRMATION,
     DISTLABEL2VAL,
-    DIST_CMAP,
+    DIST_STATUS_CMAP,
     TIF_LAYERS,
     TIF_LAYER_DTYPES,
     TIF_LAYER_NODATA_VALUES,
@@ -100,28 +100,38 @@ def generate_default_dist_arrs_from_metric_and_alert_status(
     acq_date: pd.Timestamp,
 ) -> dict[np.ndarray]:
     # GEN-DIST-COUNT
-    X_count = generate_dist_indicator(X_status_arr, dtype=np.uint8, dst_nodata_value=255)
+    X_count = generate_dist_indicator(
+        X_status_arr, dtype=np.uint8, dst_nodata_value=TIF_LAYER_NODATA_VALUES['GEN-DIST-COUNT']
+    )
 
     # GEN-DIST-PERC
-    X_perc = generate_dist_indicator(X_status_arr, ind_val=100, dtype=np.uint8, dst_nodata_value=255)
+    X_perc = generate_dist_indicator(
+        X_status_arr, ind_val=100, dtype=np.uint8, dst_nodata_value=TIF_LAYER_NODATA_VALUES['GEN-DIST-PERC']
+    )
 
     # GEN-DIST-DUR
-    X_dur = generate_dist_indicator(X_status_arr, dtype=np.int16, dst_nodata_value=-1)
+    X_dur = generate_dist_indicator(
+        X_status_arr, dtype=np.int16, dst_nodata_value=TIF_LAYER_NODATA_VALUES['GEN-DIST-DUR']
+    )
 
     # GEN-DIST-DATE - everything is pd.Timestamp
     date_encoded = (acq_date.to_pydatetime() - BASE_DATE_FOR_CONFIRMATION).days
-    X_date = generate_dist_indicator(X_status_arr, dtype=np.int16, dst_nodata_value=-1, ind_val=date_encoded)
+    X_date = generate_dist_indicator(
+        X_status_arr, dtype=np.int16, dst_nodata_value=TIF_LAYER_NODATA_VALUES['GEN-DIST-DATE'], ind_val=date_encoded
+    )
 
     # GEN-DIST-LAST-DATE - last date of valid observation
     X_last_date = np.full_like(X_status_arr, -1, dtype=np.int16)
     X_last_date[X_status_arr != 255] = date_encoded
 
     # GEN-DIST-CONF
-    X_conf = np.full_like(X_metric, -1, dtype=np.float32)
+    X_conf = np.full_like(X_metric, TIF_LAYER_NODATA_VALUES['GEN-DIST-CONF'], dtype=np.float32)
     dist_labels = [DISTLABEL2VAL[key] for key in ['first_low_conf_disturbance', 'first_high_conf_disturbance']]
     new_disturbed_mask = np.isin(X_status_arr, dist_labels)
     X_conf[new_disturbed_mask] = X_metric[new_disturbed_mask]
-    X_conf[~new_disturbed_mask & (X_status_arr != 255)] = 0
+
+    valid_data_mask = ~np.isnan(X_metric)
+    X_conf[~new_disturbed_mask & valid_data_mask] = 0
 
     # GEN-DIST-STATUS-ACQ
     X_status_acq = X_status_arr.copy()
@@ -159,7 +169,7 @@ def package_disturbance_tifs_no_confirmation(run_config: RunConfigData) -> None:
     X_metric, p_metric = open_one_ds(run_config.final_unformatted_tif_paths['metric_status_path'])
 
     out_arr_dict = generate_default_dist_arrs_from_metric_and_alert_status(X_metric, X_dist, run_config.min_acq_date)
-    cmap_dict = {'GEN-DIST-STATUS': DIST_CMAP, 'GEN-DIST-STATUS-ACQ': DIST_CMAP}
+    cmap_dict = {'GEN-DIST-STATUS': DIST_STATUS_CMAP, 'GEN-DIST-STATUS-ACQ': DIST_STATUS_CMAP}
     cmap_dict.update({layer_name: None for layer_name in TIF_LAYERS if layer_name not in cmap_dict})
 
     # array, profile, path, colormap
@@ -190,6 +200,6 @@ def generate_browse_image(product_data: DistS1ProductDirectory, water_mask_path:
         convert_geotiff_to_png(
             product_data.layer_path_dict['GEN-DIST-STATUS'],
             product_data.layer_path_dict['browse'],
-            colormap=DIST_CMAP,
+            colormap=DIST_STATUS_CMAP,
             water_mask_path=water_mask_path,
         )

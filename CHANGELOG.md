@@ -10,8 +10,9 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Removed
 - `n_lookbacks` (which should have been called `n_baselines`) for computing confirmation within the SAS
-   - No longer is there complicated accounting to keeping track of and confirming changes through baseline
-- Constant for `BASE_DATE`.
+   - Removed overly complicated accounting for in SAS confirmation
+   - Only confirmation now is either by passing a previous product OR passing a directory of products
+- Constant for `BASE_DATE_FOR_CONFIRMATION`.
 - Extra validation for confirmation packaging
 
 ## Changed
@@ -31,8 +32,11 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - De-couple confirmation and packaging in workflow logic
 - Confidence is now float32 (not int16) - this needs to happen because our metrics is a float32.
 - Updated golden dataset to reflect new changes.
+- `DIST_CMAP` is not `DIST_STATUS_CMAP`.
+- To align with dist-hls, we have changed `moderate_confidence_threshold` and `high_confidence_threshold` to now be `low_confidence_alert_threshold` and `high_confidence_alert_threshold`.
 
 ## Added
+- Confirmation python API and CLI
 - Constants for CLI and `RunConfigData` - allows for consistent data parsing.
 - Ability to use algorithm parameters to supplement runconfig for SDS operations.
   - It's now a base class to `RunConfigData` and if an external 
@@ -40,18 +44,20 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   - distmetrics>=1.0.0 - see more details there
 - Allows for serialization of yml files during `run_sas_prep_workflow` and associated CLI
   - Also allows for serialization of algorithm parameters to serparate file as well.
-- Validation for `model_dtype` with `device` (only `bfloat16` is permitted with `GPU`)
-- Validation for external model usage
+- Validation in Runconfig for `model_dtype` with `device` (only `bfloat16` is permitted with `GPU`)
+- Validation in Runconfig for external model usage
 - Description of Runconfig Variables
-- Cloud-optimized Geotiff Format in Packaging
+- Cloud-optimized Geotiff (COG) Format in Packaging
 - Confirmation is now contained inside its own function `confirmation.py`
   - Exposed parameter `consecutive_nodist`, if `True` the `nocount` condition is applied (doesn't allow 2 consecutive misses).
   - Exposed parameter `percent_reset_thresh`, it will apply reset if `percent` below threshold. 
   - Exposed parameter `nocount_reset_thresh`, it will apply reset if `prevnocount` is above threshold.   
 - Confirmation CLI
-  - Ensuring additional profile keys for in default GTiff are not present.
+  - Ensuring additional profile keys  for COG in default GTiff are not present.
+- Access of Confirmation of Products in main library (i.e. `from dist_s1 import run_sequential_confirmation_of_dist_products_workflow`)
 
 ## Fixed
+- Sequential Confirmation Workflow and downstream functions
 - All the tests with the updates above.
 - Correct loading of algo_config.yml in `prep` steps.
   - Only `from_yml` loads the `algo_config` correctly, but when it is assigned in the `prep` workflows (i.e. the attribute `algo_config` is assigned, this yml is not correctly loaded.

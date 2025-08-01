@@ -38,7 +38,8 @@ def get_track_number(opera_rtc_s1_path: Path | str) -> str:
     return track_number
 
 
-def get_acquisition_datetime(opera_rtc_s1_path: Path) -> datetime:
+def get_acquisition_datetime(opera_rtc_s1_path: Path | str) -> datetime:
+    opera_rtc_s1_path = Path(opera_rtc_s1_path)
     tokens = opera_rtc_s1_path.name.split('_')
     try:
         return pd.Timestamp(tokens[4], tz='UTC')

@@ -3,11 +3,13 @@ from importlib.metadata import PackageNotFoundError, version
 
 from dist_s1.workflows import (
     run_burst_disturbance_workflow,
+    run_confirmation_of_dist_product_workflow,
     run_despeckle_workflow,
     run_dist_s1_localization_workflow,
     run_dist_s1_sas_workflow,
     run_dist_s1_workflow,
     run_disturbance_merge_workflow,
+    run_sequential_confirmation_of_dist_products_workflow,
 )
 
 
@@ -30,4 +32,6 @@ __all__ = [
     'run_burst_disturbance_workflow',
     'run_despeckle_workflow',
     'run_disturbance_merge_workflow',
+    'run_confirmation_of_dist_product_workflow',
+    'run_sequential_confirmation_of_dist_products_workflow',
 ]

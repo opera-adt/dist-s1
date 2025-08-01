@@ -9,8 +9,8 @@ from tqdm.auto import tqdm
 from dist_s1.aws import upload_product_to_s3
 from dist_s1.confirmation import confirm_disturbance_with_prior_product_and_serialize
 from dist_s1.data_models.defaults import (
-    DEFAULT_CONFIDENCE_THRESH,
     DEFAULT_CONFIDENCE_UPPER_LIM,
+    DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
     DEFAULT_EXCLUDE_CONSECUTIVE_NO_DIST,
     DEFAULT_METRIC_VALUE_UPPER_LIM,
     DEFAULT_NO_COUNT_RESET_THRESH,
@@ -48,8 +48,8 @@ class DistBurstProcessingArgs:
     acq_dts: list
     out_dist_path: str
     out_metric_path: str
-    moderate_confidence_threshold: float
-    high_confidence_threshold: float
+    low_confidence_alert_threshold: float
+    high_confidence_alert_threshold: float
     use_logits: bool
     model_compilation: bool
     model_source: str
@@ -73,8 +73,8 @@ def _dist_processing_one_burst_wrapper(args: DistBurstProcessingArgs) -> str:
         acq_dts=args.acq_dts,
         out_dist_path=args.out_dist_path,
         out_metric_path=args.out_metric_path,
-        moderate_confidence_threshold=args.moderate_confidence_threshold,
-        high_confidence_threshold=args.high_confidence_threshold,
+        low_confidence_alert_threshold=args.low_confidence_alert_threshold,
+        high_confidence_alert_threshold=args.high_confidence_alert_threshold,
         use_logits=args.use_logits,
         model_compilation=args.model_compilation,
         model_source=args.model_source,
@@ -211,8 +211,8 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
             acq_dts=acq_dts,
             out_dist_path=output_dist_path,
             out_metric_path=output_metric_path,
-            moderate_confidence_threshold=run_config.algo_config.moderate_confidence_threshold,
-            high_confidence_threshold=run_config.algo_config.high_confidence_threshold,
+            low_confidence_alert_threshold=run_config.algo_config.low_confidence_alert_threshold,
+            high_confidence_alert_threshold=run_config.algo_config.high_confidence_alert_threshold,
             use_logits=run_config.algo_config.apply_logit_to_inputs,
             model_compilation=run_config.algo_config.model_compilation,
             model_source=run_config.algo_config.model_source,
@@ -265,7 +265,7 @@ def run_confirmation_of_dist_product_workflow(
 ) -> None:
     current_dist_s1_product = run_config.product_data_model.product_dir_path
     prior_dist_s1_product = run_config.prior_dist_s1_product
-    dst_dist_product_parent = run_config.product_data_model.product_dir_path
+    dst_dist_product_parent = run_config.product_data_model.product_dir_path.parent
     no_day_limit = run_config.no_day_limit
     exclude_consecutive_no_dist = run_config.exclude_consecutive_no_dist
     percent_reset_thresh = run_config.percent_reset_thresh
@@ -294,14 +294,13 @@ def run_confirmation_of_dist_product_workflow(
 
 def run_sequential_confirmation_of_dist_products_workflow(
     directory_of_dist_s1_products: Path | str | DistS1ProductDirectory,
-    prior_dist_s1_product: Path | str | DistS1ProductDirectory,
     dst_dist_product_parent: Path | str | None,
     no_day_limit: int = DEFAULT_NO_DAY_LIMIT,
     exclude_consecutive_no_dist: bool = DEFAULT_EXCLUDE_CONSECUTIVE_NO_DIST,
     percent_reset_thresh: int = DEFAULT_PERCENT_RESET_THRESH,
     no_count_reset_thresh: int = DEFAULT_NO_COUNT_RESET_THRESH,
     confidence_upper_lim: int = DEFAULT_CONFIDENCE_UPPER_LIM,
-    confidence_threshold: float = DEFAULT_CONFIDENCE_THRESH,
+    confidence_thresh: float = DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
     metric_value_upper_lim: float = DEFAULT_METRIC_VALUE_UPPER_LIM,
 ) -> None:
     product_dirs = sorted(list(directory_of_dist_s1_products.glob('OPERA*')))
@@ -313,22 +312,22 @@ def run_sequential_confirmation_of_dist_products_workflow(
     if len(product_dirs) == 1:
         raise ValueError(f'Only one product directory in the product directory {directory_of_dist_s1_products}.')
 
-    shutil.copytree(product_dirs[0], dst_dist_product_parent)
-    prior_dist_s1_product = dst_dist_product_parent / product_dirs[0].name
-    for current_dist_s1_product in product_dirs[1:]:
+    prior_confirmed_dist_s1_prod = dst_dist_product_parent / product_dirs[0].name
+    shutil.copytree(product_dirs[0], prior_confirmed_dist_s1_prod, dirs_exist_ok=True)
+    for current_dist_s1_product in tqdm(product_dirs[1:], desc=f'Confirming {len(product_dirs)} products'):
         confirm_disturbance_with_prior_product_and_serialize(
             current_dist_s1_product=current_dist_s1_product,
-            prior_dist_s1_product=prior_dist_s1_product,
+            prior_dist_s1_product=prior_confirmed_dist_s1_prod,
             dst_dist_product_parent=dst_dist_product_parent,
             no_day_limit=no_day_limit,
             exclude_consecutive_no_dist=exclude_consecutive_no_dist,
             percent_reset_thresh=percent_reset_thresh,
             no_count_reset_thresh=no_count_reset_thresh,
             confidence_upper_lim=confidence_upper_lim,
-            confidence_threshold=confidence_threshold,
+            confidence_thresh=confidence_thresh,
             metric_value_upper_lim=metric_value_upper_lim,
         )
-        prior_dist_s1_product = dst_dist_product_parent / current_dist_s1_product.name
+        prior_confirmed_dist_s1_prod = dst_dist_product_parent / current_dist_s1_product.name
 
 
 def run_dist_s1_processing_workflow(run_config: RunConfigData) -> RunConfigData:
@@ -361,8 +360,8 @@ def run_dist_s1_sas_prep_workflow(
     dst_dir: str | Path = 'out',
     input_data_dir: str | Path | None = None,
     memory_strategy: str = 'high',
-    moderate_confidence_threshold: float = 3.5,
-    high_confidence_threshold: float = 5.5,
+    low_confidence_alert_threshold: float = 3.5,
+    high_confidence_alert_threshold: float = 5.5,
     tqdm_enabled: bool = True,
     apply_water_mask: bool = True,
     lookback_strategy: str = 'multi_window',
@@ -404,8 +403,8 @@ def run_dist_s1_sas_prep_workflow(
     run_config.algo_config.memory_strategy = memory_strategy
     run_config.algo_config.tqdm_enabled = tqdm_enabled
     run_config.apply_water_mask = apply_water_mask
-    run_config.algo_config.moderate_confidence_threshold = moderate_confidence_threshold
-    run_config.algo_config.high_confidence_threshold = high_confidence_threshold
+    run_config.algo_config.low_confidence_alert_threshold = low_confidence_alert_threshold
+    run_config.algo_config.high_confidence_alert_threshold = high_confidence_alert_threshold
     run_config.algo_config.lookback_strategy = lookback_strategy
     run_config.water_mask_path = water_mask_path
     run_config.product_dst_dir = product_dst_dir
@@ -470,8 +469,8 @@ def run_dist_s1_workflow(
     dst_dir: str | Path = 'out',
     input_data_dir: str | Path | None = None,
     memory_strategy: str = 'high',
-    moderate_confidence_threshold: float = 3.5,
-    high_confidence_threshold: float = 5.5,
+    low_confidence_alert_threshold: float = 3.5,
+    high_confidence_alert_threshold: float = 5.5,
     water_mask_path: str | Path | None = None,
     tqdm_enabled: bool = True,
     apply_water_mask: bool = True,
@@ -506,8 +505,8 @@ def run_dist_s1_workflow(
         dst_dir=dst_dir,
         input_data_dir=input_data_dir,
         memory_strategy=memory_strategy,
-        moderate_confidence_threshold=moderate_confidence_threshold,
-        high_confidence_threshold=high_confidence_threshold,
+        low_confidence_alert_threshold=low_confidence_alert_threshold,
+        high_confidence_alert_threshold=high_confidence_alert_threshold,
         tqdm_enabled=tqdm_enabled,
         apply_water_mask=apply_water_mask,
         lookback_strategy=lookback_strategy,

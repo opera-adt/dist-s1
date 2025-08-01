@@ -89,7 +89,7 @@ def test_dist_s1_sas_workflow(
         df_product,
         dst_dir=tmp_dir,
     )
-    config.apply_water_mask = False
+    config.apply_water_mask = True
     config.algo_config.device = 'cpu'
 
     run_dist_s1_sas_workflow(config)
@@ -99,8 +99,8 @@ def test_dist_s1_sas_workflow(
 
     assert product_data == product_data_golden
 
-    # if ERASE_WORKFLOW_OUTPUTS:
-    #     shutil.rmtree(tmp_dir)
+    if ERASE_WORKFLOW_OUTPUTS:
+        shutil.rmtree(tmp_dir)
 
 
 def test_dist_s1_workflow_interface(
