@@ -56,7 +56,7 @@ EXPECTED_FORMAT_STRING = (
 
 
 # Colormaps
-DIST_CMAP = {
+DIST_STATUS_CMAP = {
     0: (18, 18, 18, 255),  # No disturbance
     1: (0, 85, 85, 255),  # First low
     2: (137, 127, 78, 255),  # Provisional low

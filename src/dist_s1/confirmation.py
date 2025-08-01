@@ -2,7 +2,13 @@ from pathlib import Path
 
 import numpy as np
 
-from dist_s1.constants import BASE_DATE_FOR_CONFIRMATION, DISTLABEL2VAL, TIF_LAYERS, TIF_LAYER_NODATA_VALUES
+from dist_s1.constants import (
+    BASE_DATE_FOR_CONFIRMATION,
+    DISTLABEL2VAL,
+    DIST_STATUS_CMAP,
+    TIF_LAYERS,
+    TIF_LAYER_NODATA_VALUES,
+)
 from dist_s1.data_models.output_models import TIF_LAYER_DTYPES, DistS1ProductDirectory
 from dist_s1.dist_processing import label_alert_status_from_metric
 from dist_s1.packaging import update_profile
@@ -235,8 +241,8 @@ def confirm_disturbance_arr(
 
     alert_acq_status = label_alert_status_from_metric(
         current_metric,
-        low_confidence_threshold=alert_low_conf_thresh,
-        high_confidence_threshold=alert_high_conf_thresh,
+        low_confidence_alert_threshold=alert_low_conf_thresh,
+        high_confidence_alert_threshold=alert_high_conf_thresh,
     )
 
     return {
@@ -264,8 +270,8 @@ def confirm_disturbance_with_prior_product_and_serialize(
     no_count_reset_thresh: int = 7,
     no_day_limit: int = 30,
     max_obs_num_year: int = 253,
-    conf_upper_lim: int = 32000,
-    conf_thresh: float = 3**2 * 3.5,
+    confidence_upper_lim: int = 32000,
+    confidence_thresh: float = 3**2 * 3.5,
     metric_value_upper_lim: float = 100,
     product_tags: dict | None = None,
 ) -> None:
@@ -276,13 +282,13 @@ def confirm_disturbance_with_prior_product_and_serialize(
         prior_dist_s1_product = DistS1ProductDirectory.from_product_path(prior_dist_s1_product)
 
     if dst_dist_product_parent is None:
-        dst_dist_product_directory = current_dist_s1_product.product_dir_path
+        dst_dist_product_parent = current_dist_s1_product.product_dir_path.parent
     else:
         dst_dist_product_directory = Path(dst_dist_product_parent) / current_dist_s1_product.product_name
         dst_dist_product_directory.mkdir(parents=True, exist_ok=True)
 
     dst_dist_product_directory = DistS1ProductDirectory(
-        dst_dir=dst_dist_product_directory,
+        dst_dir=dst_dist_product_parent,
         product_name=current_dist_s1_product.product_name,
     )
 
@@ -315,8 +321,8 @@ def confirm_disturbance_with_prior_product_and_serialize(
         no_count_reset_thresh=no_count_reset_thresh,
         no_day_limit=no_day_limit,
         max_obs_num_year=max_obs_num_year,
-        conf_upper_lim=conf_upper_lim,
-        conf_thresh=conf_thresh,
+        conf_upper_lim=confidence_upper_lim,
+        conf_thresh=confidence_thresh,
         metric_value_upper_lim=metric_value_upper_lim,
     )
 
@@ -331,10 +337,15 @@ def confirm_disturbance_with_prior_product_and_serialize(
 
     # Serialize output
     for layer_name in TIF_LAYERS:
+        if layer_name in ['GEN-DIST-STATUS', 'GEN-DIST-STATUS-ACQ']:
+            cmap = DIST_STATUS_CMAP
+        else:
+            cmap = None
         serialize_one_2d_ds(
             confirmed_arr_dict[layer_name],
             out_profiles_dict[layer_name],
             out_paths_dict[layer_name],
+            colormap=cmap,
             cog=True,
             tags=product_tags,
         )

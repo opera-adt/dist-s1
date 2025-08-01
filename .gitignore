@@ -102,6 +102,9 @@ tests/*.ipynb
 # Runner in nb directory
 notebooks/runner.py
 
+# Notebook Data Output
+notebooks/time_series/
+
 # Deprecated
 deprecated/
 

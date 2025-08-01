@@ -10,7 +10,7 @@ import dist_s1
 from dist_s1.constants import (
     BASE_DATE_FOR_CONFIRMATION,
     DISTLABEL2VAL,
-    DIST_CMAP,
+    DIST_STATUS_CMAP,
     TIF_LAYERS,
     TIF_LAYER_DTYPES,
     TIF_LAYER_NODATA_VALUES,
@@ -159,7 +159,7 @@ def package_disturbance_tifs_no_confirmation(run_config: RunConfigData) -> None:
     X_metric, p_metric = open_one_ds(run_config.final_unformatted_tif_paths['metric_status_path'])
 
     out_arr_dict = generate_default_dist_arrs_from_metric_and_alert_status(X_metric, X_dist, run_config.min_acq_date)
-    cmap_dict = {'GEN-DIST-STATUS': DIST_CMAP, 'GEN-DIST-STATUS-ACQ': DIST_CMAP}
+    cmap_dict = {'GEN-DIST-STATUS': DIST_STATUS_CMAP, 'GEN-DIST-STATUS-ACQ': DIST_STATUS_CMAP}
     cmap_dict.update({layer_name: None for layer_name in TIF_LAYERS if layer_name not in cmap_dict})
 
     # array, profile, path, colormap
@@ -190,6 +190,6 @@ def generate_browse_image(product_data: DistS1ProductDirectory, water_mask_path:
         convert_geotiff_to_png(
             product_data.layer_path_dict['GEN-DIST-STATUS'],
             product_data.layer_path_dict['browse'],
-            colormap=DIST_CMAP,
+            colormap=DIST_STATUS_CMAP,
             water_mask_path=water_mask_path,
         )

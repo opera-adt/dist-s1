@@ -8,7 +8,7 @@ from distmetrics.rio_tools import merge_categorical_arrays, merge_with_weighted_
 from distmetrics.tf_inference import estimate_normal_params
 from scipy.special import logit
 
-from dist_s1.constants import DISTLABEL2VAL, DIST_CMAP
+from dist_s1.constants import DISTLABEL2VAL, DIST_STATUS_CMAP
 from dist_s1.data_models.defaults import (
     DEFAULT_BATCH_SIZE_FOR_NORM_PARAM_ESTIMATION,
     DEFAULT_DEVICE,
@@ -26,12 +26,12 @@ def compute_logit_mdist(arr_logit: np.ndarray, mean_logit: np.ndarray, sigma_log
 
 
 def label_alert_status_from_metric(
-    mdist: np.ndarray, low_confidence_threshold: float, high_confidence_threshold: float
+    mdist: np.ndarray, low_confidence_alert_threshold: float, high_confidence_alert_threshold: float
 ) -> np.ndarray:
     nodata_mask = np.isnan(mdist)
     dist_labels = np.zeros_like(mdist, dtype=np.uint8)
-    dist_labels[mdist >= low_confidence_threshold] = DISTLABEL2VAL['first_low_conf_disturbance']
-    dist_labels[mdist >= high_confidence_threshold] = DISTLABEL2VAL['first_high_conf_disturbance']
+    dist_labels[mdist >= low_confidence_alert_threshold] = DISTLABEL2VAL['first_low_conf_disturbance']
+    dist_labels[mdist >= high_confidence_alert_threshold] = DISTLABEL2VAL['first_high_conf_disturbance']
     dist_labels[nodata_mask] = 255
     return dist_labels
 
@@ -44,8 +44,8 @@ def compute_burst_disturbance_and_serialize(
     post_crosspol_path: Path | str,
     acq_dts: list[datetime.datetime],
     out_dist_path: Path,
-    moderate_confidence_threshold: float,
-    high_confidence_threshold: float,
+    low_confidence_alert_threshold: float,
+    high_confidence_alert_threshold: float,
     out_metric_path: Path | None = None,
     use_date_encoding: bool = False,
     use_logits: bool = True,
@@ -127,8 +127,8 @@ def compute_burst_disturbance_and_serialize(
 
     alert_status = label_alert_status_from_metric(
         metric,
-        low_confidence_threshold=moderate_confidence_threshold,
-        high_confidence_threshold=high_confidence_threshold,
+        low_confidence_alert_threshold=low_confidence_alert_threshold,
+        high_confidence_alert_threshold=high_confidence_alert_threshold,
     )
 
     p_dist_ref = p_ref.copy()
@@ -139,7 +139,7 @@ def compute_burst_disturbance_and_serialize(
     p_metric_ref['nodata'] = np.nan
     p_metric_ref['dtype'] = np.float32
 
-    serialize_one_2d_ds(alert_status, p_dist_ref, out_dist_path, colormap=DIST_CMAP)
+    serialize_one_2d_ds(alert_status, p_dist_ref, out_dist_path, colormap=DIST_STATUS_CMAP)
     serialize_one_2d_ds(metric, p_metric_ref, out_metric_path)
 
 
@@ -156,7 +156,7 @@ def merge_burst_disturbances_and_serialize(
     X_dist_mgrs, p_dist_mgrs = reproject_arr_to_match_profile(X_merged, p_merged, p_mgrs, resampling='nearest')
     # From BIP back to 2D array
     X_dist_mgrs = X_dist_mgrs[0, ...]
-    serialize_one_2d_ds(X_dist_mgrs, p_dist_mgrs, dst_path, colormap=DIST_CMAP)
+    serialize_one_2d_ds(X_dist_mgrs, p_dist_mgrs, dst_path, colormap=DIST_STATUS_CMAP)
 
 
 def merge_burst_metrics_and_serialize(burst_metrics_paths: list[Path], dst_path: Path, mgrs_tile_id: str) -> None:

@@ -8,6 +8,7 @@ import rasterio
 from pydantic import BaseModel, field_validator, model_validator
 
 from dist_s1.constants import EXPECTED_FORMAT_STRING, PRODUCT_VERSION, TIF_LAYERS, TIF_LAYER_DTYPES
+from dist_s1.data_models.data_utils import get_acquisition_datetime
 from dist_s1.rio_tools import get_mgrs_profile
 from dist_s1.water_mask import apply_water_mask
 
@@ -186,7 +187,7 @@ class DistS1ProductDirectory(BaseModel):
 
     @property
     def acq_datetime(self) -> datetime:
-        return self.product_name.acq_date_time
+        return get_acquisition_datetime(self.product_dir_path)
 
     def validate_layer_paths(self) -> bool:
         failed_layers = []
