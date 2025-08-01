@@ -212,7 +212,7 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
             out_dist_path=output_dist_path,
             out_metric_path=output_metric_path,
             low_confidence_alert_threshold=run_config.algo_config.low_confidence_alert_threshold,
-            high_confidence_alert_threshold=run_config.algo_config.high_confidence_threshold,
+            high_confidence_alert_threshold=run_config.algo_config.high_confidence_alert_threshold,
             use_logits=run_config.algo_config.apply_logit_to_inputs,
             model_compilation=run_config.algo_config.model_compilation,
             model_source=run_config.algo_config.model_source,
@@ -404,7 +404,7 @@ def run_dist_s1_sas_prep_workflow(
     run_config.algo_config.tqdm_enabled = tqdm_enabled
     run_config.apply_water_mask = apply_water_mask
     run_config.algo_config.low_confidence_alert_threshold = low_confidence_alert_threshold
-    run_config.algo_config.high_confidence_threshold = high_confidence_alert_threshold
+    run_config.algo_config.high_confidence_alert_threshold = high_confidence_alert_threshold
     run_config.algo_config.lookback_strategy = lookback_strategy
     run_config.water_mask_path = water_mask_path
     run_config.product_dst_dir = product_dst_dir

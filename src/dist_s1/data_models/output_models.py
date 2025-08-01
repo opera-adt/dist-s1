@@ -16,8 +16,9 @@ from dist_s1.water_mask import apply_water_mask
 PRODUCT_TAGS_FOR_EQUALITY = [
     'pre_rtc_opera_ids',
     'post_rtc_opera_ids',
-    'high_confidence_threshold',
-    'moderate_confidence_threshold',
+    'low_confidence_alert_threshold',
+    'high_confidence_alert_threshold',
+    'model_source',
 ]
 REQUIRED_PRODUCT_TAGS = PRODUCT_TAGS_FOR_EQUALITY + ['version']
 
