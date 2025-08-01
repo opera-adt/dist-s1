@@ -9,8 +9,8 @@ from tqdm.auto import tqdm
 from dist_s1.aws import upload_product_to_s3
 from dist_s1.confirmation import confirm_disturbance_with_prior_product_and_serialize
 from dist_s1.data_models.defaults import (
-    DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
     DEFAULT_CONFIDENCE_UPPER_LIM,
+    DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
     DEFAULT_EXCLUDE_CONSECUTIVE_NO_DIST,
     DEFAULT_METRIC_VALUE_UPPER_LIM,
     DEFAULT_NO_COUNT_RESET_THRESH,
