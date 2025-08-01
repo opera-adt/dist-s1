@@ -239,13 +239,7 @@ class RunConfigData(BaseModel):
     def product_data_model_no_confirmation(self) -> DistS1ProductDirectory:
         if self._product_data_model_no_confirmation is None:
             product_name = self.product_name
-            # Use dst_dir if product_dst_dir is None
-            dst_dir = (
-                Path(self.product_dst_dir).resolve()
-                if self.product_dst_dir is not None
-                else Path(self.dst_dir).resolve()
-            )
-            dst_dir = dst_dir / 'product_without_confirmation'
+            dst_dir = self.dst_dir / 'product_without_confirmation'
             self._product_data_model_no_confirmation = DistS1ProductDirectory(
                 dst_dir=dst_dir,
                 product_name=product_name,
