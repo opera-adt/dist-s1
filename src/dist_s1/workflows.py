@@ -314,7 +314,7 @@ def run_sequential_confirmation_of_dist_products_workflow(
 
     prior_confirmed_dist_s1_prod = dst_dist_product_parent / product_dirs[0].name
     shutil.copytree(product_dirs[0], prior_confirmed_dist_s1_prod, dirs_exist_ok=True)
-    for current_dist_s1_product in product_dirs[1:]:
+    for current_dist_s1_product in tqdm(product_dirs[1:], desc=f'Confirming {len(product_dirs)} products'):
         confirm_disturbance_with_prior_product_and_serialize(
             current_dist_s1_product=current_dist_s1_product,
             prior_dist_s1_product=prior_confirmed_dist_s1_prod,
