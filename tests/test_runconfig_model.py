@@ -322,7 +322,7 @@ def test_algorithm_config_from_yaml(
     # Verify that the algorithm parameters were actually applied
     assert config.algo_config.interpolation_method == 'bilinear'
     assert config.algo_config.low_confidence_alert_threshold == 4.2
-    assert config.algo_config.high_confidence_threshold == 6.8
+    assert config.algo_config.high_confidence_alert_threshold == 6.8
     assert config.algo_config.device == 'cpu'
     assert config.algo_config.apply_despeckling is False
     assert config.algo_config.apply_logit_to_inputs is False
@@ -580,8 +580,8 @@ def test_algo_config_path_programmatic_loading(test_dir: Path, test_data_dir: Pa
 algo_config:
   device: cpu
   memory_strategy: low
-  moderate_confidence_threshold: 4.5
-  high_confidence_threshold: 7.0
+  low_confidence_alert_threshold: 4.5
+  high_confidence_alert_threshold: 7.0
   apply_despeckling: false
   apply_logit_to_inputs: false
   n_workers_for_despeckling: 2
@@ -611,7 +611,7 @@ algo_config:
     assert config.algo_config.device == 'cpu'
     assert config.algo_config.memory_strategy == 'low'
     assert config.algo_config.low_confidence_alert_threshold == 4.5
-    assert config.algo_config.high_confidence_threshold == 7.0
+    assert config.algo_config.high_confidence_alert_threshold == 7.0
     assert config.algo_config.apply_despeckling is False
     assert config.algo_config.apply_logit_to_inputs is False
     assert config.algo_config.n_workers_for_despeckling == 2
