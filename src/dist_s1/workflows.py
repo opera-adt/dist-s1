@@ -39,8 +39,6 @@ torch_mp.set_start_method('spawn', force=True)
 
 @dataclass
 class DistBurstProcessingArgs:
-    """Container for burst processing arguments to make multiprocessing more readable."""
-
     pre_copol_paths: list[str]
     pre_crosspol_paths: list[str]
     post_copol_path: str
@@ -302,6 +300,7 @@ def run_sequential_confirmation_of_dist_products_workflow(
     confidence_upper_lim: int = DEFAULT_CONFIDENCE_UPPER_LIM,
     confidence_thresh: float = DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
     metric_value_upper_lim: float = DEFAULT_METRIC_VALUE_UPPER_LIM,
+    tqdm_enabled: bool = True,
 ) -> None:
     product_dirs = sorted(list(directory_of_dist_s1_products.glob('OPERA*')))
     product_dirs = list(Path(p) for p in product_dirs)
@@ -312,22 +311,32 @@ def run_sequential_confirmation_of_dist_products_workflow(
     if len(product_dirs) == 1:
         raise ValueError(f'Only one product directory in the product directory {directory_of_dist_s1_products}.')
 
-    prior_confirmed_dist_s1_prod = dst_dist_product_parent / product_dirs[0].name
-    shutil.copytree(product_dirs[0], prior_confirmed_dist_s1_prod, dirs_exist_ok=True)
-    for current_dist_s1_product in tqdm(product_dirs[1:], desc=f'Confirming {len(product_dirs)} products'):
-        confirm_disturbance_with_prior_product_and_serialize(
-            current_dist_s1_product=current_dist_s1_product,
-            prior_dist_s1_product=prior_confirmed_dist_s1_prod,
-            dst_dist_product_parent=dst_dist_product_parent,
-            no_day_limit=no_day_limit,
-            exclude_consecutive_no_dist=exclude_consecutive_no_dist,
-            percent_reset_thresh=percent_reset_thresh,
-            no_count_reset_thresh=no_count_reset_thresh,
-            confidence_upper_lim=confidence_upper_lim,
-            confidence_thresh=confidence_thresh,
-            metric_value_upper_lim=metric_value_upper_lim,
-        )
-        prior_confirmed_dist_s1_prod = dst_dist_product_parent / current_dist_s1_product.name
+    for k, current_dist_s1_product in tqdm(
+        enumerate(product_dirs),
+        desc=f'Confirming {len(product_dirs)} products',
+        total=len(product_dirs),
+        disable=not tqdm_enabled,
+    ):
+        if k == 0:
+            dst_dist_product_directory = dst_dist_product_parent / product_dirs[0].name
+            shutil.copytree(product_dirs[0], dst_dist_product_directory, dirs_exist_ok=True)
+            dst_dist_product_directory = DistS1ProductDirectory.from_product_path(dst_dist_product_directory)
+            prior_confirmed_dist_s1_prod = dst_dist_product_directory
+        else:
+            dst_dist_product_directory = confirm_disturbance_with_prior_product_and_serialize(
+                current_dist_s1_product=current_dist_s1_product,
+                prior_dist_s1_product=prior_confirmed_dist_s1_prod,
+                dst_dist_product_parent=dst_dist_product_parent,
+                no_day_limit=no_day_limit,
+                exclude_consecutive_no_dist=exclude_consecutive_no_dist,
+                percent_reset_thresh=percent_reset_thresh,
+                no_count_reset_thresh=no_count_reset_thresh,
+                confidence_upper_lim=confidence_upper_lim,
+                confidence_thresh=confidence_thresh,
+                metric_value_upper_lim=metric_value_upper_lim,
+            )
+            prior_confirmed_dist_s1_prod = dst_dist_product_parent / current_dist_s1_product.name
+        generate_browse_image(dst_dist_product_directory)
 
 
 def run_dist_s1_processing_workflow(run_config: RunConfigData) -> RunConfigData:

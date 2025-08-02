@@ -12,7 +12,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `n_lookbacks` (which should have been called `n_baselines`) for computing confirmation within the SAS
    - Removed overly complicated accounting for in SAS confirmation
    - Only confirmation now is either by passing a previous product OR passing a directory of products
-- Constant for `BASE_DATE_FOR_CONFIRMATION`.
+- Constant for `BASE_DATE_FOR_CONFIRMATION` and removed from algo config.
 - Extra validation for confirmation packaging
 
 ## Changed
@@ -30,10 +30,12 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Variables for confirmation processing (use snake case wherever possible)
 - Now have an output product without confirmation and a product with confirmation (for provenance)
 - De-couple confirmation and packaging in workflow logic
-- Confidence is now float32 (not int16) - this needs to happen because our metrics is a float32.
-- Updated golden dataset to reflect new changes.
+- Confidence is now float32 (not int16) - this needs to happen because the dist metrics is float32 so casting to integer looses information.
+- Updated golden dataset to reflect new changes in this major release.
 - `DIST_CMAP` is not `DIST_STATUS_CMAP`.
 - To align with dist-hls, we have changed `moderate_confidence_threshold` and `high_confidence_threshold` to now be `low_confidence_alert_threshold` and `high_confidence_alert_threshold`.
+- Moved browse imagery generation into workflows.
+- Consistent multiprocessing within dist-s1 (ensures consistent useage of `spawn` child processes).
 
 ## Added
 - Confirmation python API and CLI

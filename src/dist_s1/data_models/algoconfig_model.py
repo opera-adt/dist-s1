@@ -170,11 +170,6 @@ class AlgoConfigData(BaseModel):
     metric_value_upper_lim: float = Field(
         default=DEFAULT_METRIC_VALUE_UPPER_LIM, description='Metric upper limit set during confirmation'
     )
-    base_date_for_confirmation: datetime = Field(
-        default=datetime(2020, 12, 31),
-        description='Reference date used to calculate the number of days in confirmation process. We encode disturbance'
-        ' temporal information by number of days from this base date.',
-    )
     model_source: str | None = Field(
         default=DEFAULT_MODEL_SOURCE,
         description='Model source. If `external`, use externally supplied paths for weights and config. '
