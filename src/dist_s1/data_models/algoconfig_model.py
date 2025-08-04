@@ -376,6 +376,13 @@ class AlgoConfigData(BaseModel):
             )
         return self
 
+    @model_validator(mode='after')
+    def calculate_delta_lookback_days_mw(self) -> 'AlgoConfigData':
+        """Calculate delta_lookback_days_mw if not provided."""
+        if self.delta_lookback_days_mw is None:
+            self.delta_lookback_days_mw = tuple(365 * n for n in range(self.n_anniversaries_for_mw, 0, -1))
+        return self
+
     def to_yml(self, yaml_file: str | Path) -> None:
         """Save algorithm configuration to a YAML file."""
         config_dict = self.model_dump()
