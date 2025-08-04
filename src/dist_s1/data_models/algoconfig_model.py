@@ -1,4 +1,3 @@
-import json
 import multiprocessing as mp
 import warnings
 from pathlib import Path
@@ -7,8 +6,9 @@ import torch
 import yaml
 from distmetrics import get_device
 from distmetrics.model_load import get_model_context_length
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_serializer, field_validator, model_validator
 
+from dist_s1.data_models.data_utils import get_max_pre_imgs_per_burst_mw
 from dist_s1.data_models.defaults import (
     DEFAULT_APPLY_DESPECKLING,
     DEFAULT_APPLY_LOGIT_TO_INPUTS,
@@ -42,7 +42,6 @@ from dist_s1.data_models.defaults import (
     DEFAULT_TQDM_ENABLED,
     DEFAULT_USE_DATE_ENCODING,
 )
-from dist_s1.localize_rtc_s1 import get_max_pre_imgs_per_burst_mw
 
 
 class AlgoConfigData(BaseModel):
@@ -97,10 +96,11 @@ class AlgoConfigData(BaseModel):
     )
     lookback_strategy: str = Field(
         default=DEFAULT_LOOKBACK_STRATEGY,
-        pattern='^(multi_window|immediate_lookback)$',
+        pattern='^multi_window$',
         description='Lookback strategy to use for data curation of the baseline. '
         '`multi_window` will use a multi-window lookback strategy and is default for OEPRA DIST-S1, '
-        '`immediate_lookback` will use an immediate lookback strategy using acquisitions preceding the post-date.',
+        '`immediate_lookback` will use an immediate lookback strategy using acquisitions preceding the post-date. '
+        '`immediate_lookback` is not supported yet.',
     )
     post_date_buffer_days: int = Field(
         default=DEFAULT_POST_DATE_BUFFER_DAYS,
@@ -115,11 +115,11 @@ class AlgoConfigData(BaseModel):
         'False, use the model as is. '
         'True, load the model and compile for CPU or GPU optimizations.',
     )
-    max_pre_imgs_per_burst_mw: tuple[int, int] | None = Field(
+    max_pre_imgs_per_burst_mw: tuple[int, ...] | None = Field(
         default=DEFAULT_MAX_PRE_IMGS_PER_BURST_MW,
         description='Max number of pre-images per burst within each window',
     )
-    delta_lookback_days_mw: tuple[int, int] | None = Field(
+    delta_lookback_days_mw: tuple[int, ...] | None = Field(
         default=DEFAULT_DELTA_LOOKBACK_DAYS_MW,
         description='Delta lookback days for each window relative to post-image acquisition date',
     )
@@ -173,7 +173,7 @@ class AlgoConfigData(BaseModel):
     metric_value_upper_lim: float = Field(
         default=DEFAULT_METRIC_VALUE_UPPER_LIM, description='Metric upper limit set during confirmation'
     )
-    model_source: str | None = Field(
+    model_source: str = Field(
         default=DEFAULT_MODEL_SOURCE,
         description='Model source. If `external`, use externally supplied paths for weights and config. '
         'Otherwise, use distmetrics.model_load.ALLOWED_MODELS for other models.',
@@ -215,12 +215,6 @@ class AlgoConfigData(BaseModel):
 
     # Validate assignments to all fields
     model_config = ConfigDict(validate_assignment=True)
-
-    @field_validator('model_source', mode='before')
-    def validate_model_source(cls, v: str | None) -> str:
-        if v is None:
-            return 'transformer_optimized'
-        return v
 
     @classmethod
     def from_yaml(cls, yaml_file: str | Path) -> 'AlgoConfigData':
@@ -266,6 +260,20 @@ class AlgoConfigData(BaseModel):
             )
             n_workers = mp.cpu_count()
         return n_workers
+
+    @field_validator('max_pre_imgs_per_burst_mw', 'delta_lookback_days_mw', mode='before')
+    def convert_list_to_tuple(cls, v: list[int] | None) -> tuple[int, ...] | None:
+        """Convert lists to tuples for YAML compatibility."""
+        if isinstance(v, list):
+            return tuple(v)
+        return v
+
+    @field_serializer('max_pre_imgs_per_burst_mw', 'delta_lookback_days_mw')
+    def serialize_tuple_as_list(self, v: tuple[int, ...] | None) -> list[int] | None:
+        """Serialize tuples as lists for YAML compatibility."""
+        if v is not None:
+            return list(v)
+        return None
 
     @field_validator('low_confidence_alert_threshold')
     def validate_low_confidence_alert_threshold(

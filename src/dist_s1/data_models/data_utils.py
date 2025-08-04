@@ -3,7 +3,6 @@ from pathlib import Path, PosixPath
 
 import pandas as pd
 import yaml
-from distmetrics.model_load import get_model_context_length
 from yaml import Dumper
 
 
@@ -66,6 +65,28 @@ def check_filename_format(filename: str, polarization: str) -> None:
     elif polarization == 'crosspol' and not (filename.endswith('_VH.tif') or filename.endswith('_HV.tif')):
         raise ValueError(f"File '{filename}' should end with '_VH.tif' or '_HV.tif' because it is crosspolarization")
     return True
+
+
+def get_max_pre_imgs_per_burst_mw(model_context_length: int, max_anniversaries: int) -> tuple[int, int]:
+    """Calculate max pre-images per burst for multi-window strategy.
+
+    Parameters
+    ----------
+    model_context_length : int
+        Maximum number of pre-images to use for baseline estimates
+    max_anniversaries : int
+        Number of anniversaries to use for multi-window
+
+    Returns
+    -------
+    tuple[int, int]
+        Max pre-images per burst for each window
+    """
+    max_pre_imgs_per_burst_mw = (model_context_length // max_anniversaries,) * max_anniversaries
+    max_pre_imgs_per_burst_mw = max_pre_imgs_per_burst_mw[:-1] + (
+        max_pre_imgs_per_burst_mw[-1] + model_context_length % max_anniversaries,
+    )
+    return max_pre_imgs_per_burst_mw
 
 
 def check_dist_product_filename_format(filename: str) -> None:

@@ -5,23 +5,19 @@ import pandas as pd
 from dist_s1_enumerator import enumerate_one_dist_s1_product, localize_rtc_s1_ts
 
 from dist_s1.credentials import ensure_earthdata_credentials
+from dist_s1.data_models.data_utils import get_max_pre_imgs_per_burst_mw
+from dist_s1.data_models.defaults import DEFAULT_LOOKBACK_STRATEGY
 from dist_s1.data_models.runconfig_model import RunConfigData
-
-
-def get_max_pre_imgs_per_burst_mw(model_context_length: int, max_anniversaries: int) -> tuple[int, int]:
-    max_pre_imgs_per_burst_mw = (model_context_length // max_anniversaries,) * max_anniversaries
-    max_pre_imgs_per_burst_mw[-1] += model_context_length % max_anniversaries
-    return max_pre_imgs_per_burst_mw
 
 
 def localize_rtc_s1(
     mgrs_tile_id: str,
     post_date: str | datetime | pd.Timestamp,
     track_number: int,
-    lookback_strategy: str = 'multi_window',
+    lookback_strategy: str = DEFAULT_LOOKBACK_STRATEGY,
     post_date_buffer_days: int = 1,
-    max_pre_imgs_per_burst_mw: tuple[int, int] | None = None,
-    delta_lookback_days_mw: tuple[int, int] | None = None,
+    max_pre_imgs_per_burst_mw: tuple[int, ...] | None = None,
+    delta_lookback_days_mw: tuple[int, ...] | None = None,
     input_data_dir: Path | str | None = None,
     dst_dir: Path | str | None = 'out',
     tqdm_enabled: bool = True,
@@ -78,6 +74,12 @@ def localize_rtc_s1(
         raise ValueError(
             'len(max_pre_imgs_per_burst_mw) must be equal to len(delta_lookback_days_mw), '
             f'but got {len(max_pre_imgs_per_burst_mw)} and {len(delta_lookback_days_mw)}'
+        )
+    if sum(max_pre_imgs_per_burst_mw) > model_context_length:
+        raise ValueError(
+            'sum(max_pre_imgs_per_burst_mw) must be less than or equal to model_context_length, '
+            f'but got {sum(max_pre_imgs_per_burst_mw)} from {max_pre_imgs_per_burst_mw} and '
+            f'{model_context_length} from model_context_length.'
         )
 
     df_product = enumerate_one_dist_s1_product(

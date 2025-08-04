@@ -14,6 +14,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
    - Only confirmation now is either by passing a previous product OR passing a directory of products
 - Constant for `BASE_DATE_FOR_CONFIRMATION` and removed from algo config.
 - Extra validation for confirmation packaging
+- Support for `immediate_lookback` - to add back will need to add logic for calculations of lookbacks, etc.
 
 ## Changed
 - Multiwindow strategy is now the default in both python API and CLI
@@ -59,12 +60,14 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Confirmation CLI
   - Ensuring additional profile keys  for COG in default GTiff are not present.
 - Access of Confirmation of Products in main library (i.e. `from dist_s1 import run_sequential_confirmation_of_dist_products_workflow`)
+- Use specified model context length from specified model to calculate `max_pre_imgs_per_burst_mw` and `delta_lookback_days_mw` if the latter two are unspecified
 
 ## Fixed
 - Sequential Confirmation Workflow and downstream functions
 - All the tests with the updates above.
 - Correct loading of algo_config.yml in `prep` steps.
   - Only `from_yml` loads the `algo_config` correctly, but when it is assigned in the `prep` workflows (i.e. the attribute `algo_config` is assigned, this yml is not correctly loaded.
+- Correctly handle `model_source` as only string value with allowed string values from `distmetrics` or `external`.
 
 
 ## [1.0.1] - 2025-06-05
