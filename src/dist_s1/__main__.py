@@ -24,6 +24,7 @@ from dist_s1.data_models.defaults import (
     DEFAULT_METRIC_VALUE_UPPER_LIM,
     DEFAULT_MODEL_COMPILATION,
     DEFAULT_MODEL_DTYPE,
+    DEFAULT_MODEL_SOURCE,
     DEFAULT_NO_COUNT_RESET_THRESH,
     DEFAULT_N_ANNIVERSARIES_FOR_MW,
     DEFAULT_N_WORKERS_FOR_DESPECKLING,
@@ -277,6 +278,7 @@ def common_options_for_dist_workflows(func: Callable) -> Callable:
     @click.option(
         '--model_source',
         type=click.Choice(['external'] + ALLOWED_MODELS),
+        default=DEFAULT_MODEL_SOURCE,
         required=False,
         help='What model to load; external means load model from cfg and wts paths specified in parameters;'
         'see distmetrics.model_load.ALLOWED_MODELS for available models.',
@@ -389,7 +391,7 @@ def run_sas_prep(
     n_workers_for_despeckling: int,
     n_workers_for_norm_param_estimation: int,
     device: str,
-    model_source: str | None,
+    model_source: str,
     model_cfg_path: str | Path | None,
     model_wts_path: str | Path | None,
     stride_for_norm_param_estimation: int = 16,
@@ -531,7 +533,7 @@ def run(
     n_workers_for_despeckling: int,
     n_workers_for_norm_param_estimation: int,
     device: str,
-    model_source: str | None,
+    model_source: str,
     model_cfg_path: str | Path | None,
     model_wts_path: str | Path | None,
     n_anniversaries_for_mw: int = DEFAULT_N_ANNIVERSARIES_FOR_MW,
