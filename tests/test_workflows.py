@@ -159,7 +159,7 @@ def test_dist_s1_workflow_interface_external_model(
     model_wts_path = tmp_dir / 'model_weights.pth'
 
     # Create dummy config file (JSON format)
-    model_cfg_content = {'model_type': 'transformer', 'n_heads': 8, 'd_model': 256, 'num_layers': 6}
+    model_cfg_content = {'model_type': 'transformer', 'n_heads': 8, 'd_model': 256, 'num_layers': 6, 'max_seq_len': 4}
     with model_cfg_path.open('w') as f:
         json.dump(model_cfg_content, f)
 

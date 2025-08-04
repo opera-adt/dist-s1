@@ -201,7 +201,7 @@ def test_lookback_strategy_validation(test_dir: Path, test_data_dir: Path, chang
     df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
 
     # Test 1: Valid lookback_strategy values should succeed
-    valid_strategies = ['multi_window', 'immediate_lookback']
+    valid_strategies = ['multi_window']
     for strategy in valid_strategies:
         config = RunConfigData.from_product_df(
             df_product,

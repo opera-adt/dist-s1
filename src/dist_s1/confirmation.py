@@ -11,7 +11,7 @@ from dist_s1.constants import (
 )
 from dist_s1.data_models.output_models import TIF_LAYER_DTYPES, DistS1ProductDirectory
 from dist_s1.dist_processing import label_alert_status_from_metric
-from dist_s1.packaging import generate_browse_image, update_profile
+from dist_s1.packaging import update_profile
 from dist_s1.rio_tools import open_one_ds, serialize_one_2d_ds
 
 
@@ -274,7 +274,7 @@ def confirm_disturbance_with_prior_product_and_serialize(
     confidence_thresh: float = 3**2 * 3.5,
     metric_value_upper_lim: float = 100,
     product_tags: dict | None = None,
-) -> None:
+) -> DistS1ProductDirectory:
     """Perform the confirmation and packaging of a DIST-S1 product and the prior product."""
     if not isinstance(current_dist_s1_product, DistS1ProductDirectory):
         current_dist_s1_product = DistS1ProductDirectory.from_product_path(current_dist_s1_product)
@@ -350,5 +350,4 @@ def confirm_disturbance_with_prior_product_and_serialize(
             cog=True,
             tags=product_tags,
         )
-    # Browse Imagary
-    generate_browse_image(dst_dist_product_directory)
+    return dst_dist_product_directory

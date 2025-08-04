@@ -1,7 +1,7 @@
-import multiprocessing as mp
 from dataclasses import dataclass
 from pathlib import Path
 
+import torch.multiprocessing as mp
 from distmetrics.despeckle import despeckle_one_rtc_arr_with_tv
 from tqdm import tqdm
 

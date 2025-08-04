@@ -4,17 +4,24 @@ from datetime import datetime
 from pathlib import Path
 
 import torch.multiprocessing as torch_mp
+from distmetrics.model_load import get_model_context_length
 from tqdm.auto import tqdm
 
 from dist_s1.aws import upload_product_to_s3
 from dist_s1.confirmation import confirm_disturbance_with_prior_product_and_serialize
+from dist_s1.data_models.data_utils import get_max_pre_imgs_per_burst_mw
 from dist_s1.data_models.defaults import (
     DEFAULT_CONFIDENCE_UPPER_LIM,
     DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
+    DEFAULT_DELTA_LOOKBACK_DAYS_MW,
     DEFAULT_EXCLUDE_CONSECUTIVE_NO_DIST,
+    DEFAULT_LOOKBACK_STRATEGY,
+    DEFAULT_MAX_PRE_IMGS_PER_BURST_MW,
     DEFAULT_METRIC_VALUE_UPPER_LIM,
+    DEFAULT_MODEL_SOURCE,
     DEFAULT_NO_COUNT_RESET_THRESH,
     DEFAULT_NO_DAY_LIMIT,
+    DEFAULT_N_ANNIVERSARIES_FOR_MW,
     DEFAULT_PERCENT_RESET_THRESH,
 )
 from dist_s1.data_models.output_models import DistS1ProductDirectory
@@ -39,8 +46,6 @@ torch_mp.set_start_method('spawn', force=True)
 
 @dataclass
 class DistBurstProcessingArgs:
-    """Container for burst processing arguments to make multiprocessing more readable."""
-
     pre_copol_paths: list[str]
     pre_crosspol_paths: list[str]
     post_copol_path: str
@@ -95,12 +100,14 @@ def run_dist_s1_localization_workflow(
     mgrs_tile_id: str,
     post_date: str | datetime,
     track_number: int,
-    lookback_strategy: str = 'multi_window',
+    lookback_strategy: str = DEFAULT_LOOKBACK_STRATEGY,
     post_date_buffer_days: int = 1,
-    max_pre_imgs_per_burst_mw: list[int] = [5, 5],
-    delta_lookback_days_mw: list[int] = [730, 365],
+    max_pre_imgs_per_burst_mw: tuple[int, int] | None = DEFAULT_MAX_PRE_IMGS_PER_BURST_MW,
+    delta_lookback_days_mw: tuple[int, int] | None = DEFAULT_DELTA_LOOKBACK_DAYS_MW,
     dst_dir: str | Path = 'out',
     input_data_dir: str | Path | None = None,
+    n_anniversaries_for_mw: int = DEFAULT_N_ANNIVERSARIES_FOR_MW,
+    model_context_length: int = 10,
 ) -> RunConfigData:
     """Run the DIST-S1 localization workflow.
 
@@ -117,6 +124,8 @@ def run_dist_s1_localization_workflow(
         delta_lookback_days_mw=delta_lookback_days_mw,
         dst_dir=dst_dir,
         input_data_dir=input_data_dir,
+        n_anniversaries_for_mw=n_anniversaries_for_mw,
+        model_context_length=model_context_length,
     )
 
     return run_config
@@ -302,6 +311,7 @@ def run_sequential_confirmation_of_dist_products_workflow(
     confidence_upper_lim: int = DEFAULT_CONFIDENCE_UPPER_LIM,
     confidence_thresh: float = DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
     metric_value_upper_lim: float = DEFAULT_METRIC_VALUE_UPPER_LIM,
+    tqdm_enabled: bool = True,
 ) -> None:
     product_dirs = sorted(list(directory_of_dist_s1_products.glob('OPERA*')))
     product_dirs = list(Path(p) for p in product_dirs)
@@ -312,22 +322,32 @@ def run_sequential_confirmation_of_dist_products_workflow(
     if len(product_dirs) == 1:
         raise ValueError(f'Only one product directory in the product directory {directory_of_dist_s1_products}.')
 
-    prior_confirmed_dist_s1_prod = dst_dist_product_parent / product_dirs[0].name
-    shutil.copytree(product_dirs[0], prior_confirmed_dist_s1_prod, dirs_exist_ok=True)
-    for current_dist_s1_product in tqdm(product_dirs[1:], desc=f'Confirming {len(product_dirs)} products'):
-        confirm_disturbance_with_prior_product_and_serialize(
-            current_dist_s1_product=current_dist_s1_product,
-            prior_dist_s1_product=prior_confirmed_dist_s1_prod,
-            dst_dist_product_parent=dst_dist_product_parent,
-            no_day_limit=no_day_limit,
-            exclude_consecutive_no_dist=exclude_consecutive_no_dist,
-            percent_reset_thresh=percent_reset_thresh,
-            no_count_reset_thresh=no_count_reset_thresh,
-            confidence_upper_lim=confidence_upper_lim,
-            confidence_thresh=confidence_thresh,
-            metric_value_upper_lim=metric_value_upper_lim,
-        )
-        prior_confirmed_dist_s1_prod = dst_dist_product_parent / current_dist_s1_product.name
+    for k, current_dist_s1_product in tqdm(
+        enumerate(product_dirs),
+        desc=f'Confirming {len(product_dirs)} products',
+        total=len(product_dirs),
+        disable=not tqdm_enabled,
+    ):
+        if k == 0:
+            dst_dist_product_directory = dst_dist_product_parent / product_dirs[0].name
+            shutil.copytree(product_dirs[0], dst_dist_product_directory, dirs_exist_ok=True)
+            dst_dist_product_directory = DistS1ProductDirectory.from_product_path(dst_dist_product_directory)
+            prior_confirmed_dist_s1_prod = dst_dist_product_directory
+        else:
+            dst_dist_product_directory = confirm_disturbance_with_prior_product_and_serialize(
+                current_dist_s1_product=current_dist_s1_product,
+                prior_dist_s1_product=prior_confirmed_dist_s1_prod,
+                dst_dist_product_parent=dst_dist_product_parent,
+                no_day_limit=no_day_limit,
+                exclude_consecutive_no_dist=exclude_consecutive_no_dist,
+                percent_reset_thresh=percent_reset_thresh,
+                no_count_reset_thresh=no_count_reset_thresh,
+                confidence_upper_lim=confidence_upper_lim,
+                confidence_thresh=confidence_thresh,
+                metric_value_upper_lim=metric_value_upper_lim,
+            )
+            prior_confirmed_dist_s1_prod = dst_dist_product_parent / current_dist_s1_product.name
+        generate_browse_image(dst_dist_product_directory)
 
 
 def run_dist_s1_processing_workflow(run_config: RunConfigData) -> RunConfigData:
@@ -364,9 +384,9 @@ def run_dist_s1_sas_prep_workflow(
     high_confidence_alert_threshold: float = 5.5,
     tqdm_enabled: bool = True,
     apply_water_mask: bool = True,
-    lookback_strategy: str = 'multi_window',
-    max_pre_imgs_per_burst_mw: list[int] = [5, 5],
-    delta_lookback_days_mw: list[int] = [730, 365],
+    lookback_strategy: str = DEFAULT_LOOKBACK_STRATEGY,
+    max_pre_imgs_per_burst_mw: tuple[int, ...] | None = None,
+    delta_lookback_days_mw: tuple[int, ...] | None = None,
     water_mask_path: str | Path | None = None,
     product_dst_dir: str | Path | None = None,
     bucket: str | None = None,
@@ -374,7 +394,7 @@ def run_dist_s1_sas_prep_workflow(
     n_workers_for_despeckling: int = 5,
     device: str = 'best',
     n_workers_for_norm_param_estimation: int = 1,
-    model_source: str | None = None,
+    model_source: str = DEFAULT_MODEL_SOURCE,
     model_cfg_path: str | Path | None = None,
     model_wts_path: str | Path | None = None,
     stride_for_norm_param_estimation: int = 16,
@@ -388,7 +408,16 @@ def run_dist_s1_sas_prep_workflow(
     run_config_path: str | Path | None = None,
     model_dtype: str = 'float32',
     use_date_encoding: bool = False,
+    n_anniversaries_for_mw: int = DEFAULT_N_ANNIVERSARIES_FOR_MW,
 ) -> RunConfigData:
+    model_context_length = get_model_context_length(model_source, model_cfg_path)
+    if max_pre_imgs_per_burst_mw is None:
+        max_pre_imgs_per_burst_mw = get_max_pre_imgs_per_burst_mw(model_context_length, n_anniversaries_for_mw)
+    if delta_lookback_days_mw is None:
+        delta_lookback_days_mw = tuple(365 * n for n in range(n_anniversaries_for_mw, 0, -1))
+
+    assert len(max_pre_imgs_per_burst_mw) == n_anniversaries_for_mw == len(delta_lookback_days_mw)
+
     run_config = run_dist_s1_localization_workflow(
         mgrs_tile_id,
         post_date,
@@ -399,6 +428,8 @@ def run_dist_s1_sas_prep_workflow(
         delta_lookback_days_mw,
         dst_dir=dst_dir,
         input_data_dir=input_data_dir,
+        n_anniversaries_for_mw=n_anniversaries_for_mw,
+        model_context_length=model_context_length,
     )
     run_config.algo_config.memory_strategy = memory_strategy
     run_config.algo_config.tqdm_enabled = tqdm_enabled
@@ -474,16 +505,16 @@ def run_dist_s1_workflow(
     water_mask_path: str | Path | None = None,
     tqdm_enabled: bool = True,
     apply_water_mask: bool = True,
-    lookback_strategy: str = 'multi_window',
-    max_pre_imgs_per_burst_mw: list[int] = [5, 5],
-    delta_lookback_days_mw: list[int] = [730, 365],
+    lookback_strategy: str = DEFAULT_LOOKBACK_STRATEGY,
+    max_pre_imgs_per_burst_mw: tuple[int, int] | None = None,
+    delta_lookback_days_mw: tuple[int, int] | None = None,
     product_dst_dir: str | Path | None = None,
     bucket: str | None = None,
     bucket_prefix: str = '',
     n_workers_for_despeckling: int = 5,
     n_workers_for_norm_param_estimation: int = 1,
     device: str = 'best',
-    model_source: str | None = None,
+    model_source: str = DEFAULT_MODEL_SOURCE,
     model_cfg_path: str | Path | None = None,
     model_wts_path: str | Path | None = None,
     stride_for_norm_param_estimation: int = 16,

@@ -24,7 +24,9 @@ from dist_s1.data_models.defaults import (
     DEFAULT_METRIC_VALUE_UPPER_LIM,
     DEFAULT_MODEL_COMPILATION,
     DEFAULT_MODEL_DTYPE,
+    DEFAULT_MODEL_SOURCE,
     DEFAULT_NO_COUNT_RESET_THRESH,
+    DEFAULT_N_ANNIVERSARIES_FOR_MW,
     DEFAULT_N_WORKERS_FOR_DESPECKLING,
     DEFAULT_N_WORKERS_FOR_NORM_PARAM_ESTIMATION,
     DEFAULT_PERCENT_RESET_THRESH,
@@ -46,11 +48,19 @@ P = ParamSpec('P')  # Captures all parameter types
 R = TypeVar('R')  # Captures the return type
 
 
-def parse_int_list(ctx: click.Context, param: click.Parameter, value: str) -> list[int]:
-    try:
-        return [int(x.strip()) for x in value.split(',')]
-    except Exception:
-        raise click.BadParameter(f'Invalid list format: {value}. Expected comma-separated integers (e.g., 4,4,2).')
+def parse_int_list_with_none(ctx: click.Context, param: click.Parameter, value: str) -> tuple[int, ...]:
+    if isinstance(value, str):
+        if value == 'none':
+            return None
+        else:
+            try:
+                return tuple(int(x.strip()) for x in value.split(','))
+            except Exception:
+                raise click.BadParameter(
+                    f'Invalid tuple format: {value}. Expected comma-separated integers (e.g., 4,4,2).'
+                )
+    else:
+        raise click.BadParameter('Expected a string of comma-separated integers (e.g., 4,4,2) or "none".')
 
 
 @click.group()
@@ -59,7 +69,7 @@ def cli() -> None:
     pass
 
 
-def common_options_for_confirmation_workflow(func: Callable) -> Callable:
+def common_options_for_confirmation_workflows(func: Callable) -> Callable:
     @click.option(
         '--dst_dist_product_parent', type=str, required=True, help='Path to parent directory for new DIST-S1 product.'
     )
@@ -117,7 +127,7 @@ def common_options_for_confirmation_workflow(func: Callable) -> Callable:
     return wrapper
 
 
-def common_options_for_dist_workflow(func: Callable) -> Callable:
+def common_options_for_dist_workflows(func: Callable) -> Callable:
     @click.option('--mgrs_tile_id', type=str, required=True, help='MGRS tile ID.')
     @click.option('--post_date', type=str, required=True, help='Post acquisition date.')
     @click.option(
@@ -192,21 +202,35 @@ def common_options_for_dist_workflow(func: Callable) -> Callable:
         help='Options to use for lookback strategy.',
     )
     @click.option(
+        '--n_anniversaries_for_mw',
+        type=int,
+        required=False,
+        default=DEFAULT_N_ANNIVERSARIES_FOR_MW,
+        help='Number of anniversaries to use for multi-window lookback strategy.',
+    )
+    @click.option(
         '--max_pre_imgs_per_burst_mw',
-        default=','.join(map(str, DEFAULT_MAX_PRE_IMGS_PER_BURST_MW)),
-        callback=parse_int_list,
+        default=','.join(map(str, DEFAULT_MAX_PRE_IMGS_PER_BURST_MW))
+        if DEFAULT_MAX_PRE_IMGS_PER_BURST_MW is not None
+        else 'none',
+        callback=parse_int_list_with_none,
         required=False,
         show_default=True,
-        help='Comma-separated list of integers (e.g., --max_pre_imgs_per_burst_mw 4,4,2).',
+        type=str,
+        help='Comma-separated list of integers (e.g., --max_pre_imgs_per_burst_mw 4,4,2) or "none" to use defaults '
+        'calculated from model context length and n_anniversaries_for_mw.',
     )
     @click.option(
         '--delta_lookback_days_mw',
-        default=','.join(map(str, DEFAULT_DELTA_LOOKBACK_DAYS_MW)),
-        callback=parse_int_list,
+        default=','.join(map(str, DEFAULT_DELTA_LOOKBACK_DAYS_MW))
+        if DEFAULT_DELTA_LOOKBACK_DAYS_MW is not None
+        else 'none',
+        callback=parse_int_list_with_none,
         required=False,
         show_default=True,
-        help='Comma-separated list of integers (e.g., --delta_lookback_days_mw 730,365,0). '
-        'Provide list values in order of older to recent lookback days.',
+        help='Comma-separated list of integers (e.g., --delta_lookback_days_mw 730,365,0) or "none" to use defaults '
+        'calculated from n_anniversaries_for_mw and model context length. Provide list values in order of older to '
+        'recent lookback days.',
     )
     @click.option(
         '--product_dst_dir',
@@ -254,6 +278,7 @@ def common_options_for_dist_workflow(func: Callable) -> Callable:
     @click.option(
         '--model_source',
         type=click.Choice(['external'] + ALLOWED_MODELS),
+        default=DEFAULT_MODEL_SOURCE,
         required=False,
         help='What model to load; external means load model from cfg and wts paths specified in parameters;'
         'see distmetrics.model_load.ALLOWED_MODELS for available models.',
@@ -323,19 +348,6 @@ def common_options_for_dist_workflow(func: Callable) -> Callable:
     return wrapper
 
 
-# Load parameter as list of integers
-@cli.command()
-@common_options_for_dist_workflow
-def parse_pre_imgs_per_burst_mw(max_pre_imgs_per_burst_mw: list[int], **kwargs: dict[str, object]) -> None:
-    print('Parsed list:', max_pre_imgs_per_burst_mw)
-
-
-@cli.command()
-@common_options_for_dist_workflow
-def parse_delta_lookback_days_mw(delta_lookback_days_mw: list[int], **kwargs: dict[str, object]) -> None:
-    print('Parsed list:', delta_lookback_days_mw)
-
-
 # SAS Prep Workflow (No Internet Access)
 @cli.command(name='run_sas_prep')
 @click.option(
@@ -355,7 +367,7 @@ def parse_delta_lookback_days_mw(delta_lookback_days_mw: list[int], **kwargs: di
         'If provided, the main config will reference this file.'
     ),
 )
-@common_options_for_dist_workflow
+@common_options_for_dist_workflows
 def run_sas_prep(
     mgrs_tile_id: str,
     post_date: str,
@@ -369,8 +381,8 @@ def run_sas_prep(
     input_data_dir: str | Path | None,
     run_config_path: str | Path,
     lookback_strategy: str,
-    delta_lookback_days_mw: list[int],
-    max_pre_imgs_per_burst_mw: list[int],
+    delta_lookback_days_mw: tuple[int, ...],
+    max_pre_imgs_per_burst_mw: tuple[int, ...],
     dst_dir: str | Path,
     water_mask_path: str | Path | None,
     product_dst_dir: str | Path | None,
@@ -379,7 +391,7 @@ def run_sas_prep(
     n_workers_for_despeckling: int,
     n_workers_for_norm_param_estimation: int,
     device: str,
-    model_source: str | None,
+    model_source: str,
     model_cfg_path: str | Path | None,
     model_wts_path: str | Path | None,
     stride_for_norm_param_estimation: int = 16,
@@ -442,7 +454,7 @@ def run_sas(run_config_path: str | Path, algo_config_path: str | Path | None = N
     required=True,
     help='Path to current DIST-S1 product. Confirmed product inherits name from this product.',
 )
-@common_options_for_confirmation_workflow
+@common_options_for_confirmation_workflows
 def run_one_confirmation(
     prior_dist_s1_product: str | Path,
     current_dist_s1_product: str | Path,
@@ -471,7 +483,7 @@ def run_one_confirmation(
 
 @cli.command(name='run_sequential_confirmation')
 @click.option('--directory_of_dist_s1_products', type=str, required=True, help='Path to product directory.')
-@common_options_for_confirmation_workflow
+@common_options_for_confirmation_workflows
 def run_sequential_confirmation(
     directory_of_dist_s1_products: str | Path,
     dst_dist_product_parent: str | Path | None,
@@ -498,7 +510,7 @@ def run_sequential_confirmation(
 
 # Effectively runs the two workflows above in sequence
 @cli.command(name='run')
-@common_options_for_dist_workflow
+@common_options_for_dist_workflows
 def run(
     mgrs_tile_id: str,
     post_date: str,
@@ -513,17 +525,18 @@ def run(
     water_mask_path: str | Path | None,
     apply_water_mask: bool,
     lookback_strategy: str,
-    delta_lookback_days_mw: list[int],
-    max_pre_imgs_per_burst_mw: list[int],
+    delta_lookback_days_mw: tuple[int, ...],
+    max_pre_imgs_per_burst_mw: tuple[int, ...],
     product_dst_dir: str | Path | None,
     bucket: str | None,
     bucket_prefix: str,
     n_workers_for_despeckling: int,
     n_workers_for_norm_param_estimation: int,
     device: str,
-    model_source: str | None,
+    model_source: str,
     model_cfg_path: str | Path | None,
     model_wts_path: str | Path | None,
+    n_anniversaries_for_mw: int = DEFAULT_N_ANNIVERSARIES_FOR_MW,
     stride_for_norm_param_estimation: int = 16,
     batch_size_for_norm_param_estimation: int = 32,
     model_compilation: bool = False,
