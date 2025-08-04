@@ -4,9 +4,6 @@ import pandas as pd
 
 PRODUCT_VERSION = '0.1'
 
-MODEL_CONTEXT_LENGTH = 10
-
-
 # Confirmation
 BASE_DATE_FOR_CONFIRMATION = pd.Timestamp('2020-12-31', tz='UTC')
 

@@ -4,9 +4,14 @@ from pathlib import Path
 import pandas as pd
 from dist_s1_enumerator import enumerate_one_dist_s1_product, localize_rtc_s1_ts
 
-from dist_s1.constants import MODEL_CONTEXT_LENGTH
 from dist_s1.credentials import ensure_earthdata_credentials
 from dist_s1.data_models.runconfig_model import RunConfigData
+
+
+def get_max_pre_imgs_per_burst_mw(model_context_length: int, max_anniversaries: int) -> tuple[int, int]:
+    max_pre_imgs_per_burst_mw = (model_context_length // max_anniversaries,) * max_anniversaries
+    max_pre_imgs_per_burst_mw[-1] += model_context_length % max_anniversaries
+    return max_pre_imgs_per_burst_mw
 
 
 def localize_rtc_s1(
@@ -15,11 +20,13 @@ def localize_rtc_s1(
     track_number: int,
     lookback_strategy: str = 'multi_window',
     post_date_buffer_days: int = 1,
-    max_pre_imgs_per_burst_mw: list[int] = [5, 5],
-    delta_lookback_days_mw: list[int] = [730, 365],
+    max_pre_imgs_per_burst_mw: tuple[int, int] | None = None,
+    delta_lookback_days_mw: tuple[int, int] | None = None,
     input_data_dir: Path | str | None = None,
     dst_dir: Path | str | None = 'out',
     tqdm_enabled: bool = True,
+    model_context_length: int = 10,
+    n_anniversaries_for_mw: int = 3,
 ) -> RunConfigData:
     """Localize RTC-S1 data and create RunConfigData.
 
@@ -38,9 +45,9 @@ def localize_rtc_s1(
         Strategy for looking back at historical data
     post_date_buffer_days : int
         Buffer days around post date
-    max_pre_imgs_per_burst_mw : list[int]
+    max_pre_imgs_per_burst_mw : tuple[int, int]
         Max pre-images per burst for multi-window
-    delta_lookback_days_mw : list[int]
+    delta_lookback_days_mw : tuple[int, int]
         Lookback days for multi-window
     input_data_dir : Path | str | None
         Directory for input data storage
@@ -48,20 +55,39 @@ def localize_rtc_s1(
         Destination directory for outputs
     tqdm_enabled : bool
         Whether to show progress bars
+    model_context_length : int
+        Context length for model application - maximum number of pre-images to
+        use to establish baseline estimates. Default is 10. If max_pre_imgs_per_burst_mw is not provided,
+        it will be calculated based on model_context_length and n_anniversaries_for_mw.
+    n_anniversaries_for_mw : int
+        Number of anniversaries to use for multi-window. Default is 3. If delta_lookback_days_mw is not provided,
+        that variable will be calculated based on n_anniversaries_for_mw.
+
 
     Returns
     -------
     RunConfigData
         Configured RunConfigData object with localized RTC inputs
     """
+    if max_pre_imgs_per_burst_mw is None:
+        max_pre_imgs_per_burst_mw = get_max_pre_imgs_per_burst_mw(model_context_length, n_anniversaries_for_mw)
+    if delta_lookback_days_mw is None:
+        delta_lookback_days_mw = tuple(365 * n for n in range(n_anniversaries_for_mw, 0, -1))
+
+    if len(max_pre_imgs_per_burst_mw) != len(delta_lookback_days_mw):
+        raise ValueError(
+            'len(max_pre_imgs_per_burst_mw) must be equal to len(delta_lookback_days_mw), '
+            f'but got {len(max_pre_imgs_per_burst_mw)} and {len(delta_lookback_days_mw)}'
+        )
+
     df_product = enumerate_one_dist_s1_product(
         mgrs_tile_id,
         track_number=track_number,
         post_date=post_date,
         lookback_strategy=lookback_strategy,
         post_date_buffer_days=post_date_buffer_days,
-        max_pre_imgs_per_burst=(MODEL_CONTEXT_LENGTH + 2),
-        max_pre_imgs_per_burst_mw=[item for item in max_pre_imgs_per_burst_mw],
+        max_pre_imgs_per_burst=model_context_length,
+        max_pre_imgs_per_burst_mw=max_pre_imgs_per_burst_mw,
         delta_lookback_days_mw=delta_lookback_days_mw,
     )
     ensure_earthdata_credentials()

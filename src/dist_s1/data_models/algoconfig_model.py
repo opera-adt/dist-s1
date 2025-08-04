@@ -1,3 +1,4 @@
+import json
 import multiprocessing as mp
 import warnings
 from pathlib import Path
@@ -5,6 +6,7 @@ from pathlib import Path
 import torch
 import yaml
 from distmetrics import get_device
+from distmetrics.model_load import get_model_context_length
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
 from dist_s1.data_models.defaults import (
@@ -31,6 +33,7 @@ from dist_s1.data_models.defaults import (
     DEFAULT_MODEL_WTS_PATH,
     DEFAULT_NO_COUNT_RESET_THRESH,
     DEFAULT_NO_DAY_LIMIT,
+    DEFAULT_N_ANNIVERSARIES_FOR_MW,
     DEFAULT_N_WORKERS_FOR_DESPECKLING,
     DEFAULT_N_WORKERS_FOR_NORM_PARAM_ESTIMATION,
     DEFAULT_PERCENT_RESET_THRESH,
@@ -39,6 +42,7 @@ from dist_s1.data_models.defaults import (
     DEFAULT_TQDM_ENABLED,
     DEFAULT_USE_DATE_ENCODING,
 )
+from dist_s1.localize_rtc_s1 import get_max_pre_imgs_per_burst_mw
 
 
 class AlgoConfigData(BaseModel):
@@ -111,11 +115,11 @@ class AlgoConfigData(BaseModel):
         'False, use the model as is. '
         'True, load the model and compile for CPU or GPU optimizations.',
     )
-    max_pre_imgs_per_burst_mw: list[int] = Field(
+    max_pre_imgs_per_burst_mw: tuple[int, int] | None = Field(
         default=DEFAULT_MAX_PRE_IMGS_PER_BURST_MW,
         description='Max number of pre-images per burst within each window',
     )
-    delta_lookback_days_mw: list[int] = Field(
+    delta_lookback_days_mw: tuple[int, int] | None = Field(
         default=DEFAULT_DELTA_LOOKBACK_DAYS_MW,
         description='Delta lookback days for each window relative to post-image acquisition date',
     )
@@ -203,6 +207,12 @@ class AlgoConfigData(BaseModel):
         default=DEFAULT_USE_DATE_ENCODING,
         description='Whether to use acquisition date encoding in model application (currently not supported)',
     )
+    _model_context_length: int | None = None
+    n_anniversaries_for_mw: int = Field(
+        default=DEFAULT_N_ANNIVERSARIES_FOR_MW,
+        description='Number of anniversaries to use for multi-window',
+    )
+
     # Validate assignments to all fields
     model_config = ConfigDict(validate_assignment=True)
 
@@ -322,6 +332,12 @@ class AlgoConfigData(BaseModel):
             )
         return self
 
+    @property
+    def model_context_length(self) -> int:
+        if self._model_context_length is None:
+            self._model_context_length = get_model_context_length(self.model_source, self.model_cfg_path)
+        return self._model_context_length
+
     @model_validator(mode='after')
     def handle_device_specific_validations(self) -> 'AlgoConfigData':
         """Handle device-specific validations and adjustments."""
@@ -340,6 +356,15 @@ class AlgoConfigData(BaseModel):
                 f'n_workers_for_norm_param_estimation must be 1, '
                 f'but got {self.n_workers_for_norm_param_estimation}. '
                 f'Either set device="cpu", model_compilation=False, or n_workers_for_norm_param_estimation=1.'
+            )
+        return self
+
+    @model_validator(mode='after')
+    def calculate_max_pre_imgs_per_burst_mw(self) -> 'AlgoConfigData':
+        """Calculate max_pre_imgs_per_burst_mw if not provided."""
+        if self.max_pre_imgs_per_burst_mw is None:
+            self.max_pre_imgs_per_burst_mw = get_max_pre_imgs_per_burst_mw(
+                self.model_context_length, self.n_anniversaries_for_mw
             )
         return self
 

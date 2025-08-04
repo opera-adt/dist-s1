@@ -46,11 +46,11 @@ P = ParamSpec('P')  # Captures all parameter types
 R = TypeVar('R')  # Captures the return type
 
 
-def parse_int_list(ctx: click.Context, param: click.Parameter, value: str) -> list[int]:
+def parse_int_list(ctx: click.Context, param: click.Parameter, value: str) -> tuple[int, ...]:
     try:
-        return [int(x.strip()) for x in value.split(',')]
+        return tuple(int(x.strip()) for x in value.split(','))
     except Exception:
-        raise click.BadParameter(f'Invalid list format: {value}. Expected comma-separated integers (e.g., 4,4,2).')
+        raise click.BadParameter(f'Invalid tuple format: {value}. Expected comma-separated integers (e.g., 4,4,2).')
 
 
 @click.group()
@@ -59,7 +59,7 @@ def cli() -> None:
     pass
 
 
-def common_options_for_confirmation_workflow(func: Callable) -> Callable:
+def common_options_for_confirmation_workflows(func: Callable) -> Callable:
     @click.option(
         '--dst_dist_product_parent', type=str, required=True, help='Path to parent directory for new DIST-S1 product.'
     )
@@ -442,7 +442,7 @@ def run_sas(run_config_path: str | Path, algo_config_path: str | Path | None = N
     required=True,
     help='Path to current DIST-S1 product. Confirmed product inherits name from this product.',
 )
-@common_options_for_confirmation_workflow
+@common_options_for_confirmation_workflows
 def run_one_confirmation(
     prior_dist_s1_product: str | Path,
     current_dist_s1_product: str | Path,
@@ -471,7 +471,7 @@ def run_one_confirmation(
 
 @cli.command(name='run_sequential_confirmation')
 @click.option('--directory_of_dist_s1_products', type=str, required=True, help='Path to product directory.')
-@common_options_for_confirmation_workflow
+@common_options_for_confirmation_workflows
 def run_sequential_confirmation(
     directory_of_dist_s1_products: str | Path,
     dst_dist_product_parent: str | Path | None,

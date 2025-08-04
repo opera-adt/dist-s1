@@ -36,6 +36,8 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - To align with dist-hls, we have changed `moderate_confidence_threshold` and `high_confidence_threshold` to now be `low_confidence_alert_threshold` and `high_confidence_alert_threshold`.
 - Moved browse imagery generation into workflows.
 - Consistent multiprocessing within dist-s1 (ensures consistent useage of `spawn` child processes).
+- Handling of model context length to provide maximum number of pre-images (can still be overwritten)
+- Removal of defaults using lists! https://docs.python-guide.org/writing/gotchas/#mutable-default-arguments
 
 ## Added
 - Confirmation python API and CLI

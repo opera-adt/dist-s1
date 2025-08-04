@@ -3,6 +3,7 @@ from pathlib import Path, PosixPath
 
 import pandas as pd
 import yaml
+from distmetrics.model_load import get_model_context_length
 from yaml import Dumper
 
 
