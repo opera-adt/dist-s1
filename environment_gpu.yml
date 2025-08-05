@@ -9,7 +9,7 @@ dependencies:
  - click
  - cudatoolkit=11.8
  - dem_stitcher
- - dist_s1_enumerator
+ - dist_s1_enumerator>=1.0.0
  - distmetrics>=1.0.1
  - flake8
  - flake8-blind-except

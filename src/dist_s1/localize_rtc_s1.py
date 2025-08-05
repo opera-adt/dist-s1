@@ -88,9 +88,8 @@ def localize_rtc_s1(
         post_date=post_date,
         lookback_strategy=lookback_strategy,
         post_date_buffer_days=post_date_buffer_days,
-        max_pre_imgs_per_burst=model_context_length,
-        max_pre_imgs_per_burst_mw=max_pre_imgs_per_burst_mw,
-        delta_lookback_days_mw=delta_lookback_days_mw,
+        max_pre_imgs_per_burst=max_pre_imgs_per_burst_mw,
+        delta_lookback_days=delta_lookback_days_mw,
     )
     ensure_earthdata_credentials()
 
