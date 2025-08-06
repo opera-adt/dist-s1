@@ -36,8 +36,8 @@ class RunConfigData(BaseModel):
     post_rtc_crosspol: list[Path | str] = Field(..., description='List of paths to post-rtc crosspolarization data.')
     prior_dist_s1_product: DistS1ProductDirectory | None = Field(
         default=None,
-        description='Path to prior DIST-S1 product. If None, no prior product is used and confirmation is not'
-        ' performed.',
+        description='Path to prior DIST-S1 product. Can accept str, Path, or DistS1ProductDirectory. '
+        'If None, no prior product is used and confirmation is not performed.',
     )
     mgrs_tile_id: str = Field(..., description='MGRS tile ID. Required to kick-off disturbance processing.')
     dst_dir: Path | str = DEFAULT_DST_DIR
@@ -191,6 +191,17 @@ class RunConfigData(BaseModel):
         if not algo_config_path.is_file():
             raise ValueError(f'Algorithm config path is not a file: {algo_config_path}')
         return algo_config_path
+
+    @field_validator('prior_dist_s1_product', mode='before')
+    def validate_prior_dist_s1_product(
+        cls, prior_dist_s1_product: DistS1ProductDirectory | Path | str | None
+    ) -> DistS1ProductDirectory | None:
+        """Convert string or Path to DistS1ProductDirectory using from_product_path if needed."""
+        if prior_dist_s1_product is None:
+            return None
+        if isinstance(prior_dist_s1_product, DistS1ProductDirectory):
+            return prior_dist_s1_product
+        return DistS1ProductDirectory.from_product_path(prior_dist_s1_product)
 
     @property
     def confirmation(self) -> bool:

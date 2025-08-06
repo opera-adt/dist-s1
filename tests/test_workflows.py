@@ -4,6 +4,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 import geopandas as gpd
+import pytest
 from pytest import MonkeyPatch
 from pytest_mock import MockerFixture
 
@@ -15,6 +16,7 @@ from dist_s1.workflows import (
     run_despeckle_workflow,
     run_dist_s1_sas_workflow,
     run_dist_s1_workflow,
+    run_sequential_confirmation_of_dist_products_workflow,
 )
 
 
@@ -27,7 +29,7 @@ def test_despeckle_workflow(test_dir: Path, test_data_dir: Path, change_local_di
     tmp_dir = test_dir / 'tmp'
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
-    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
+    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2025-01-02_dist_s1_inputs.parquet')
     assert tmp_dir.exists() and tmp_dir.is_dir()
 
     config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir)
@@ -51,20 +53,19 @@ def test_despeckle_workflow(test_dir: Path, test_data_dir: Path, change_local_di
         shutil.rmtree(tmp_dir)
 
 
-def test_burst_disturbance_workflow(test_dir: Path, test_data_dir: Path, change_local_dir: Callable) -> None:
+def test_burst_disturbance_workflow(test_dir: Path, test_data_dir: Path, change_local_dir: Callable, test_10SGD_dist_s1_inputs_parquet_dict) -> None:
     change_local_dir(test_dir)
     tmp_dir = test_dir / 'tmp'
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
-    dirs_to_move = ['tv_despeckle', 'normal_params']
-    for dir_name in dirs_to_move:
-        src_dir = test_data_dir / '10SGD_cropped_dst' / dir_name
-        dst_dir = tmp_dir / dir_name
-        if Path(dst_dir).exists():
-            shutil.rmtree(dst_dir)
-        shutil.copytree(src_dir, dst_dir)
+    src_dir = test_data_dir / '10SGD_cropped_dst' / 'tv_despeckle'
+    dst_dir = tmp_dir / 'tv_despeckle'
+    if Path(dst_dir).exists():
+        shutil.rmtree(dst_dir)
+    shutil.copytree(src_dir, dst_dir)
 
-    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
+    parquet_path = test_10SGD_dist_s1_inputs_parquet_dict['current']
+    df_product = gpd.read_parquet(parquet_path)
     config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir)
     config.apply_water_mask = False
     config.algo_config.device = 'cpu'
@@ -74,15 +75,22 @@ def test_burst_disturbance_workflow(test_dir: Path, test_data_dir: Path, change_
     shutil.rmtree(tmp_dir)
 
 
-def test_dist_s1_sas_workflow(
-    test_dir: Path, test_data_dir: Path, change_local_dir: Callable, test_opera_golden_cropped_dataset: Path
+@pytest.mark.parametrize('current_or_prior', ['current', 'prior'])
+def test_dist_s1_sas_workflow_no_confirmation(
+    test_dir: Path,
+    change_local_dir: Callable,
+    current_or_prior: str,
+    test_opera_golden_cropped_dataset_dict: dict[str, Path],
+    test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path],
 ) -> None:
+    """Tests the dist-s1-sas workflow against a golden dataset."""
     # Ensure that validation is relative to the test directory
     change_local_dir(test_dir)
     tmp_dir = test_dir / 'tmp'
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
-    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
+    parquet_path = test_10SGD_dist_s1_inputs_parquet_dict[current_or_prior]
+    df_product = gpd.read_parquet(parquet_path)
     assert tmp_dir.exists() and tmp_dir.is_dir()
 
     config = RunConfigData.from_product_df(
@@ -95,9 +103,45 @@ def test_dist_s1_sas_workflow(
     run_dist_s1_sas_workflow(config)
 
     product_data = config.product_data_model
-    product_data_golden = DistS1ProductDirectory.from_product_path(test_opera_golden_cropped_dataset)
+    golden_dataset_path = test_opera_golden_cropped_dataset_dict[current_or_prior]
+    product_data_golden = DistS1ProductDirectory.from_product_path(golden_dataset_path)
 
     assert product_data == product_data_golden
+
+    if ERASE_WORKFLOW_OUTPUTS:
+        shutil.rmtree(tmp_dir)
+
+def test_dist_s1_sas_workflow_with_confirmation(
+    test_dir: Path,
+    change_local_dir: Callable,
+    test_opera_golden_cropped_dataset_dict: dict[str, Path],
+    test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path],
+) -> None:
+    """Tests the dist-s1-sas workflow against a golden dataset."""
+    # Ensure that validation is relative to the test directory
+    change_local_dir(test_dir)
+    tmp_dir = test_dir / 'tmp'
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    parquet_path = test_10SGD_dist_s1_inputs_parquet_dict['current']
+    df_product = gpd.read_parquet(parquet_path)
+    assert tmp_dir.exists() and tmp_dir.is_dir()
+
+    config = RunConfigData.from_product_df(
+        df_product,
+        dst_dir=tmp_dir,
+    )
+    config.apply_water_mask = True
+    config.algo_config.device = 'cpu'
+    config.prior_dist_s1_product = test_opera_golden_cropped_dataset_dict['prior']
+
+    run_dist_s1_sas_workflow(config)
+
+    product_data_with_confirmation = config.product_data_model
+    golden_dataset_path_confirmed = test_opera_golden_cropped_dataset_dict['confirmed']
+    product_data_golden_confirmed = DistS1ProductDirectory.from_product_path(golden_dataset_path_confirmed)
+
+    assert product_data_with_confirmation == product_data_golden_confirmed
 
     if ERASE_WORKFLOW_OUTPUTS:
         shutil.rmtree(tmp_dir)
@@ -105,8 +149,8 @@ def test_dist_s1_sas_workflow(
 
 def test_dist_s1_workflow_interface(
     test_dir: Path,
-    test_data_dir: Path,
     change_local_dir: Callable,
+    test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path],
     mocker: MockerFixture,
     monkeypatch: MonkeyPatch,
 ) -> None:
@@ -118,7 +162,8 @@ def test_dist_s1_workflow_interface(
     monkeypatch.setenv('EARTHDATA_USERNAME', 'foo')
     monkeypatch.setenv('EARTHDATA_PASSWORD', 'bar')
 
-    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
+    parquet_path = test_10SGD_dist_s1_inputs_parquet_dict['current']
+    df_product = gpd.read_parquet(parquet_path)
     config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir)
     config.apply_water_mask = False
 
@@ -141,8 +186,8 @@ def test_dist_s1_workflow_interface(
 
 def test_dist_s1_workflow_interface_external_model(
     test_dir: Path,
-    test_data_dir: Path,
     change_local_dir: Callable,
+    test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path],
     mocker: MockerFixture,
     monkeypatch: MonkeyPatch,
 ) -> None:
@@ -166,7 +211,8 @@ def test_dist_s1_workflow_interface_external_model(
     # Create dummy weights file (just a placeholder)
     model_wts_path.write_text('dummy_weights_content')
 
-    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
+    parquet_path = test_10SGD_dist_s1_inputs_parquet_dict['current']
+    df_product = gpd.read_parquet(parquet_path)
     config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir)
     config.apply_water_mask = False
 
@@ -194,3 +240,63 @@ def test_dist_s1_workflow_interface_external_model(
 
     if ERASE_WORKFLOW_OUTPUTS:
         shutil.rmtree(tmp_dir)
+
+
+def test_sequential_confirmation_workflow(
+    test_dir: Path,
+    change_local_dir: Callable,
+    unconfirmed_products_chile_fire_dir: Path,
+    confirmed_products_chile_fire_golden_dir: Path,
+) -> None:
+    """Test sequential confirmation workflow against golden dataset.
+
+    This test:
+    1. Takes unconfirmed products from test_data/products_without_confirmation_cropped__chile-fire_2024
+    2. Runs run_sequential_confirmation_of_dist_products_workflow
+    3. Compares output with golden dataset in test_data/golden_datasets/products_with_confirmation_cropped__chile-fire_2024
+    """
+    # Ensure that validation is relative to the test directory
+    change_local_dir(test_dir)
+    tmp_sequential_dir = test_dir / 'tmp' / 'confirmation_chile_sequential'
+    if tmp_sequential_dir.exists():
+        shutil.rmtree(tmp_sequential_dir)
+    tmp_sequential_dir.mkdir(parents=True, exist_ok=True)
+
+    # Run sequential confirmation workflow with explicit default parameters
+    # Note: These are the default values from DEFAULT_* constants to ensure test stability
+    run_sequential_confirmation_of_dist_products_workflow(
+        directory_of_dist_s1_products=unconfirmed_products_chile_fire_dir,
+        dst_dist_product_parent=tmp_sequential_dir,
+        no_day_limit=30,  # DEFAULT_NO_DAY_LIMIT
+        exclude_consecutive_no_dist=True,  # DEFAULT_EXCLUDE_CONSECUTIVE_NO_DIST
+        percent_reset_thresh=10,  # DEFAULT_PERCENT_RESET_THRESH
+        no_count_reset_thresh=7,  # DEFAULT_NO_COUNT_RESET_THRESH
+        confidence_upper_lim=32000,  # DEFAULT_CONFIDENCE_UPPER_LIM
+        confidence_thresh=31.5,  # DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD (3**2 * 3.5)
+        metric_value_upper_lim=100.0,  # DEFAULT_METRIC_VALUE_UPPER_LIM
+        tqdm_enabled=False,  # Disable progress bar for testing
+    )
+
+    # Compare each confirmed product with the corresponding golden dataset product
+    golden_products = sorted(list(confirmed_products_chile_fire_golden_dir.glob('OPERA*')))
+    confirmed_products = sorted(list(tmp_sequential_dir.glob('OPERA*')))
+
+    assert len(golden_products) == len(confirmed_products), (
+        f"Number of products mismatch: {len(golden_products)} golden vs {len(confirmed_products)} confirmed"
+    )
+
+    # Compare each product using DistS1ProductDirectory __eq__ method
+    for golden_path, confirmed_path in zip(golden_products, confirmed_products):
+        assert golden_path.name == confirmed_path.name, (
+            f"Product name mismatch: {golden_path.name} vs {confirmed_path.name}"
+        )
+
+        golden_product = DistS1ProductDirectory.from_product_path(golden_path)
+        confirmed_product = DistS1ProductDirectory.from_product_path(confirmed_path)
+
+        assert golden_product == confirmed_product, (
+            f"Product comparison failed for {golden_path.name}"
+        )
+
+    if ERASE_WORKFLOW_OUTPUTS:
+        shutil.rmtree(tmp_sequential_dir)

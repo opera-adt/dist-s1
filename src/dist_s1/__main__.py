@@ -17,7 +17,9 @@ from dist_s1.data_models.defaults import (
     DEFAULT_DST_DIR,
     DEFAULT_HIGH_CONFIDENCE_ALERT_THRESHOLD,
     DEFAULT_INPUT_DATA_DIR,
+    DEFAULT_EXCLUDE_CONSECUTIVE_NO_DIST,
     DEFAULT_LOOKBACK_STRATEGY,
+    DEFAULT_NO_DAY_LIMIT,
     DEFAULT_LOW_CONFIDENCE_ALERT_THRESHOLD,
     DEFAULT_MAX_PRE_IMGS_PER_BURST_MW,
     DEFAULT_MEMORY_STRATEGY,
@@ -77,12 +79,14 @@ def common_options_for_confirmation_workflows(func: Callable) -> Callable:
         '--no_day_limit',
         type=int,
         required=False,
+        default=DEFAULT_NO_DAY_LIMIT,
         help='No day limit in the confirmation logic - logic is constrained to this number.',
     )
     @click.option(
         '--exclude_consecutive_no_dist',
         type=bool,
         required=False,
+        default=DEFAULT_EXCLUDE_CONSECUTIVE_NO_DIST,
         help='Whether to exclude consecutive no disturbance.',
     )
     @click.option(

@@ -40,6 +40,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Handling of model context length to provide maximum number of pre-images (can still be overwritten)
 - Removal of defaults using lists! https://docs.python-guide.org/writing/gotchas/#mutable-default-arguments
 - Use dist-s1-enumerator and updated keyword arguments.
+- Golden datasets now use multi-window baselines.
 
 ## Added
 - Confirmation python API and CLI
