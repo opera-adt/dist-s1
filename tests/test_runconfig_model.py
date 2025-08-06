@@ -13,7 +13,9 @@ from dist_s1.data_models.output_models import DistS1ProductDirectory
 from dist_s1.data_models.runconfig_model import RunConfigData
 
 
-def test_input_data_model_from_cropped_dataset(test_dir: Path, change_local_dir: Callable, test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path]) -> None:
+def test_input_data_model_from_cropped_dataset(
+    test_dir: Path, change_local_dir: Callable, test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path]
+) -> None:
     change_local_dir(test_dir)
 
     tmp_dir = test_dir / 'tmp'
@@ -68,27 +70,35 @@ def test_input_data_model_from_cropped_dataset(test_dir: Path, change_local_dir:
     post_rtc_crosspol_tif_filenames_actual = sorted([Path(p).name for p in post_rtc_crosspol_paths])
     post_rtc_copol_tif_filenames_actual = sorted([Path(p).name for p in post_rtc_copol_paths])
 
-    pre_rtc_copol_tif_filenames_expected = sorted(['OPERA_L2_RTC-S1_T137-292319-IW2_20221114T015904Z_20250222T234616Z_S1A_30_v1.0_VV.tif',
-                                                   'OPERA_L2_RTC-S1_T137-292319-IW2_20221126T015904Z_20250228T045856Z_S1A_30_v1.0_VV.tif',
-                                                   'OPERA_L2_RTC-S1_T137-292319-IW2_20221208T015903Z_20250301T173913Z_S1A_30_v1.0_VV.tif',
-                                                   'OPERA_L2_RTC-S1_T137-292319-IW2_20221220T015902Z_20250302T062310Z_S1A_30_v1.0_VV.tif',
-                                                   'OPERA_L2_RTC-S1_T137-292319-IW2_20230101T015902Z_20250118T044147Z_S1A_30_v1.0_VV.tif',
-                                                   'OPERA_L2_RTC-S1_T137-292319-IW2_20231109T015908Z_20231109T105731Z_S1A_30_v1.0_VV.tif',
-                                                   'OPERA_L2_RTC-S1_T137-292319-IW2_20231121T015908Z_20231206T001302Z_S1A_30_v1.0_VV.tif',
-                                                   'OPERA_L2_RTC-S1_T137-292319-IW2_20231203T015908Z_20231203T124004Z_S1A_30_v1.0_VV.tif',
-                                                   'OPERA_L2_RTC-S1_T137-292319-IW2_20231215T015907Z_20231215T143038Z_S1A_30_v1.0_VV.tif',
-                                                   'OPERA_L2_RTC-S1_T137-292319-IW2_20231227T015906Z_20231227T112953Z_S1A_30_v1.0_VV.tif'])
+    pre_rtc_copol_tif_filenames_expected = sorted(
+        [
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20221114T015904Z_20250222T234616Z_S1A_30_v1.0_VV.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20221126T015904Z_20250228T045856Z_S1A_30_v1.0_VV.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20221208T015903Z_20250301T173913Z_S1A_30_v1.0_VV.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20221220T015902Z_20250302T062310Z_S1A_30_v1.0_VV.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20230101T015902Z_20250118T044147Z_S1A_30_v1.0_VV.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20231109T015908Z_20231109T105731Z_S1A_30_v1.0_VV.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20231121T015908Z_20231206T001302Z_S1A_30_v1.0_VV.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20231203T015908Z_20231203T124004Z_S1A_30_v1.0_VV.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20231215T015907Z_20231215T143038Z_S1A_30_v1.0_VV.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20231227T015906Z_20231227T112953Z_S1A_30_v1.0_VV.tif',
+        ]
+    )
 
-    pre_rtc_crosspol_tif_filenames_expected = sorted(['OPERA_L2_RTC-S1_T137-292319-IW2_20221114T015904Z_20250222T234616Z_S1A_30_v1.0_VH.tif',
-                                                      'OPERA_L2_RTC-S1_T137-292319-IW2_20221126T015904Z_20250228T045856Z_S1A_30_v1.0_VH.tif',
-                                                      'OPERA_L2_RTC-S1_T137-292319-IW2_20221208T015903Z_20250301T173913Z_S1A_30_v1.0_VH.tif',
-                                                      'OPERA_L2_RTC-S1_T137-292319-IW2_20221220T015902Z_20250302T062310Z_S1A_30_v1.0_VH.tif',
-                                                      'OPERA_L2_RTC-S1_T137-292319-IW2_20230101T015902Z_20250118T044147Z_S1A_30_v1.0_VH.tif',
-                                                      'OPERA_L2_RTC-S1_T137-292319-IW2_20231109T015908Z_20231109T105731Z_S1A_30_v1.0_VH.tif',
-                                                      'OPERA_L2_RTC-S1_T137-292319-IW2_20231121T015908Z_20231206T001302Z_S1A_30_v1.0_VH.tif',
-                                                      'OPERA_L2_RTC-S1_T137-292319-IW2_20231203T015908Z_20231203T124004Z_S1A_30_v1.0_VH.tif',
-                                                      'OPERA_L2_RTC-S1_T137-292319-IW2_20231215T015907Z_20231215T143038Z_S1A_30_v1.0_VH.tif',
-                                                      'OPERA_L2_RTC-S1_T137-292319-IW2_20231227T015906Z_20231227T112953Z_S1A_30_v1.0_VH.tif'])
+    pre_rtc_crosspol_tif_filenames_expected = sorted(
+        [
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20221114T015904Z_20250222T234616Z_S1A_30_v1.0_VH.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20221126T015904Z_20250228T045856Z_S1A_30_v1.0_VH.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20221208T015903Z_20250301T173913Z_S1A_30_v1.0_VH.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20221220T015902Z_20250302T062310Z_S1A_30_v1.0_VH.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20230101T015902Z_20250118T044147Z_S1A_30_v1.0_VH.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20231109T015908Z_20231109T105731Z_S1A_30_v1.0_VH.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20231121T015908Z_20231206T001302Z_S1A_30_v1.0_VH.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20231203T015908Z_20231203T124004Z_S1A_30_v1.0_VH.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20231215T015907Z_20231215T143038Z_S1A_30_v1.0_VH.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20231227T015906Z_20231227T112953Z_S1A_30_v1.0_VH.tif',
+        ]
+    )
 
     post_rtc_copol_tif_filenames_expected = [
         'OPERA_L2_RTC-S1_T137-292319-IW2_20250102T015901Z_20250102T190143Z_S1A_30_v1.0_VV.tif'
@@ -99,7 +109,7 @@ def test_input_data_model_from_cropped_dataset(test_dir: Path, change_local_dir:
     ]
 
     assert pre_rtc_crosspol_tif_filenames_actual == pre_rtc_crosspol_tif_filenames_expected
-    # assert pre_rtc_copol_tif_filenames_actual == pre_rtc_copol_tif_filenames_expected
+    assert pre_rtc_copol_tif_filenames_actual == pre_rtc_copol_tif_filenames_expected
     assert post_rtc_copol_tif_filenames_actual == post_rtc_copol_tif_filenames_expected
     assert post_rtc_crosspol_tif_filenames_actual == post_rtc_crosspol_tif_filenames_expected
 
@@ -110,16 +120,17 @@ def test_input_data_model_from_cropped_dataset(test_dir: Path, change_local_dir:
     pre_acq_dts_str_actual = [dt.strftime('%Y%m%dT%H%M%S') for dt in pre_acq_dts]
     post_acq_dts_str_actual = [dt.strftime('%Y%m%dT%H%M%S') for dt in post_acq_dts]
 
-    pre_acq_dts_str_expected = ['20221114T015904',
-                                '20221126T015904',
-                                '20221208T015903',
-                                '20221220T015902',
-                                '20230101T015902',
-                                '20231109T015908',
-                                '20231121T015908',
-                                '20231203T015908',
-                                '20231215T015907',
-                                '20231227T015906',
+    pre_acq_dts_str_expected = [
+        '20221114T015904',
+        '20221126T015904',
+        '20221208T015903',
+        '20221220T015902',
+        '20230101T015902',
+        '20231109T015908',
+        '20231121T015908',
+        '20231203T015908',
+        '20231215T015907',
+        '20231227T015906',
     ]
     post_acq_dts_str_expected = ['20250102T015901']
 
@@ -133,7 +144,7 @@ def test_confirmation_property_behavior(
     test_dir: Path,
     test_opera_golden_cropped_dataset_dict: Path,
     change_local_dir: Callable,
-    test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path]
+    test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path],
 ) -> None:
     """Test that confirmation property correctly reflects prior_dist_s1_product state."""
     change_local_dir(test_dir)
@@ -146,7 +157,6 @@ def test_confirmation_property_behavior(
 
     parquet_path = test_10SGD_dist_s1_inputs_parquet_dict['current']
     df_product = gpd.read_parquet(parquet_path)
-
 
     # Test 1: confirmation is False when prior_dist_s1_product is None (default)
     config = RunConfigData.from_product_df(
@@ -193,7 +203,9 @@ def test_confirmation_property_behavior(
     shutil.rmtree(tmp_dir)
 
 
-def test_lookback_strategy_validation(test_dir: Path, change_local_dir: Callable, test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path]) -> None:
+def test_lookback_strategy_validation(
+    test_dir: Path, change_local_dir: Callable, test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path]
+) -> None:
     """Test that lookback_strategy only accepts 'multi_window' and 'immediate_lookback' values."""
     change_local_dir(test_dir)
 
@@ -237,7 +249,9 @@ def test_lookback_strategy_validation(test_dir: Path, change_local_dir: Callable
     shutil.rmtree(tmp_dir)
 
 
-def test_device_resolution(test_dir: Path, change_local_dir: Callable, test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path]) -> None:
+def test_device_resolution(
+    test_dir: Path, change_local_dir: Callable, test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path]
+) -> None:
     """Test that device='best' gets properly resolved to the actual available device."""
     import torch
 
@@ -575,7 +589,9 @@ def test_model_path_validation(test_dir: Path, change_local_dir: Callable) -> No
     shutil.rmtree(tmp_dir)
 
 
-def test_algo_config_path_programmatic_loading(test_dir: Path, change_local_dir: Callable, test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path]) -> None:
+def test_algo_config_path_programmatic_loading(
+    test_dir: Path, change_local_dir: Callable, test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path]
+) -> None:
     """Test that algorithm config is automatically loaded when algo_config_path is provided programmatically."""
     change_local_dir(test_dir)
 
