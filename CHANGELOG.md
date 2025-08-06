@@ -36,7 +36,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `DIST_CMAP` is not `DIST_STATUS_CMAP`.
 - To align with dist-hls, we have changed `moderate_confidence_threshold` and `high_confidence_threshold` to now be `low_confidence_alert_threshold` and `high_confidence_alert_threshold`.
 - Moved browse imagery generation into workflows.
-- Consistent multiprocessing within dist-s1 (ensures consistent useage of `spawn` child processes).
+- Consistent multiprocessing within dist-s1 (ensures consistent useage of `spawn` child processes), closure of pool objects, and configuraiton before imports.
 - Handling of model context length to provide maximum number of pre-images (can still be overwritten)
 - Removal of defaults using lists! https://docs.python-guide.org/writing/gotchas/#mutable-default-arguments
 - Use dist-s1-enumerator and updated keyword arguments.

@@ -92,7 +92,9 @@ def despeckle_and_serialize_rtc_s1(
         ]
 
         # Use multiprocessing to process the files with real-time progress updates
-        with mp.Pool(processes=n_workers) as pool:
+        pool = None
+        try:
+            pool = mp.Pool(processes=n_workers)
             # Use imap for real-time progress updates
             dst_paths = list(
                 tqdm(
@@ -102,5 +104,9 @@ def despeckle_and_serialize_rtc_s1(
                     desc='Despeckling and serializing RTC S1 files',
                 )
             )
+        finally:
+            if pool is not None:
+                pool.close()
+                pool.join()
 
     return dst_paths

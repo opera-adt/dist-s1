@@ -7,6 +7,11 @@ import torch.multiprocessing as torch_mp
 from distmetrics.model_load import get_model_context_length
 from tqdm.auto import tqdm
 
+try:
+    torch_mp.set_start_method('spawn', force=False)
+except RuntimeError:
+    pass
+
 from dist_s1.aws import upload_product_to_s3
 from dist_s1.confirmation import confirm_disturbance_with_prior_product_and_serialize
 from dist_s1.data_models.data_utils import get_max_pre_imgs_per_burst_mw
@@ -39,9 +44,6 @@ from dist_s1.packaging import (
     package_disturbance_tifs_no_confirmation,
 )
 
-
-# Use spawn for multiprocessing
-torch_mp.set_start_method('spawn', force=True)
 
 
 @dataclass
@@ -244,7 +246,9 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
         for args in tqdm(burst_args_list, disable=tqdm_disable, desc='Burst disturbance'):
             _dist_processing_one_burst_wrapper(args)
     else:
-        with torch_mp.Pool(processes=run_config.algo_config.n_workers_for_norm_param_estimation) as pool:
+        pool = None
+        try:
+            pool = torch_mp.Pool(processes=run_config.algo_config.n_workers_for_norm_param_estimation)
             list(
                 tqdm(
                     pool.imap(_dist_processing_one_burst_wrapper, burst_args_list),
@@ -253,6 +257,10 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
                     desc='Burst disturbance',
                 )
             )
+        finally:
+            if pool is not None:
+                pool.close()
+                pool.join()
 
 
 def run_disturbance_merge_workflow(run_config: RunConfigData) -> None:
