@@ -53,7 +53,12 @@ def test_despeckle_workflow(test_dir: Path, test_data_dir: Path, change_local_di
         shutil.rmtree(tmp_dir)
 
 
-def test_burst_disturbance_workflow(test_dir: Path, test_data_dir: Path, change_local_dir: Callable, test_10SGD_dist_s1_inputs_parquet_dict) -> None:
+def test_burst_disturbance_workflow(
+    test_dir: Path,
+    test_data_dir: Path,
+    change_local_dir: Callable,
+    test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path],
+) -> None:
     change_local_dir(test_dir)
     tmp_dir = test_dir / 'tmp'
     tmp_dir.mkdir(parents=True, exist_ok=True)
@@ -110,6 +115,7 @@ def test_dist_s1_sas_workflow_no_confirmation(
 
     if ERASE_WORKFLOW_OUTPUTS:
         shutil.rmtree(tmp_dir)
+
 
 def test_dist_s1_sas_workflow_with_confirmation(
     test_dir: Path,
@@ -253,7 +259,8 @@ def test_sequential_confirmation_workflow(
     This test:
     1. Takes unconfirmed products from test_data/products_without_confirmation_cropped__chile-fire_2024
     2. Runs run_sequential_confirmation_of_dist_products_workflow
-    3. Compares output with golden dataset in test_data/golden_datasets/products_with_confirmation_cropped__chile-fire_2024
+    3. Compares output with golden dataset in test_data/golden_datasets/\
+        products_with_confirmation_cropped__chile-fire_2024
     """
     # Ensure that validation is relative to the test directory
     change_local_dir(test_dir)
@@ -282,21 +289,19 @@ def test_sequential_confirmation_workflow(
     confirmed_products = sorted(list(tmp_sequential_dir.glob('OPERA*')))
 
     assert len(golden_products) == len(confirmed_products), (
-        f"Number of products mismatch: {len(golden_products)} golden vs {len(confirmed_products)} confirmed"
+        f'Number of products mismatch: {len(golden_products)} golden vs {len(confirmed_products)} confirmed'
     )
 
     # Compare each product using DistS1ProductDirectory __eq__ method
     for golden_path, confirmed_path in zip(golden_products, confirmed_products):
         assert golden_path.name == confirmed_path.name, (
-            f"Product name mismatch: {golden_path.name} vs {confirmed_path.name}"
+            f'Product name mismatch: {golden_path.name} vs {confirmed_path.name}'
         )
 
         golden_product = DistS1ProductDirectory.from_product_path(golden_path)
         confirmed_product = DistS1ProductDirectory.from_product_path(confirmed_path)
 
-        assert golden_product == confirmed_product, (
-            f"Product comparison failed for {golden_path.name}"
-        )
+        assert golden_product == confirmed_product, f'Product comparison failed for {golden_path.name}'
 
     if ERASE_WORKFLOW_OUTPUTS:
         shutil.rmtree(tmp_sequential_dir)
