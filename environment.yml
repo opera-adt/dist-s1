@@ -9,6 +9,7 @@ dependencies:
  - click
  - compilers
  - dem_stitcher
+ - dist_s1_enumerator>=1.0.0
  - distmetrics>=1.0.1
  - flake8
  - flake8-blind-except
@@ -34,5 +35,3 @@ dependencies:
  - shapely
  - tile_mate>=0.0.14 
  - tqdm
- - pip:
-    - dist_s1_enumerator>=1.0.0
