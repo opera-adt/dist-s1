@@ -5,8 +5,8 @@ import geopandas as gpd
 import pandas as pd
 import yaml
 from dist_s1_enumerator.asf import append_pass_data, extract_pass_id
-from dist_s1_enumerator.data_models import dist_s1_loc_input_schema
 from dist_s1_enumerator.mgrs_burst_data import get_lut_by_mgrs_tile_ids
+from dist_s1_enumerator.tabular_models import dist_s1_loc_input_schema
 from pandera.pandas import check_input
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, ValidationInfo, field_validator, model_validator
 

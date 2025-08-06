@@ -39,6 +39,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Consistent multiprocessing within dist-s1 (ensures consistent useage of `spawn` child processes).
 - Handling of model context length to provide maximum number of pre-images (can still be overwritten)
 - Removal of defaults using lists! https://docs.python-guide.org/writing/gotchas/#mutable-default-arguments
+- Use dist-s1-enumerator and updated keyword arguments.
 
 ## Added
 - Confirmation python API and CLI
@@ -61,6 +62,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   - Ensuring additional profile keys  for COG in default GTiff are not present.
 - Access of Confirmation of Products in main library (i.e. `from dist_s1 import run_sequential_confirmation_of_dist_products_workflow`)
 - Use specified model context length from specified model to calculate `max_pre_imgs_per_burst_mw` and `delta_lookback_days_mw` if the latter two are unspecified
+- Examples of enumeration of inputs for DIST-S1 triggering with `dist-s1-enumerator>=1.0.0` (used in creation of DIST-S1 time-series and confirmation).
 
 ## Fixed
 - Sequential Confirmation Workflow and downstream functions
