@@ -19,7 +19,7 @@ from dist_s1.data_models.data_utils import (
     get_track_number,
 )
 from dist_s1.data_models.defaults import (
-    DEFAULT_APPLY_WATER_MASK,
+    DEFAULT_APPLY_WATER_MASK,  # Added import for DEFAULT_APPLY_WATER_MASK
     DEFAULT_CHECK_INPUT_PATHS,
     DEFAULT_DST_DIR,
     DEFAULT_INPUT_DATA_DIR,

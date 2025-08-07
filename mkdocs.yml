@@ -1,0 +1,20 @@
+site_name: 'dist-s1'
+repo_url: 'https://github.com/opera-adt/dist-s1'
+
+theme:
+  name: material
+
+nav:
+  - 'Home': 'README.md'
+  - 'Run Configuration': 'config.md'
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            # Hide private members (starting with _)
+            filters: ["!^_"]
+            # Only show the attributes table, not all methods
+            members: []
