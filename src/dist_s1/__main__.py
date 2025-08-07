@@ -15,6 +15,7 @@ from dist_s1.data_models.defaults import (
     DEFAULT_DELTA_LOOKBACK_DAYS_MW,
     DEFAULT_DEVICE,
     DEFAULT_DST_DIR,
+    DEFAULT_EXCLUDE_CONSECUTIVE_NO_DIST,
     DEFAULT_HIGH_CONFIDENCE_ALERT_THRESHOLD,
     DEFAULT_INPUT_DATA_DIR,
     DEFAULT_LOOKBACK_STRATEGY,
@@ -26,6 +27,7 @@ from dist_s1.data_models.defaults import (
     DEFAULT_MODEL_DTYPE,
     DEFAULT_MODEL_SOURCE,
     DEFAULT_NO_COUNT_RESET_THRESH,
+    DEFAULT_NO_DAY_LIMIT,
     DEFAULT_N_ANNIVERSARIES_FOR_MW,
     DEFAULT_N_WORKERS_FOR_DESPECKLING,
     DEFAULT_N_WORKERS_FOR_NORM_PARAM_ESTIMATION,
@@ -77,12 +79,14 @@ def common_options_for_confirmation_workflows(func: Callable) -> Callable:
         '--no_day_limit',
         type=int,
         required=False,
+        default=DEFAULT_NO_DAY_LIMIT,
         help='No day limit in the confirmation logic - logic is constrained to this number.',
     )
     @click.option(
         '--exclude_consecutive_no_dist',
         type=bool,
         required=False,
+        default=DEFAULT_EXCLUDE_CONSECUTIVE_NO_DIST,
         help='Whether to exclude consecutive no disturbance.',
     )
     @click.option(

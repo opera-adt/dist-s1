@@ -9,7 +9,9 @@ import rasterio
 from dist_s1.data_models.output_models import DistS1ProductDirectory
 
 
-def test_product_directory_data_from_product_path(test_dir: Path, test_opera_golden_cropped_dataset: Path) -> None:
+def test_product_directory_data_from_product_path(
+    test_dir: Path, test_opera_golden_cropped_dataset_dict: dict[str, Path]
+) -> None:
     """Tests that a copied directory with a different procesing timestamp is equal.
 
     Also tests if we replace a layer by a random array of the same shape and dtype, the product is not equal.
@@ -17,7 +19,7 @@ def test_product_directory_data_from_product_path(test_dir: Path, test_opera_gol
     tmp_dir = test_dir / 'tmp'
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
-    product_dir_path = Path(test_opera_golden_cropped_dataset)
+    product_dir_path = Path(test_opera_golden_cropped_dataset_dict['current'])
     product_name_dir = product_dir_path.name
     tokens = product_name_dir.split('_')
     # Change processing timestamp

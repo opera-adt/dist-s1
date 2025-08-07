@@ -41,14 +41,32 @@ def test_data_dir() -> Path:
 
 
 @pytest.fixture
-def test_opera_golden_cropped_dataset() -> Path:
+def test_opera_golden_cropped_dataset_dict() -> dict[str, Path]:
     """Fixture to provide the path to the test_out directory."""
-    test_dir = Path(__file__)
-    golden_datasets_dir = test_dir.parent / 'test_data' / 'golden_datasets' / '10SGD'
-    golden_dummy_dataset = (
-        golden_datasets_dir / 'OPERA_L3_DIST-ALERT-S1_T10SGD_20250102T015857Z_20250801T163749Z_S1_30_v0.1'
+    test_dir = Path(__file__).parent
+    golden_datasets_dir_unconfirmed = test_dir / 'test_data' / 'golden_datasets' / '10SGD'
+    golden_datasets_dir_confirmed = test_dir / 'test_data' / 'golden_datasets' / '10SGD_confirmed'
+    golden_dataset_current = (
+        golden_datasets_dir_unconfirmed / 'OPERA_L3_DIST-ALERT-S1_T10SGD_20250102T015857Z_20250806T145521Z_S1_30_v0.1'
     ).resolve()
-    return golden_dummy_dataset
+    golden_dataset_prior = (
+        golden_datasets_dir_unconfirmed / 'OPERA_L3_DIST-ALERT-S1_T10SGD_20241221T015858Z_20250806T145536Z_S1_30_v0.1'
+    ).resolve()
+    golden_dataset_confirmed = (
+        golden_datasets_dir_confirmed / 'OPERA_L3_DIST-ALERT-S1_T10SGD_20250102T015857Z_20250806T154809Z_S1_30_v0.1'
+    ).resolve()
+    assert all([p.exists() for p in [golden_dataset_current, golden_dataset_prior, golden_dataset_confirmed]])
+    return {'current': golden_dataset_current, 'prior': golden_dataset_prior, 'confirmed': golden_dataset_confirmed}
+
+
+@pytest.fixture
+def test_10SGD_dist_s1_inputs_parquet_dict() -> dict[str, Path]:
+    """Fixture to provide the path to the test_out directory."""
+    test_data_dir = Path(__file__).parent / 'test_data'
+    current = test_data_dir / 'cropped' / '10SGD__137__2025-01-02_dist_s1_inputs.parquet'
+    prior = test_data_dir / 'cropped_prior' / '10SGD__137__2024-12-21_dist_s1_inputs.parquet'
+    assert current.exists() and prior.exists()
+    return {'current': current, 'prior': prior}
 
 
 @pytest.fixture
@@ -132,3 +150,21 @@ def runconfig_yaml_template() -> str:
   check_input_paths: false
   algo_config_path: "{algo_config_path}"{additional_params}
 """
+
+
+@pytest.fixture
+def unconfirmed_products_chile_fire_dir() -> Path:
+    """Fixture to provide the path to unconfirmed Chile fire products directory."""
+    test_dir = Path(__file__)
+    unconfirmed_dir = test_dir.parent / 'test_data' / 'products_without_confirmation_cropped__chile-fire_2024'
+    return unconfirmed_dir.resolve()
+
+
+@pytest.fixture
+def confirmed_products_chile_fire_golden_dir() -> Path:
+    """Fixture to provide the path to confirmed Chile fire products golden dataset directory."""
+    test_dir = Path(__file__)
+    confirmed_dir = (
+        test_dir.parent / 'test_data' / 'golden_datasets' / 'products_with_confirmation_cropped__chile-fire_2024'
+    )
+    return confirmed_dir.resolve()

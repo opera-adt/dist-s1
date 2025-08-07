@@ -7,6 +7,12 @@ import torch.multiprocessing as torch_mp
 from distmetrics.model_load import get_model_context_length
 from tqdm.auto import tqdm
 
+
+try:
+    torch_mp.set_start_method('spawn', force=False)
+except RuntimeError:
+    pass
+
 from dist_s1.aws import upload_product_to_s3
 from dist_s1.confirmation import confirm_disturbance_with_prior_product_and_serialize
 from dist_s1.data_models.data_utils import get_max_pre_imgs_per_burst_mw
@@ -38,10 +44,6 @@ from dist_s1.packaging import (
     get_product_tags,
     package_disturbance_tifs_no_confirmation,
 )
-
-
-# Use spawn for multiprocessing
-torch_mp.set_start_method('spawn', force=True)
 
 
 @dataclass
@@ -244,7 +246,9 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
         for args in tqdm(burst_args_list, disable=tqdm_disable, desc='Burst disturbance'):
             _dist_processing_one_burst_wrapper(args)
     else:
-        with torch_mp.Pool(processes=run_config.algo_config.n_workers_for_norm_param_estimation) as pool:
+        pool = None
+        try:
+            pool = torch_mp.Pool(processes=run_config.algo_config.n_workers_for_norm_param_estimation)
             list(
                 tqdm(
                     pool.imap(_dist_processing_one_burst_wrapper, burst_args_list),
@@ -253,6 +257,10 @@ def run_burst_disturbance_workflow(run_config: RunConfigData) -> None:
                     desc='Burst disturbance',
                 )
             )
+        finally:
+            if pool is not None:
+                pool.close()
+                pool.join()
 
 
 def run_disturbance_merge_workflow(run_config: RunConfigData) -> None:
@@ -272,16 +280,16 @@ def run_disturbance_merge_workflow(run_config: RunConfigData) -> None:
 def run_confirmation_of_dist_product_workflow(
     run_config: RunConfigData,
 ) -> None:
-    current_dist_s1_product = run_config.product_data_model.product_dir_path
+    current_dist_s1_product = run_config.product_data_model_no_confirmation
     prior_dist_s1_product = run_config.prior_dist_s1_product
     dst_dist_product_parent = run_config.product_data_model.product_dir_path.parent
-    no_day_limit = run_config.no_day_limit
-    exclude_consecutive_no_dist = run_config.exclude_consecutive_no_dist
-    percent_reset_thresh = run_config.percent_reset_thresh
-    no_count_reset_thresh = run_config.no_count_reset_thresh
-    confidence_upper_lim = run_config.confidence_upper_lim
-    confidence_threshold = run_config.confidence_threshold
-    metric_value_upper_lim = run_config.metric_value_upper_lim
+    no_day_limit = run_config.algo_config.no_day_limit
+    exclude_consecutive_no_dist = run_config.algo_config.exclude_consecutive_no_dist
+    percent_reset_thresh = run_config.algo_config.percent_reset_thresh
+    no_count_reset_thresh = run_config.algo_config.no_count_reset_thresh
+    confidence_upper_lim = run_config.algo_config.confidence_upper_lim
+    confidence_threshold = run_config.algo_config.confirmation_confidence_threshold
+    metric_value_upper_lim = run_config.algo_config.metric_value_upper_lim
     product_tags = get_product_tags(run_config)
 
     confirm_disturbance_with_prior_product_and_serialize(
@@ -293,7 +301,7 @@ def run_confirmation_of_dist_product_workflow(
         percent_reset_thresh=percent_reset_thresh,
         no_count_reset_thresh=no_count_reset_thresh,
         confidence_upper_lim=confidence_upper_lim,
-        confidence_upper_thresh=confidence_threshold,
+        confidence_thresh=confidence_threshold,
         metric_value_upper_lim=metric_value_upper_lim,
         product_tags=product_tags,
     )
@@ -302,8 +310,8 @@ def run_confirmation_of_dist_product_workflow(
 
 
 def run_sequential_confirmation_of_dist_products_workflow(
-    directory_of_dist_s1_products: Path | str | DistS1ProductDirectory,
-    dst_dist_product_parent: Path | str | None,
+    directory_of_dist_s1_products: Path | str,
+    dst_dist_product_parent: Path | str,
     no_day_limit: int = DEFAULT_NO_DAY_LIMIT,
     exclude_consecutive_no_dist: bool = DEFAULT_EXCLUDE_CONSECUTIVE_NO_DIST,
     percent_reset_thresh: int = DEFAULT_PERCENT_RESET_THRESH,
@@ -313,6 +321,13 @@ def run_sequential_confirmation_of_dist_products_workflow(
     metric_value_upper_lim: float = DEFAULT_METRIC_VALUE_UPPER_LIM,
     tqdm_enabled: bool = True,
 ) -> None:
+    if isinstance(directory_of_dist_s1_products, str):
+        directory_of_dist_s1_products = Path(directory_of_dist_s1_products)
+    if isinstance(dst_dist_product_parent, str):
+        dst_dist_product_parent = Path(dst_dist_product_parent)
+        dst_dist_product_parent.mkdir(parents=True, exist_ok=True)
+
+    # Sorted is important here as we assume earlier products are older
     product_dirs = sorted(list(directory_of_dist_s1_products.glob('OPERA*')))
     product_dirs = list(Path(p) for p in product_dirs)
     product_dirs = list(filter(lambda x: x.is_dir(), product_dirs))
@@ -469,18 +484,7 @@ def run_dist_s1_sas_workflow(run_config: RunConfigData) -> Path:
     _ = run_dist_s1_packaging_workflow_no_confirmation(run_config)
 
     if run_config.confirmation:
-        run_confirmation_of_dist_product_workflow(
-            current_dist_s1_product=run_config.product_data_model.product_dir_path,
-            prior_dist_s1_product=run_config.prior_dist_s1_product,
-            dst_dist_product_parent=run_config.product_data_model.product_dir_path,
-            no_day_limit=run_config.no_day_limit,
-            exclude_consecutive_no_dist=run_config.exclude_consecutive_no_dist,
-            percent_reset_thresh=run_config.percent_reset_thresh,
-            no_count_reset_thresh=run_config.no_count_reset_thresh,
-            confidence_upper_lim=run_config.confidence_upper_lim,
-            confidence_threshold=run_config.confidence_threshold,
-            metric_value_upper_lim=run_config.metric_value_upper_lim,
-        )
+        run_confirmation_of_dist_product_workflow(run_config)
     else:
         src = run_config.product_data_model_no_confirmation.product_dir_path
         dst = run_config.product_data_model.product_dir_path

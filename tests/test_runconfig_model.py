@@ -13,13 +13,16 @@ from dist_s1.data_models.output_models import DistS1ProductDirectory
 from dist_s1.data_models.runconfig_model import RunConfigData
 
 
-def test_input_data_model_from_cropped_dataset(test_dir: Path, test_data_dir: Path, change_local_dir: Callable) -> None:
+def test_input_data_model_from_cropped_dataset(
+    test_dir: Path, change_local_dir: Callable, test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path]
+) -> None:
     change_local_dir(test_dir)
 
     tmp_dir = test_dir / 'tmp'
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
-    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
+    parquet_path = test_10SGD_dist_s1_inputs_parquet_dict['current']
+    df_product = gpd.read_parquet(parquet_path)
 
     config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir)
 
@@ -64,34 +67,38 @@ def test_input_data_model_from_cropped_dataset(test_dir: Path, test_data_dir: Pa
     post_rtc_crosspol_paths = df[ind_post & ind_burst].loc_path_crosspol.tolist()
     post_rtc_copol_paths = df[ind_post & ind_burst].loc_path_copol.tolist()
 
-    post_rtc_crosspol_tif_filenames_actual = [Path(p).name for p in post_rtc_crosspol_paths]
-    post_rtc_copol_tif_filenames_actual = [Path(p).name for p in post_rtc_copol_paths]
+    post_rtc_crosspol_tif_filenames_actual = sorted([Path(p).name for p in post_rtc_crosspol_paths])
+    post_rtc_copol_tif_filenames_actual = sorted([Path(p).name for p in post_rtc_copol_paths])
 
-    pre_rtc_copol_tif_filenames_expected = [
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240904T015904Z_20240904T150822Z_S1A_30_v1.0_VV.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240916T015905Z_20240916T114330Z_S1A_30_v1.0_VV.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240928T015905Z_20240929T005548Z_S1A_30_v1.0_VV.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20241010T015906Z_20241010T101259Z_S1A_30_v1.0_VV.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20241022T015905Z_20241022T180854Z_S1A_30_v1.0_VV.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20241103T015905Z_20241103T071409Z_S1A_30_v1.0_VV.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20241115T015905Z_20241115T104237Z_S1A_30_v1.0_VV.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20241127T015904Z_20241205T232915Z_S1A_30_v1.0_VV.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20241209T015903Z_20241212T032725Z_S1A_30_v1.0_VV.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20241221T015902Z_20241221T080422Z_S1A_30_v1.0_VV.tif',
-    ]
+    pre_rtc_copol_tif_filenames_expected = sorted(
+        [
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20221114T015904Z_20250222T234616Z_S1A_30_v1.0_VV.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20221126T015904Z_20250228T045856Z_S1A_30_v1.0_VV.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20221208T015903Z_20250301T173913Z_S1A_30_v1.0_VV.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20221220T015902Z_20250302T062310Z_S1A_30_v1.0_VV.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20230101T015902Z_20250118T044147Z_S1A_30_v1.0_VV.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20231109T015908Z_20231109T105731Z_S1A_30_v1.0_VV.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20231121T015908Z_20231206T001302Z_S1A_30_v1.0_VV.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20231203T015908Z_20231203T124004Z_S1A_30_v1.0_VV.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20231215T015907Z_20231215T143038Z_S1A_30_v1.0_VV.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20231227T015906Z_20231227T112953Z_S1A_30_v1.0_VV.tif',
+        ]
+    )
 
-    pre_rtc_crosspol_tif_filenames_expected = [
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240904T015904Z_20240904T150822Z_S1A_30_v1.0_VH.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240916T015905Z_20240916T114330Z_S1A_30_v1.0_VH.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20240928T015905Z_20240929T005548Z_S1A_30_v1.0_VH.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20241010T015906Z_20241010T101259Z_S1A_30_v1.0_VH.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20241022T015905Z_20241022T180854Z_S1A_30_v1.0_VH.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20241103T015905Z_20241103T071409Z_S1A_30_v1.0_VH.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20241115T015905Z_20241115T104237Z_S1A_30_v1.0_VH.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20241127T015904Z_20241205T232915Z_S1A_30_v1.0_VH.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20241209T015903Z_20241212T032725Z_S1A_30_v1.0_VH.tif',
-        'OPERA_L2_RTC-S1_T137-292319-IW2_20241221T015902Z_20241221T080422Z_S1A_30_v1.0_VH.tif',
-    ]
+    pre_rtc_crosspol_tif_filenames_expected = sorted(
+        [
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20221114T015904Z_20250222T234616Z_S1A_30_v1.0_VH.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20221126T015904Z_20250228T045856Z_S1A_30_v1.0_VH.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20221208T015903Z_20250301T173913Z_S1A_30_v1.0_VH.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20221220T015902Z_20250302T062310Z_S1A_30_v1.0_VH.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20230101T015902Z_20250118T044147Z_S1A_30_v1.0_VH.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20231109T015908Z_20231109T105731Z_S1A_30_v1.0_VH.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20231121T015908Z_20231206T001302Z_S1A_30_v1.0_VH.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20231203T015908Z_20231203T124004Z_S1A_30_v1.0_VH.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20231215T015907Z_20231215T143038Z_S1A_30_v1.0_VH.tif',
+            'OPERA_L2_RTC-S1_T137-292319-IW2_20231227T015906Z_20231227T112953Z_S1A_30_v1.0_VH.tif',
+        ]
+    )
 
     post_rtc_copol_tif_filenames_expected = [
         'OPERA_L2_RTC-S1_T137-292319-IW2_20250102T015901Z_20250102T190143Z_S1A_30_v1.0_VV.tif'
@@ -114,18 +121,17 @@ def test_input_data_model_from_cropped_dataset(test_dir: Path, test_data_dir: Pa
     post_acq_dts_str_actual = [dt.strftime('%Y%m%dT%H%M%S') for dt in post_acq_dts]
 
     pre_acq_dts_str_expected = [
-        '20240904T015904',
-        '20240916T015905',
-        '20240928T015905',
-        '20241010T015906',
-        '20241022T015905',
-        '20241103T015905',
-        '20241115T015905',
-        '20241127T015904',
-        '20241209T015903',
-        '20241221T015902',
+        '20221114T015904',
+        '20221126T015904',
+        '20221208T015903',
+        '20221220T015902',
+        '20230101T015902',
+        '20231109T015908',
+        '20231121T015908',
+        '20231203T015908',
+        '20231215T015907',
+        '20231227T015906',
     ]
-
     post_acq_dts_str_expected = ['20250102T015901']
 
     assert pre_acq_dts_str_actual == pre_acq_dts_str_expected
@@ -135,7 +141,10 @@ def test_input_data_model_from_cropped_dataset(test_dir: Path, test_data_dir: Pa
 
 
 def test_confirmation_property_behavior(
-    test_dir: Path, test_data_dir: Path, test_opera_golden_cropped_dataset: Path, change_local_dir: Callable
+    test_dir: Path,
+    test_opera_golden_cropped_dataset_dict: Path,
+    change_local_dir: Callable,
+    test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path],
 ) -> None:
     """Test that confirmation property correctly reflects prior_dist_s1_product state."""
     change_local_dir(test_dir)
@@ -143,8 +152,11 @@ def test_confirmation_property_behavior(
     tmp_dir = test_dir / 'tmp'
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
-    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
-    product_dir = DistS1ProductDirectory.from_product_path(test_opera_golden_cropped_dataset)
+    golden_dataset_path = test_opera_golden_cropped_dataset_dict['current']
+    product_dir = DistS1ProductDirectory.from_product_path(golden_dataset_path)
+
+    parquet_path = test_10SGD_dist_s1_inputs_parquet_dict['current']
+    df_product = gpd.read_parquet(parquet_path)
 
     # Test 1: confirmation is False when prior_dist_s1_product is None (default)
     config = RunConfigData.from_product_df(
@@ -191,14 +203,17 @@ def test_confirmation_property_behavior(
     shutil.rmtree(tmp_dir)
 
 
-def test_lookback_strategy_validation(test_dir: Path, test_data_dir: Path, change_local_dir: Callable) -> None:
+def test_lookback_strategy_validation(
+    test_dir: Path, change_local_dir: Callable, test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path]
+) -> None:
     """Test that lookback_strategy only accepts 'multi_window' and 'immediate_lookback' values."""
     change_local_dir(test_dir)
 
     tmp_dir = test_dir / 'tmp'
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
-    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
+    parquet_path = test_10SGD_dist_s1_inputs_parquet_dict['current']
+    df_product = gpd.read_parquet(parquet_path)
 
     # Test 1: Valid lookback_strategy values should succeed
     valid_strategies = ['multi_window']
@@ -234,7 +249,9 @@ def test_lookback_strategy_validation(test_dir: Path, test_data_dir: Path, chang
     shutil.rmtree(tmp_dir)
 
 
-def test_device_resolution(test_dir: Path, test_data_dir: Path, change_local_dir: Callable) -> None:
+def test_device_resolution(
+    test_dir: Path, change_local_dir: Callable, test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path]
+) -> None:
     """Test that device='best' gets properly resolved to the actual available device."""
     import torch
 
@@ -243,7 +260,8 @@ def test_device_resolution(test_dir: Path, test_data_dir: Path, change_local_dir
     tmp_dir = test_dir / 'tmp'
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
-    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
+    parquet_path = test_10SGD_dist_s1_inputs_parquet_dict['current']
+    df_product = gpd.read_parquet(parquet_path)
 
     # Test that device='best' gets resolved to an actual device
     config = RunConfigData.from_product_df(
@@ -289,10 +307,10 @@ def test_device_resolution(test_dir: Path, test_data_dir: Path, change_local_dir
 
 def test_algorithm_config_from_yaml(
     test_dir: Path,
-    test_data_dir: Path,
     test_algo_config_path: Path,
     runconfig_yaml_template: str,
     change_local_dir: Callable,
+    test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path],
 ) -> None:
     """Test that algorithm parameters are properly loaded from external YAML file."""
     change_local_dir(test_dir)
@@ -301,7 +319,8 @@ def test_algorithm_config_from_yaml(
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
     # Create a main runconfig YAML file that references the algorithm config
-    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
+    parquet_path = test_10SGD_dist_s1_inputs_parquet_dict['current']
+    df_product = gpd.read_parquet(parquet_path)
 
     main_config_path = tmp_dir / 'test_main_config.yml'
     main_config_content = runconfig_yaml_template.format(
@@ -334,10 +353,10 @@ def test_algorithm_config_from_yaml(
 
 def test_algorithm_config_validation_errors(
     test_dir: Path,
-    test_data_dir: Path,
     test_algo_config_invalid_path: Path,
     runconfig_yaml_template: str,
     change_local_dir: Callable,
+    test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path],
 ) -> None:
     """Test that validation errors are properly raised when invalid algorithm parameter values are provided."""
     change_local_dir(test_dir)
@@ -350,7 +369,8 @@ def test_algorithm_config_validation_errors(
         AlgoConfigData.from_yaml(test_algo_config_invalid_path)
 
     # Test 2: RunConfigData loading should also fail when using an invalid algorithm config
-    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
+    parquet_path = test_10SGD_dist_s1_inputs_parquet_dict['current']
+    df_product = gpd.read_parquet(parquet_path)
 
     main_config_path = tmp_dir / 'test_main_config.yml'
     main_config_content = runconfig_yaml_template.format(
@@ -388,7 +408,7 @@ def test_algorithm_config_validation_errors(
 
 
 def test_model_dtype_device_compatibility_warning(
-    test_dir: Path, test_data_dir: Path, change_local_dir: Callable
+    test_dir: Path, change_local_dir: Callable, test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path]
 ) -> None:
     """Test that warnings are issued when bfloat16 is used with non-GPU devices."""
     change_local_dir(test_dir)
@@ -396,7 +416,8 @@ def test_model_dtype_device_compatibility_warning(
     tmp_dir = test_dir / 'tmp'
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
-    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
+    parquet_path = test_10SGD_dist_s1_inputs_parquet_dict['current']
+    df_product = gpd.read_parquet(parquet_path)
 
     # Test 1: bfloat16 with CPU should issue warning
     with warnings.catch_warnings(record=True) as w:
@@ -568,7 +589,9 @@ def test_model_path_validation(test_dir: Path, change_local_dir: Callable) -> No
     shutil.rmtree(tmp_dir)
 
 
-def test_algo_config_path_programmatic_loading(test_dir: Path, test_data_dir: Path, change_local_dir: Callable) -> None:
+def test_algo_config_path_programmatic_loading(
+    test_dir: Path, change_local_dir: Callable, test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path]
+) -> None:
     """Test that algorithm config is automatically loaded when algo_config_path is provided programmatically."""
     change_local_dir(test_dir)
 
@@ -595,7 +618,8 @@ algo_config:
     with algo_config_path.open('w') as f:
         f.write(algo_config_content)
 
-    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
+    parquet_path = test_10SGD_dist_s1_inputs_parquet_dict['current']
+    df_product = gpd.read_parquet(parquet_path)
 
     # Test that algorithm config is loaded automatically when creating RunConfigData programmatically
     config = RunConfigData.from_product_df(

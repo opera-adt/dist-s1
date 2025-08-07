@@ -1,8 +1,8 @@
-import multiprocessing as mp
 import warnings
 from pathlib import Path
 
 import torch
+import torch.multiprocessing as mp
 import yaml
 from distmetrics import get_device
 from distmetrics.model_load import get_model_context_length
@@ -162,7 +162,7 @@ class AlgoConfigData(BaseModel):
         description='Max observation number per year. If observations exceeds this number, then the confirmation must '
         'conclude and be reset.',
     )
-    conf_upper_lim: int = Field(
+    confidence_upper_lim: int = Field(
         default=DEFAULT_CONFIDENCE_UPPER_LIM,
         description='Confidence upper limit for confirmation. Confidence is an accumulation of the metric over time.',
     )

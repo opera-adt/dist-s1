@@ -19,7 +19,7 @@ def test_dist_s1_sas_main(
     test_dir: Path,
     change_local_dir: Callable[[Path], None],
     cropped_10SGD_dataset_runconfig: Path,
-    test_opera_golden_cropped_dataset: Path,
+    test_opera_golden_cropped_dataset_dict: dict[str, Path],
 ) -> None:
     """Test the dist-s1 sas main function.
 
@@ -33,6 +33,19 @@ def test_dist_s1_sas_main(
     This is because the product paths from the in-memory runconfig object are different from the ones created via yml.
     This is because the product paths have the *processing time* in them, and that is different depending on when the
     runconfig object is created.
+
+    To generate the runconfig, run the following command from the test_dir:
+    ```python
+    from dist_s1.data_models.runconfig_model import RunConfigData
+    import geopandas as gpd
+
+    df = gpd.read_parquet('test_data/cropped/10SGD__137__2025-01-02_dist_s1_inputs.parquet')
+
+    config = RunConfigData.from_product_df(df)
+    config.to_yaml('run_config.yml')
+    ```
+
+    Then remove fields that are not required so they can be set to default.
     """
     # Store original working directory
     change_local_dir(test_dir)
@@ -44,7 +57,7 @@ def test_dist_s1_sas_main(
     if product_dst_dir.exists():
         shutil.rmtree(product_dst_dir)
 
-    product_data_golden = DistS1ProductDirectory.from_product_path(test_opera_golden_cropped_dataset)
+    product_data_golden = DistS1ProductDirectory.from_product_path(test_opera_golden_cropped_dataset_dict['current'])
 
     # Load and modify runconfig - not the paths are relative to the test_dir
     runconfig_data = RunConfigData.from_yaml(cropped_10SGD_dataset_runconfig)
@@ -105,7 +118,7 @@ def test_dist_s1_main_interface(
     monkeypatch.setenv('EARTHDATA_USERNAME', 'foo')
     monkeypatch.setenv('EARTHDATA_PASSWORD', 'bar')
 
-    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
+    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2025-01-02_dist_s1_inputs.parquet')
     config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, apply_water_mask=False)
 
     # We don't need credentials because we mock the data.
@@ -180,7 +193,7 @@ def test_dist_s1_main_interface_external_model(
     # Create dummy weights file (just a placeholder)
     model_wts_path.write_text('dummy_weights_content')
 
-    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
+    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2025-01-02_dist_s1_inputs.parquet')
     config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, apply_water_mask=False)
 
     # We don't need credentials because we mock the data.

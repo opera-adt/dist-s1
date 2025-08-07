@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import numpy as np
+import rasterio
 
 from dist_s1.constants import (
     BASE_DATE_FOR_CONFIRMATION,
@@ -281,6 +282,7 @@ def confirm_disturbance_with_prior_product_and_serialize(
 
     if not isinstance(prior_dist_s1_product, DistS1ProductDirectory):
         prior_dist_s1_product = DistS1ProductDirectory.from_product_path(prior_dist_s1_product)
+    prior_product_name = prior_dist_s1_product.product_name
 
     if dst_dist_product_parent is None:
         dst_dist_product_parent = current_dist_s1_product.product_dir_path.parent
@@ -292,6 +294,11 @@ def confirm_disturbance_with_prior_product_and_serialize(
         dst_dir=dst_dist_product_parent,
         product_name=current_dist_s1_product.product_name,
     )
+    if product_tags is None:
+        with rasterio.open(current_dist_s1_product.layer_path_dict['GEN-METRIC']) as src:
+            product_tags = src.tags()
+        if product_tags is None:
+            raise ValueError('No product tags found in current product; not using correctly formatted product.')
 
     # Get dist_date from a sample path pattern
     current_date_ts = current_dist_s1_product.acq_datetime
@@ -337,6 +344,8 @@ def confirm_disturbance_with_prior_product_and_serialize(
     }
 
     # Serialize output
+    out_product_tags = product_tags.copy()
+    out_product_tags['prior_product_name'] = prior_product_name
     for layer_name in TIF_LAYERS:
         if layer_name in ['GEN-DIST-STATUS', 'GEN-DIST-STATUS-ACQ']:
             cmap = DIST_STATUS_CMAP
@@ -348,6 +357,6 @@ def confirm_disturbance_with_prior_product_and_serialize(
             out_paths_dict[layer_name],
             colormap=cmap,
             cog=True,
-            tags=product_tags,
+            tags=out_product_tags,
         )
     return dst_dist_product_directory
