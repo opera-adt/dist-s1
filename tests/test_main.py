@@ -33,6 +33,19 @@ def test_dist_s1_sas_main(
     This is because the product paths from the in-memory runconfig object are different from the ones created via yml.
     This is because the product paths have the *processing time* in them, and that is different depending on when the
     runconfig object is created.
+
+    To generate the runconfig, run the following command from the test_dir:
+    ```python
+    from dist_s1.data_models.runconfig_model import RunConfigData
+    import geopandas as gpd
+
+    df = gpd.read_parquet('test_data/cropped/10SGD__137__2025-01-02_dist_s1_inputs.parquet')
+
+    config = RunConfigData.from_product_df(df)
+    config.to_yaml('run_config.yml')
+    ```
+
+    Then remove fields that are not required so they can be set to default.
     """
     # Store original working directory
     change_local_dir(test_dir)
