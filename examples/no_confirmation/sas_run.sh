@@ -1,7 +1,7 @@
 dist-s1 run_sas_prep --mgrs_tile_id '11SLT' \
     --post_date '2025-01-21' \
     --track_number 71 \
-    --dst_dir '../notebooks/los-angeles' \
+    --dst_dir '../../notebooks/los-angeles' \
     --memory_strategy 'high' \
     --low_confidence_alert_threshold 3.5 \
     --high_confidence_alert_threshold 5.5 \

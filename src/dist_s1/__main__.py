@@ -153,7 +153,8 @@ def common_options_for_dist_workflows(func: Callable) -> Callable:
         type=str,
         default=str(DEFAULT_DST_DIR),
         required=False,
-        help='Path to intermediate data products',
+        help='Path to intermediate data products; this will also be where the final products are stored if '
+        'product_dst_dir is not provided.',
     )
     @click.option(
         '--memory_strategy',
@@ -345,6 +346,13 @@ def common_options_for_dist_workflows(func: Callable) -> Callable:
         required=False,
         help='Whether to use acquisition date encoding in processing.',
     )
+    @click.option(
+        '--prior_dist_s1_product',
+        type=str,
+        required=False,
+        default=None,
+        help='Path to prior DIST-S1 product. If provided, will be used for confirmation.',
+    )
     @functools.wraps(func)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         return func(*args, **kwargs)
@@ -354,6 +362,7 @@ def common_options_for_dist_workflows(func: Callable) -> Callable:
 
 # SAS Prep Workflow (No Internet Access)
 @cli.command(name='run_sas_prep')
+@common_options_for_dist_workflows
 @click.option(
     '--run_config_path',
     type=str,
@@ -361,17 +370,6 @@ def common_options_for_dist_workflows(func: Callable) -> Callable:
     required=False,
     help='Path to yaml runconfig file that will be created. If not provided, no file will be created.',
 )
-@click.option(
-    '--algo_config_path',
-    type=str,
-    default=None,
-    required=False,
-    help=(
-        'Path to save algorithm parameters to a separate yml file. '
-        'If provided, the main config will reference this file.'
-    ),
-)
-@common_options_for_dist_workflows
 def run_sas_prep(
     mgrs_tile_id: str,
     post_date: str,
@@ -404,6 +402,7 @@ def run_sas_prep(
     algo_config_path: str | Path | None = None,
     model_dtype: str = 'float32',
     use_date_encoding: bool = False,
+    n_anniversaries_for_mw: int = DEFAULT_N_ANNIVERSARIES_FOR_MW,
 ) -> None:
     """Run SAS prep workflow."""
     run_dist_s1_sas_prep_workflow(
@@ -438,13 +437,14 @@ def run_sas_prep(
         run_config_path=run_config_path,
         model_dtype=model_dtype,
         use_date_encoding=use_date_encoding,
+        n_anniversaries_for_mw=n_anniversaries_for_mw,
     )
 
 
 # SAS Workflow (No Internet Access)
 @cli.command(name='run_sas')
 @click.option('--run_config_path', required=True, help='Path to YAML runconfig file', type=click.Path(exists=True))
-def run_sas(run_config_path: str | Path, algo_config_path: str | Path | None = None) -> None:
+def run_sas(run_config_path: str | Path) -> None:
     """Run SAS workflow."""
     run_config = RunConfigData.from_yaml(run_config_path)
     run_dist_s1_sas_workflow(run_config)
@@ -515,6 +515,13 @@ def run_sequential_confirmation(
 # Effectively runs the two workflows above in sequence
 @cli.command(name='run')
 @common_options_for_dist_workflows
+@click.option(
+    '--run_config_path',
+    type=str,
+    default=None,
+    required=False,
+    help='Path to yaml runconfig file that will be created. If not provided, no file will be created.',
+)
 def run(
     mgrs_tile_id: str,
     post_date: str,
@@ -540,13 +547,15 @@ def run(
     model_source: str,
     model_cfg_path: str | Path | None,
     model_wts_path: str | Path | None,
-    n_anniversaries_for_mw: int = DEFAULT_N_ANNIVERSARIES_FOR_MW,
     stride_for_norm_param_estimation: int = 16,
     batch_size_for_norm_param_estimation: int = 32,
     model_compilation: bool = False,
     algo_config_path: str | Path | None = None,
     model_dtype: str = 'float32',
     use_date_encoding: bool = False,
+    n_anniversaries_for_mw: int = DEFAULT_N_ANNIVERSARIES_FOR_MW,
+    run_config_path: str | Path | None = None,
+    prior_dist_s1_product: str | Path | None = None,
 ) -> str:
     """Localize data and run dist_s1_workflow."""
     return run_dist_s1_workflow(
@@ -578,8 +587,11 @@ def run(
         batch_size_for_norm_param_estimation=batch_size_for_norm_param_estimation,
         model_compilation=model_compilation,
         algo_config_path=algo_config_path,
+        n_anniversaries_for_mw=n_anniversaries_for_mw,
         model_dtype=model_dtype,
         use_date_encoding=use_date_encoding,
+        run_config_path=run_config_path,
+        prior_dist_s1_product=prior_dist_s1_product,
     )
 
 

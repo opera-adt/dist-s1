@@ -21,8 +21,10 @@ from dist_s1.data_models.data_utils import (
 from dist_s1.data_models.defaults import (
     DEFAULT_APPLY_WATER_MASK,
     DEFAULT_CHECK_INPUT_PATHS,
+    DEFAULT_DELTA_LOOKBACK_DAYS_MW,
     DEFAULT_DST_DIR,
     DEFAULT_INPUT_DATA_DIR,
+    DEFAULT_MAX_PRE_IMGS_PER_BURST_MW,
     DEFAULT_POST_DATE_BUFFER_DAYS,
 )
 from dist_s1.data_models.output_models import DistS1ProductDirectory, ProductNameData
@@ -291,6 +293,7 @@ class RunConfigData(BaseModel):
         with yaml_file.open('w') as f:
             yaml.dump(yml_dict, f, default_flow_style=False, indent=4, sort_keys=False)
         self.algo_config.to_yml(algo_param_path)
+        self.algo_config_path = algo_param_path
 
     @classmethod
     @check_input(dist_s1_loc_input_schema, obj_getter=0, lazy=True)
@@ -312,12 +315,8 @@ class RunConfigData(BaseModel):
         df_pre = product_df[product_df.input_category == 'pre'].reset_index(drop=True)
         df_post = product_df[product_df.input_category == 'post'].reset_index(drop=True)
         if max_pre_imgs_per_burst_mw is None:
-            from dist_s1.data_models.defaults import DEFAULT_MAX_PRE_IMGS_PER_BURST_MW
-
             max_pre_imgs_per_burst_mw = DEFAULT_MAX_PRE_IMGS_PER_BURST_MW
         if delta_lookback_days_mw is None:
-            from dist_s1.data_models.defaults import DEFAULT_DELTA_LOOKBACK_DAYS_MW
-
             delta_lookback_days_mw = DEFAULT_DELTA_LOOKBACK_DAYS_MW
 
         # Create algorithm config with provided algorithm parameters

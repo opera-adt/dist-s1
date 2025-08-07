@@ -471,8 +471,6 @@ def run_dist_s1_sas_prep_workflow(
     run_config.prior_dist_s1_product = prior_dist_s1_product
     run_config.algo_config.model_dtype = model_dtype
     run_config.algo_config.use_date_encoding = use_date_encoding
-    # This appears last because it will overwrite all the parameters above
-    run_config.algo_config_path = algo_config_path
     if run_config_path is not None:
         run_config.to_yaml(run_config_path, algo_param_path=algo_config_path)
 
@@ -531,6 +529,8 @@ def run_dist_s1_workflow(
     prior_dist_s1_product: str | Path | None = None,
     model_dtype: str = 'float32',
     use_date_encoding: bool = False,
+    run_config_path: str | Path | None = None,
+    n_anniversaries_for_mw: int = DEFAULT_N_ANNIVERSARIES_FOR_MW,
 ) -> Path:
     run_config = run_dist_s1_sas_prep_workflow(
         mgrs_tile_id,
@@ -567,6 +567,8 @@ def run_dist_s1_workflow(
         prior_dist_s1_product=prior_dist_s1_product,
         model_dtype=model_dtype,
         use_date_encoding=use_date_encoding,
+        run_config_path=run_config_path,
+        n_anniversaries_for_mw=n_anniversaries_for_mw,
     )
     _ = run_dist_s1_sas_workflow(run_config)
 
