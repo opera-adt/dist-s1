@@ -10,7 +10,14 @@ from rasterio.warp import transform_bounds as transform_bounds_into_crs
 from shapely.geometry import box
 from tile_mate import get_raster_from_tiles
 
-from dist_s1.rio_tools import get_mgrs_profile
+from dist_s1.rio_tools import get_mgrs_profile, open_one_ds
+
+
+def apply_water_mask(band_src: np.ndarray, profile_src: dict, water_mask_path: Path | str | None = None) -> np.ndarray:
+    X_wm, p_wm = open_one_ds(water_mask_path)
+    check_water_mask_profile(p_wm, profile_src)
+    band_src[X_wm == 1] = profile_src['nodata']
+    return band_src
 
 
 def check_water_mask_profile(water_mask_profile: dict, ref_profile: dict) -> None:
@@ -35,25 +42,18 @@ def get_water_mask(mgrs_tile_id: str, out_path: Path, overwrite: bool = False) -
     mgrs_bounds_utm = get_array_bounds(height, width, transform)
     mgrs_bounds_4326 = transform_bounds_into_crs(profile_mgrs['crs'], CRS.from_epsg(4326), *mgrs_bounds_utm)
 
-    X_glad_lc, p_glad_lc = get_raster_from_tiles(mgrs_bounds_4326, tile_shortname='glad_landcover', year=2020)
+    # The ocean mask is distance to land in km
+    X_dist_to_land, p_dist = get_raster_from_tiles(mgrs_bounds_4326, tile_shortname='umd_ocean_mask')
 
     # open water classes
-    water_labels = [k for k in range(203, 208)]  # These are pixels that have surface water at least 50% of the time.
-    water_labels.extend(
-        [
-            254,  # ocean
-            255,  # no data
-        ]
-    )
-    X_water_glad = np.isin(X_glad_lc[0, ...], water_labels).astype(np.uint8)
+    water_labels = [2, 3, 4]  # These are pixels that are more than 1 km from land
+    X_om = np.isin(X_dist_to_land[0, ...], water_labels).astype(np.uint8)
 
-    X_water_glad_r, p_water_glad = reproject_arr_to_match_profile(
-        X_water_glad, p_glad_lc, profile_mgrs, resampling='nearest'
-    )
-    X_water_glad_r = X_water_glad_r[0, ...]
+    X_om_r, p_om_r = reproject_arr_to_match_profile(X_om, p_dist, profile_mgrs, resampling='nearest')
+    X_om_r = X_om_r[0, ...]
 
-    with rasterio.open(out_path, 'w', **p_water_glad) as dst:
-        dst.write(X_water_glad_r, 1)
+    with rasterio.open(out_path, 'w', **p_om_r) as dst:
+        dst.write(X_om_r, 1)
 
     return out_path
 

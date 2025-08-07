@@ -1,0 +1,6 @@
+# Test algorithm configuration for testing parameter conflicts
+interpolation_method: bilinear
+low_confidence_alert_threshold: 4.2
+device: cpu
+apply_despeckling: false
+memory_strategy: low 

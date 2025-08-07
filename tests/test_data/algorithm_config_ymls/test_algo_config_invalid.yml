@@ -1,0 +1,12 @@
+interpolation_method: bar  # Invalid - should be one of 'nearest', 'bilinear', 'none'
+device: foo  # Invalid - should be one of 'best', 'cuda', 'mps', 'cpu'
+memory_strategy: invalid  # Invalid - should be one of 'high', 'low'
+low_confidence_alert_threshold: 3.8
+high_confidence_alert_threshold: 6.2
+apply_despeckling: false
+apply_logit_to_inputs: true
+batch_size_for_norm_param_estimation: 128
+stride_for_norm_param_estimation: 8
+n_workers_for_despeckling: 4
+tqdm_enabled: false
+model_compilation: true 

@@ -1,33 +1,59 @@
+import numpy as np
+import pandas as pd
+
+
 PRODUCT_VERSION = '0.1'
 
-MODEL_CONTEXT_LENGTH = 10
+# Confirmation
+BASE_DATE_FOR_CONFIRMATION = pd.Timestamp('2020-12-31', tz='UTC')
 
+# Disturbance labels
 DISTLABEL2VAL = {
     'nodata': 255,
     'no_disturbance': 0,
-    'first_moderate_conf_disturbance': 1,
-    'provisional_moderate_conf_disturbance': 2,
-    'confirmed_moderate_conf_disturbance': 3,
+    'first_low_conf_disturbance': 1,
+    'provisional_low_conf_disturbance': 2,
+    'confirmed_low_conf_disturbance': 3,
     'first_high_conf_disturbance': 4,
     'provisional_high_conf_disturbance': 5,
     'confirmed_high_conf_disturbance': 6,
+    'confirmed_low_conf_disturbance_finished': 7,
+    'confirmed_high_conf_disturbance_finished': 8,
 }
 DISTVAL2LABEL = {v: k for k, v in DISTLABEL2VAL.items()}
 
-COLORBLIND_DIST_CMAP = {
-    0: (255, 255, 255, 255),  # No disturbance (White)
-    1: (173, 216, 230, 255),  # First low (Light Blue)
-    2: (100, 149, 237, 255),  # Provisional low (Cornflower Blue)
-    3: (25, 25, 112, 255),  # Confirmed low (Midnight Blue)
-    7: (10, 10, 60, 255),  # Confirmed low finished (Very Dark Blue)
-    4: (255, 182, 193, 255),  # First high (Light Pink)
-    5: (255, 99, 71, 255),  # Provisional high (Tomato Red)
-    6: (178, 34, 34, 255),  # Confirmed high (Firebrick Red)
-    8: (139, 0, 0, 255),  # Confirmed high finished (Dark Red)
-    255: (128, 128, 128, 255),  # No data (Grey)
+TIF_LAYER_DTYPES = {
+    'GEN-DIST-STATUS': 'uint8',
+    'GEN-METRIC': 'float32',
+    'GEN-DIST-STATUS-ACQ': 'uint8',
+    'GEN-METRIC-MAX': 'float32',
+    'GEN-DIST-CONF': 'float32',
+    'GEN-DIST-DATE': 'int16',
+    'GEN-DIST-COUNT': 'uint8',
+    'GEN-DIST-PERC': 'uint8',
+    'GEN-DIST-DUR': 'int16',
+    'GEN-DIST-LAST-DATE': 'int16',
 }
+TIF_LAYER_NODATA_VALUES = {
+    'GEN-DIST-STATUS': 255,
+    'GEN-DIST-STATUS-ACQ': 255,
+    'GEN-METRIC': np.nan,
+    'GEN-METRIC-MAX': np.nan,
+    'GEN-DIST-CONF': -1,
+    'GEN-DIST-DATE': -1,
+    'GEN-DIST-COUNT': 255,
+    'GEN-DIST-PERC': 255,
+    'GEN-DIST-DUR': -1,
+    'GEN-DIST-LAST-DATE': -1,
+}
+TIF_LAYERS = TIF_LAYER_DTYPES.keys()
+EXPECTED_FORMAT_STRING = (
+    'OPERA_L3_DIST-ALERT-S1_T{mgrs_tile_id}_{acq_datetime}_{proc_datetime}_S1_30_v{PRODUCT_VERSION}'
+)
 
-DIST_CMAP = {
+
+# Colormaps
+DIST_STATUS_CMAP = {
     0: (18, 18, 18, 255),  # No disturbance
     1: (0, 85, 85, 255),  # First low
     2: (137, 127, 78, 255),  # Provisional low

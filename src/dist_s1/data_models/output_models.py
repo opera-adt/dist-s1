@@ -1,48 +1,24 @@
 from datetime import datetime
 from pathlib import Path
+from typing import ClassVar
 from warnings import warn
 
 import numpy as np
 import rasterio
 from pydantic import BaseModel, field_validator, model_validator
 
-from dist_s1.constants import PRODUCT_VERSION
+from dist_s1.constants import EXPECTED_FORMAT_STRING, PRODUCT_VERSION, TIF_LAYERS, TIF_LAYER_DTYPES
+from dist_s1.data_models.data_utils import get_acquisition_datetime
+from dist_s1.rio_tools import get_mgrs_profile
+from dist_s1.water_mask import apply_water_mask
 
-
-TIF_LAYER_DTYPES = {
-    'GEN-DIST-STATUS': 'uint8',
-    'GEN-METRIC': 'float32',
-    'GEN-DIST-STATUS-ACQ': 'uint8',
-    'GEN-METRIC-MAX': 'int16',
-    'GEN-DIST-CONF': 'int16',
-    'GEN-DIST-DATE': 'int16',
-    'GEN-DIST-COUNT': 'uint8',
-    'GEN-DIST-PERC': 'uint8',
-    'GEN-DIST-DUR': 'int16',
-    'GEN-DIST-LAST-DATE': 'int16',
-}
-COMP_BASELINE_LAYERS = {'GEN-DIST-STATUS', 'GEN-METRIC', 'GEN-DIST-STATUS-ACQ'}
-CONF_DB_LAYERS = {
-    'GEN-DIST-STATUS',
-    'GEN-METRIC',
-    'GEN-METRIC-MAX',
-    'GEN-DIST-CONF',
-    'GEN-DIST-DATE',
-    'GEN-DIST-COUNT',
-    'GEN-DIST-PERC',
-    'GEN-DIST-DUR',
-    'GEN-DIST-LAST-DATE',
-}
-TIF_LAYERS = TIF_LAYER_DTYPES.keys()
-EXPECTED_FORMAT_STRING = (
-    'OPERA_L3_DIST-ALERT-S1_T{mgrs_tile_id}_{acq_datetime}_{proc_datetime}_S1_30_v{PRODUCT_VERSION}'
-)
 
 PRODUCT_TAGS_FOR_EQUALITY = [
     'pre_rtc_opera_ids',
     'post_rtc_opera_ids',
-    'high_confidence_threshold',
-    'moderate_confidence_threshold',
+    'low_confidence_alert_threshold',
+    'high_confidence_alert_threshold',
+    'model_source',
 ]
 REQUIRED_PRODUCT_TAGS = PRODUCT_TAGS_FOR_EQUALITY + ['version']
 
@@ -175,9 +151,10 @@ class ProductFileData(BaseModel):
         return True, 'Files match perfectly.'
 
 
-class ProductDirectoryData(BaseModel):
+class DistS1ProductDirectory(BaseModel):
     product_name: str
     dst_dir: Path | str
+    tif_layer_dtypes: ClassVar[dict[str, str]] = dict(TIF_LAYER_DTYPES)
 
     @property
     def product_dir_path(self) -> Path:
@@ -209,10 +186,14 @@ class ProductDirectoryData(BaseModel):
         layer_dict['browse'] = self.product_dir_path / f'{self.product_name}.png'
         return layer_dict
 
+    @property
+    def acq_datetime(self) -> datetime:
+        return get_acquisition_datetime(self.product_dir_path)
+
     def validate_layer_paths(self) -> bool:
         failed_layers = []
         for layer, path in self.layer_path_dict.items():
-            if layer not in COMP_BASELINE_LAYERS:
+            if layer not in TIF_LAYERS:
                 continue
             if not path.exists():
                 warn(f'Layer {layer} does not exist at path: {path}', UserWarning)
@@ -222,33 +203,7 @@ class ProductDirectoryData(BaseModel):
     def validate_tif_layer_dtypes(self) -> bool:
         failed_layers = []
         for layer, path in self.layer_path_dict.items():
-            if layer not in COMP_BASELINE_LAYERS:
-                continue
-            if path.suffix == '.tif':
-                with rasterio.open(path) as src:
-                    if src.dtypes[0] != TIF_LAYER_DTYPES[layer]:
-                        warn(
-                            f'Layer {layer} has incorrect dtype: {src.dtypes[0]}; should be: {TIF_LAYER_DTYPES[layer]}',
-                            UserWarning,
-                        )
-                        failed_layers.append(layer)
-        return len(failed_layers) == 0
-
-    # Validate CONF DB layers. To do: fix the repeated code for a better method
-    def validate_conf_db_layer_paths(self) -> bool:
-        failed_layers = []
-        for layer, path in self.layer_path_dict.items():
-            if layer not in CONF_DB_LAYERS:
-                continue
-            if not path.exists():
-                warn(f'Layer {layer} does not exist at path: {path}', UserWarning)
-                failed_layers.append(layer)
-        return len(failed_layers) == 0
-
-    def validate_conf_db_tif_layer_dtypes(self) -> bool:
-        failed_layers = []
-        for layer, path in self.layer_path_dict.items():
-            if layer not in CONF_DB_LAYERS:
+            if layer not in TIF_LAYERS:
                 continue
             if path.suffix == '.tif':
                 with rasterio.open(path) as src:
@@ -261,7 +216,7 @@ class ProductDirectoryData(BaseModel):
         return len(failed_layers) == 0
 
     def __eq__(
-        self, other: 'ProductDirectoryData', *, rtol: float = 1e-05, atol: float = 1e-05, equal_nan: bool = True
+        self, other: 'DistS1ProductDirectory', *, rtol: float = 1e-05, atol: float = 1e-05, equal_nan: bool = True
     ) -> bool:
         """Compare two ProductDirectoryData instances for equality.
 
@@ -348,7 +303,7 @@ class ProductDirectoryData(BaseModel):
         return equality
 
     @classmethod
-    def from_product_path(cls, product_dir_path: Path | str) -> 'ProductDirectoryData':
+    def from_product_path(cls, product_dir_path: Path | str) -> 'DistS1ProductDirectory':
         """Create a ProductDirectoryData instance from an existing product directory path.
 
         Parameters
@@ -383,3 +338,93 @@ class ProductDirectoryData(BaseModel):
             raise ValueError(f'Product directory contains layers with incorrect dtypes: {product_dir_path}')
 
         return obj
+
+    @classmethod
+    def generate_product_path_with_placeholders(
+        cls,
+        mgrs_tile_id: str,
+        acq_datetime: datetime,
+        dst_dir: Path | str,
+        water_mask_path: Path | str | None = None,
+        overwrite: bool = False,
+    ) -> 'DistS1ProductDirectory':
+        """Generate a product directory with placeholder GeoTIFF files containing zeros.
+
+        Parameters
+        ----------
+        mgrs_tile_id : str
+            MGRS tile ID for the product
+        acq_datetime : datetime
+            Acquisition datetime for the product
+        dst_dir : Path | str
+            Directory where the product will be created
+        water_mask_path : Path | str | None, optional
+            Path to water mask file. If provided, water mask will be validated and applied to all layers.
+            If None, no water mask is applied.
+        overwrite : bool, optional
+            If True, overwrite existing files. If False, skip if files exist.
+
+        Returns
+        -------
+        ProductDirectoryData
+            Instance of ProductDirectoryData with generated placeholder files
+
+        Raises
+        ------
+        FileNotFoundError
+            If water_mask_path is provided but the file doesn't exist
+        ValueError
+            If product name validation fails, water mask doesn't cover the MGRS tile, or water mask application fails
+        """
+        # Create processing datetime (current time)
+        processing_datetime = datetime.now()
+
+        # Create product name data
+        product_name_data = ProductNameData(
+            mgrs_tile_id=mgrs_tile_id, acq_date_time=acq_datetime, processing_date_time=processing_datetime
+        )
+
+        # Create product directory data
+        product_dir_data = cls(product_name=str(product_name_data), dst_dir=dst_dir)
+
+        # Validate water mask if provided
+        if water_mask_path is not None:
+            water_mask_path = Path(water_mask_path)
+            if not water_mask_path.exists():
+                raise FileNotFoundError(f'Water mask file does not exist: {water_mask_path}')
+
+        # Create placeholder arrays for each layer
+        for layer_name in TIF_LAYERS:
+            layer_path = product_dir_data.layer_path_dict[layer_name]
+
+            # Skip if file exists and overwrite is False
+            if layer_path.exists() and not overwrite:
+                continue
+
+            # Get dtype for this layer
+            dtype_str = cls.tif_layer_dtypes[layer_name]
+            dtype = np.dtype(dtype_str)
+
+            # Set nodata value based on dtype
+            if np.issubdtype(dtype, np.floating):
+                nodata_value = np.nan
+            else:
+                nodata_value = 255
+
+            # Get MGRS profile for the tile with correct dtype and nodata
+            mgrs_profile = get_mgrs_profile(mgrs_tile_id, dtype=dtype, nodata=nodata_value)
+
+            # Create zero array with correct shape and dtype
+            height = mgrs_profile['height']
+            width = mgrs_profile['width']
+            zero_array = np.zeros((height, width), dtype=dtype)
+
+            # Apply water mask if provided
+            if water_mask_path is not None:
+                zero_array = apply_water_mask(zero_array, mgrs_profile, water_mask_path)
+
+            # Write the GeoTIFF file
+            with rasterio.open(layer_path, 'w', **mgrs_profile) as dst:
+                dst.write(zero_array, 1)
+
+        return product_dir_data

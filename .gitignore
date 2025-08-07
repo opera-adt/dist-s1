@@ -92,11 +92,18 @@ notebooks/out/
 notebooks/los-angeles/
 
 
+# Notes
+notes/
+
+
 # Notebooks in tests
 tests/*.ipynb
 
 # Runner in nb directory
 notebooks/runner.py
+
+# Notebook Data Output
+notebooks/time_series/
 
 # Deprecated
 deprecated/
@@ -110,3 +117,6 @@ tests/out/
 # Temporary directories for tests
 tests/tmp/
 tests/tmp2/
+
+# Testing notebooks
+_testing

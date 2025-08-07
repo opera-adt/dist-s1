@@ -4,6 +4,7 @@ import numpy as np
 import rasterio
 from dist_s1_enumerator.mgrs_burst_data import get_mgrs_tile_table_by_ids
 from rasterio.crs import CRS
+from rasterio.enums import Resampling
 from rasterio.profiles import default_gtiff_profile
 from rasterio.transform import from_origin
 from shapely import from_wkt
@@ -41,9 +42,26 @@ def open_one_profile(path: Path) -> dict:
 
 
 def serialize_one_2d_ds(
-    arr: np.ndarray, p: dict, out_path: Path, colormap: dict | None = None, tags: dict | None = None
+    arr: np.ndarray, p: dict, out_path: Path, colormap: dict | None = None, tags: dict | None = None, cog: bool = False
 ) -> Path:
-    with rasterio.open(out_path, 'w', **p) as ds:
+    p_out = p.copy()
+    if cog:
+        # Unsupported cog fields
+        p_out.pop('tiled', None)
+        p_out.pop('interleave', None)
+        p_out.pop('blockxsize', None)
+        p_out.pop('blockysize', None)
+        p_out.update(
+            {
+                'driver': 'COG',
+                'compress': 'DEFLATE',
+                'predictor': 2,
+                'blocksize': 512,  # valid for COG
+                'resampling': Resampling.average,
+                'BIGTIFF': 'IF_SAFER',
+            }
+        )
+    with rasterio.open(out_path, 'w', **p_out) as ds:
         ds.write(arr, 1)
         if colormap is not None:
             ds.write_colormap(1, colormap)

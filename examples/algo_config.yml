@@ -1,0 +1,33 @@
+algo_config:
+    device: cpu
+    memory_strategy: high
+    tqdm_enabled: true
+    n_workers_for_norm_param_estimation: 4
+    batch_size_for_norm_param_estimation: 32
+    stride_for_norm_param_estimation: 8
+    apply_logit_to_inputs: true
+    n_workers_for_despeckling: 8
+    lookback_strategy: multi_window
+    post_date_buffer_days: 1
+    model_compilation: false
+    max_pre_imgs_per_burst_mw:
+    - 5
+    - 5
+    delta_lookback_days_mw:
+    - 730
+    - 365
+    low_confidence_alert_threshold: 3.5
+    high_confidence_alert_threshold: 5.5
+    nodaylimit: 18
+    max_obs_num_year: 253
+    conf_upper_lim: 32000
+    conf_thresh: 31.5
+    metric_value_upper_lim: 100.0
+    base_date_for_confirmation: 2020-12-31 00:00:00
+    model_source: transformer_original
+    model_cfg_path:
+    model_wts_path:
+    apply_despeckling: true
+    interpolation_method: bilinear
+    model_dtype: float32
+    use_date_encoding: false

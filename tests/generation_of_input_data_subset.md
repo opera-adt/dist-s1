@@ -1,9 +1,10 @@
 # Generation of Input Data Workflow/Processing Tests
 
 The DIST-S1 runconfig does a lot of validation of the input data including ensuring all the burst data provided as input is coregistered, that their dates are consistent, etc.
-However, there is a nice way to "trick" (or "flaw") in our workflows that can be exploited into processing a smaller set of data - we can replace the input RTC-S1 with a cropped subset georeferenced to the cropped area.
-Despite all the validation we do, we do not check that the input burst data itself spans some fixed area (so if we replace the expected input file with a cropped subset, the workflow will not catch this and still run).
-So we can provide inputs that are a small fraction of what is nominally provided and ensure the workflow runs correctly.
+However, there is a nice way to trick (or maybe this is a flaw in our design) in our workflows that can be exploited into processing a smaller set of data - we can replace the input RTC-S1 with a cropped subset.
+Despite all the validation we do, we do not check that the input burst data itself spans some fixed area.
+Thus, we can replace the expected input file with a cropped subset, the workflow will not catch this and still run.
+The workflow will run much, much faster.
 
 We do a considerable amount of testing and since our workflow is IO heavy, we have to be careful in regards to providing paths to the workflow.
 

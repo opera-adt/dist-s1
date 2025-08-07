@@ -1,7 +1,6 @@
-from dist_s1.data_models.output_models import ProductDirectoryData as ProductDirectoryData
-from dist_s1.data_models.output_models import ProductFileData as ProductFileData
-from dist_s1.data_models.output_models import ProductNameData as ProductNameData
-from dist_s1.data_models.runconfig_model import RunConfigData as RunConfigData
+from dist_s1.data_models.algoconfig_model import AlgoConfigData
+from dist_s1.data_models.output_models import DistS1ProductDirectory
+from dist_s1.data_models.runconfig_model import RunConfigData
 
 
-__all__ = ['ProductDirectoryData', 'ProductNameData', 'ProductFileData', 'RunConfigData']
+__all__ = ['AlgoConfigData', 'RunConfigData', 'DistS1ProductDirectory']

@@ -1,3 +1,4 @@
+import json
 import shutil
 from collections.abc import Callable
 from pathlib import Path
@@ -7,17 +8,15 @@ import pytest
 from pytest import MonkeyPatch
 from pytest_mock import MockerFixture
 
-from dist_s1.data_models.output_models import ProductDirectoryData
+from dist_s1.data_models.output_models import DistS1ProductDirectory
 from dist_s1.data_models.runconfig_model import RunConfigData
 from dist_s1.rio_tools import check_profiles_match, open_one_profile
 from dist_s1.workflows import (
-    curate_input_burst_rtc_input_for_dist,
-    curate_input_burst_rtc_s1_paths_for_normal_param_est,
     run_burst_disturbance_workflow,
     run_despeckle_workflow,
     run_dist_s1_sas_workflow,
     run_dist_s1_workflow,
-    run_normal_param_estimation_workflow,
+    run_sequential_confirmation_of_dist_products_workflow,
 )
 
 
@@ -30,10 +29,11 @@ def test_despeckle_workflow(test_dir: Path, test_data_dir: Path, change_local_di
     tmp_dir = test_dir / 'tmp'
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
-    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
+    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2025-01-02_dist_s1_inputs.parquet')
     assert tmp_dir.exists() and tmp_dir.is_dir()
 
-    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, apply_water_mask=False)
+    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir)
+    config.apply_water_mask = False
 
     run_despeckle_workflow(config)
 
@@ -53,119 +53,63 @@ def test_despeckle_workflow(test_dir: Path, test_data_dir: Path, change_local_di
         shutil.rmtree(tmp_dir)
 
 
-def test_normal_params_workflow(test_dir: Path, test_data_dir: Path, change_local_dir: Callable) -> None:
-    change_local_dir(test_dir)
-
-    tmp_dir = test_dir / 'tmp'
-    tmp_dir.mkdir(parents=True, exist_ok=True)
-
-    src_tv_dir = test_data_dir / '10SGD_cropped_dst' / 'tv_despeckle'
-
-    dst_tv_dir = tmp_dir / 'tv_despeckle'
-
-    if Path(dst_tv_dir).exists():
-        shutil.rmtree(dst_tv_dir)
-    shutil.copytree(src_tv_dir, dst_tv_dir)
-
-    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
-    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, apply_water_mask=False)
-
-    run_normal_param_estimation_workflow(config)
-
-    if ERASE_WORKFLOW_OUTPUTS:
-        shutil.rmtree(tmp_dir)
-
-
-def test_burst_disturbance_workflow(test_dir: Path, test_data_dir: Path, change_local_dir: Callable) -> None:
+def test_burst_disturbance_workflow(
+    test_dir: Path,
+    test_data_dir: Path,
+    change_local_dir: Callable,
+    test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path],
+) -> None:
     change_local_dir(test_dir)
     tmp_dir = test_dir / 'tmp'
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
-    dirs_to_move = ['tv_despeckle', 'normal_params']
-    for dir_name in dirs_to_move:
-        src_dir = test_data_dir / '10SGD_cropped_dst' / dir_name
-        dst_dir = tmp_dir / dir_name
-        if Path(dst_dir).exists():
-            shutil.rmtree(dst_dir)
-        shutil.copytree(src_dir, dst_dir)
+    src_dir = test_data_dir / '10SGD_cropped_dst' / 'tv_despeckle'
+    dst_dir = tmp_dir / 'tv_despeckle'
+    if Path(dst_dir).exists():
+        shutil.rmtree(dst_dir)
+    shutil.copytree(src_dir, dst_dir)
 
-    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
-    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, apply_water_mask=False)
+    parquet_path = test_10SGD_dist_s1_inputs_parquet_dict['current']
+    df_product = gpd.read_parquet(parquet_path)
+    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir)
+    config.apply_water_mask = False
+    config.algo_config.device = 'cpu'
 
     run_burst_disturbance_workflow(config)
 
     shutil.rmtree(tmp_dir)
 
 
-@pytest.mark.parametrize('lookback', [0, 1, 2, 3])
-def test_curation_of_burst_rtc_s1_paths_for_normal_param_est(lookback: int) -> None:
-    cross_pol_paths = [
-        './tv_despeckle/2024-01-08/OPERA_L2_RTC-S1_T137-292318-IW1_20240108T015902Z_20240109T091413Z_S1A_30_v1.0_VH_tv.tif',
-        './tv_despeckle/2024-01-20/OPERA_L2_RTC-S1_T137-292318-IW1_20240120T015902Z_20240120T143322Z_S1A_30_v1.0_VH_tv.tif',
-        './tv_despeckle/2024-02-01/OPERA_L2_RTC-S1_T137-292318-IW1_20240201T015901Z_20240201T114629Z_S1A_30_v1.0_VH_tv.tif',
-        './tv_despeckle/2024-02-13/OPERA_L2_RTC-S1_T137-292318-IW1_20240213T015901Z_20240213T091319Z_S1A_30_v1.0_VH_tv.tif',
-        './tv_despeckle/2024-02-25/OPERA_L2_RTC-S1_T137-292318-IW1_20240225T015901Z_20240225T100928Z_S1A_30_v1.0_VH_tv.tif',
-        './tv_despeckle/2024-03-08/OPERA_L2_RTC-S1_T137-292318-IW1_20240308T015901Z_20240409T075111Z_S1A_30_v1.0_VH_tv.tif',
-        './tv_despeckle/2024-03-20/OPERA_L2_RTC-S1_T137-292318-IW1_20240320T015901Z_20240321T155238Z_S1A_30_v1.0_VH_tv.tif',
-        './tv_despeckle/2024-04-01/OPERA_L2_RTC-S1_T137-292318-IW1_20240401T015902Z_20240418T135305Z_S1A_30_v1.0_VH_tv.tif',
-        './tv_despeckle/2024-04-13/OPERA_L2_RTC-S1_T137-292318-IW1_20240413T015901Z_20240419T082133Z_S1A_30_v1.0_VH_tv.tif',
-        './tv_despeckle/2024-04-25/OPERA_L2_RTC-S1_T137-292318-IW1_20240425T015902Z_20240427T061145Z_S1A_30_v1.0_VH_tv.tif',
-    ]
-    copol_paths = [path.replace('VH_tv.tif', 'VV_tv.tif') for path in cross_pol_paths]
-
-    copol_paths_pre, crosspol_paths_pre = curate_input_burst_rtc_s1_paths_for_normal_param_est(
-        copol_paths, cross_pol_paths, lookback=lookback
-    )
-    assert len(copol_paths_pre) == len(crosspol_paths_pre)
-    assert crosspol_paths_pre == cross_pol_paths[: -lookback - 1]
-
-
-@pytest.mark.parametrize('lookback', [0, 1, 2, 3])
-def test_curate_input_burst_rtc_input_for_dist(lookback: int) -> None:
-    cross_pol_paths = [
-        './tv_despeckle/2024-01-08/OPERA_L2_RTC-S1_T137-292318-IW1_20240108T015902Z_20240109T091413Z_S1A_30_v1.0_VH_tv.tif',
-        './tv_despeckle/2024-01-20/OPERA_L2_RTC-S1_T137-292318-IW1_20240120T015902Z_20240120T143322Z_S1A_30_v1.0_VH_tv.tif',
-        './tv_despeckle/2024-02-01/OPERA_L2_RTC-S1_T137-292318-IW1_20240201T015901Z_20240201T114629Z_S1A_30_v1.0_VH_tv.tif',
-        './tv_despeckle/2024-02-13/OPERA_L2_RTC-S1_T137-292318-IW1_20240213T015901Z_20240213T091319Z_S1A_30_v1.0_VH_tv.tif',
-        './tv_despeckle/2024-02-25/OPERA_L2_RTC-S1_T137-292318-IW1_20240225T015901Z_20240225T100928Z_S1A_30_v1.0_VH_tv.tif',
-        './tv_despeckle/2024-03-08/OPERA_L2_RTC-S1_T137-292318-IW1_20240308T015901Z_20240409T075111Z_S1A_30_v1.0_VH_tv.tif',
-        './tv_despeckle/2024-03-20/OPERA_L2_RTC-S1_T137-292318-IW1_20240320T015901Z_20240321T155238Z_S1A_30_v1.0_VH_tv.tif',
-        './tv_despeckle/2024-04-01/OPERA_L2_RTC-S1_T137-292318-IW1_20240401T015902Z_20240418T135305Z_S1A_30_v1.0_VH_tv.tif',
-        './tv_despeckle/2024-04-13/OPERA_L2_RTC-S1_T137-292318-IW1_20240413T015901Z_20240419T082133Z_S1A_30_v1.0_VH_tv.tif',
-        './tv_despeckle/2024-04-25/OPERA_L2_RTC-S1_T137-292318-IW1_20240425T015902Z_20240427T061145Z_S1A_30_v1.0_VH_tv.tif',
-    ]
-    copol_paths = [path.replace('VH_tv.tif', 'VV_tv.tif') for path in cross_pol_paths]
-
-    copol_paths_post, crosspol_paths_post = curate_input_burst_rtc_input_for_dist(
-        copol_paths, cross_pol_paths, lookback=lookback
-    )
-    assert len(copol_paths_post) == len(crosspol_paths_post)
-    assert crosspol_paths_post == cross_pol_paths[-lookback - 1 :]
-    assert copol_paths_post == copol_paths[-lookback - 1 :]
-
-
-def test_dist_s1_sas_workflow(
-    test_dir: Path, test_data_dir: Path, change_local_dir: Callable, test_opera_golden_dummy_dataset: Path
+@pytest.mark.parametrize('current_or_prior', ['current', 'prior'])
+def test_dist_s1_sas_workflow_no_confirmation(
+    test_dir: Path,
+    change_local_dir: Callable,
+    current_or_prior: str,
+    test_opera_golden_cropped_dataset_dict: dict[str, Path],
+    test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path],
 ) -> None:
+    """Tests the dist-s1-sas workflow against a golden dataset."""
     # Ensure that validation is relative to the test directory
     change_local_dir(test_dir)
     tmp_dir = test_dir / 'tmp'
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
-    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
+    parquet_path = test_10SGD_dist_s1_inputs_parquet_dict[current_or_prior]
+    df_product = gpd.read_parquet(parquet_path)
     assert tmp_dir.exists() and tmp_dir.is_dir()
 
     config = RunConfigData.from_product_df(
         df_product,
         dst_dir=tmp_dir,
-        apply_water_mask=False,
-        confirmation_strategy='use_prev_product',
     )
+    config.apply_water_mask = True
+    config.algo_config.device = 'cpu'
 
     run_dist_s1_sas_workflow(config)
 
     product_data = config.product_data_model
-    product_data_golden = ProductDirectoryData.from_product_path(test_opera_golden_dummy_dataset)
+    golden_dataset_path = test_opera_golden_cropped_dataset_dict[current_or_prior]
+    product_data_golden = DistS1ProductDirectory.from_product_path(golden_dataset_path)
 
     assert product_data == product_data_golden
 
@@ -173,12 +117,47 @@ def test_dist_s1_sas_workflow(
         shutil.rmtree(tmp_dir)
 
 
+def test_dist_s1_sas_workflow_with_confirmation(
+    test_dir: Path,
+    change_local_dir: Callable,
+    test_opera_golden_cropped_dataset_dict: dict[str, Path],
+    test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path],
+) -> None:
+    """Tests the dist-s1-sas workflow against a golden dataset."""
+    # Ensure that validation is relative to the test directory
+    change_local_dir(test_dir)
+    tmp_dir = test_dir / 'tmp'
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    parquet_path = test_10SGD_dist_s1_inputs_parquet_dict['current']
+    df_product = gpd.read_parquet(parquet_path)
+    assert tmp_dir.exists() and tmp_dir.is_dir()
+
+    config = RunConfigData.from_product_df(
+        df_product,
+        dst_dir=tmp_dir,
+    )
+    config.apply_water_mask = True
+    config.algo_config.device = 'cpu'
+    config.prior_dist_s1_product = test_opera_golden_cropped_dataset_dict['prior']
+
+    run_dist_s1_sas_workflow(config)
+
+    product_data_with_confirmation = config.product_data_model
+    golden_dataset_path_confirmed = test_opera_golden_cropped_dataset_dict['confirmed']
+    product_data_golden_confirmed = DistS1ProductDirectory.from_product_path(golden_dataset_path_confirmed)
+
+    assert product_data_with_confirmation == product_data_golden_confirmed
+
+    if ERASE_WORKFLOW_OUTPUTS:
+        shutil.rmtree(tmp_dir)
+
+
 def test_dist_s1_workflow_interface(
     test_dir: Path,
-    test_data_dir: Path,
     change_local_dir: Callable,
+    test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path],
     mocker: MockerFixture,
-    # test_opera_golden_dummy_dataset: Path,
     monkeypatch: MonkeyPatch,
 ) -> None:
     """Tests the s1 workflow interface, not the outputs."""
@@ -189,8 +168,10 @@ def test_dist_s1_workflow_interface(
     monkeypatch.setenv('EARTHDATA_USERNAME', 'foo')
     monkeypatch.setenv('EARTHDATA_PASSWORD', 'bar')
 
-    df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2024-09-04_dist_s1_inputs.parquet')
-    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, apply_water_mask=False)
+    parquet_path = test_10SGD_dist_s1_inputs_parquet_dict['current']
+    df_product = gpd.read_parquet(parquet_path)
+    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir)
+    config.apply_water_mask = False
 
     # We don't need credentials because we mock the data.
     mocker.patch('dist_s1.localize_rtc_s1.enumerate_one_dist_s1_product', return_value=df_product)
@@ -198,8 +179,129 @@ def test_dist_s1_workflow_interface(
     mocker.patch('dist_s1.workflows.run_dist_s1_sas_workflow', return_value=config)
 
     run_dist_s1_workflow(
-        mgrs_tile_id='10SGD', post_date='2025-01-02', track_number=137, dst_dir=tmp_dir, apply_water_mask=False
+        mgrs_tile_id='10SGD',
+        post_date='2025-01-02',
+        track_number=137,
+        dst_dir=tmp_dir,
+        apply_water_mask=False,
     )
 
     if ERASE_WORKFLOW_OUTPUTS:
         shutil.rmtree(tmp_dir)
+
+
+def test_dist_s1_workflow_interface_external_model(
+    test_dir: Path,
+    change_local_dir: Callable,
+    test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path],
+    mocker: MockerFixture,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """Tests the s1 workflow interface with external model source, not the outputs."""
+    change_local_dir(test_dir)
+    tmp_dir = test_dir / 'tmp'
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    monkeypatch.setenv('EARTHDATA_USERNAME', 'foo')
+    monkeypatch.setenv('EARTHDATA_PASSWORD', 'bar')
+
+    # Create temporary model config and weights files
+    model_cfg_path = tmp_dir / 'model_config.json'
+    model_wts_path = tmp_dir / 'model_weights.pth'
+
+    # Create dummy config file (JSON format)
+    model_cfg_content = {'model_type': 'transformer', 'n_heads': 8, 'd_model': 256, 'num_layers': 6, 'max_seq_len': 4}
+    with model_cfg_path.open('w') as f:
+        json.dump(model_cfg_content, f)
+
+    # Create dummy weights file (just a placeholder)
+    model_wts_path.write_text('dummy_weights_content')
+
+    parquet_path = test_10SGD_dist_s1_inputs_parquet_dict['current']
+    df_product = gpd.read_parquet(parquet_path)
+    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir)
+    config.apply_water_mask = False
+
+    # We don't need credentials because we mock the data.
+    mocker.patch('dist_s1.localize_rtc_s1.enumerate_one_dist_s1_product', return_value=df_product)
+    mocker.patch('dist_s1.localize_rtc_s1.localize_rtc_s1_ts', return_value=df_product)
+    mocker.patch('dist_s1.workflows.run_dist_s1_sas_workflow', return_value=config)
+
+    run_dist_s1_workflow(
+        mgrs_tile_id='10SGD',
+        post_date='2025-01-02',
+        track_number=137,
+        dst_dir=tmp_dir,
+        apply_water_mask=False,
+        device='cpu',  # Use CPU to avoid MPS validation issues
+        n_workers_for_norm_param_estimation=1,  # Required for MPS/CUDA devices
+        model_source='external',
+        model_cfg_path=str(model_cfg_path),
+        model_wts_path=str(model_wts_path),
+    )
+
+    # Verify the temporary files were created and exist
+    assert model_cfg_path.exists()
+    assert model_wts_path.exists()
+
+    if ERASE_WORKFLOW_OUTPUTS:
+        shutil.rmtree(tmp_dir)
+
+
+def test_sequential_confirmation_workflow(
+    test_dir: Path,
+    change_local_dir: Callable,
+    unconfirmed_products_chile_fire_dir: Path,
+    confirmed_products_chile_fire_golden_dir: Path,
+) -> None:
+    """Test sequential confirmation workflow against golden dataset.
+
+    This test:
+    1. Takes unconfirmed products from test_data/products_without_confirmation_cropped__chile-fire_2024
+    2. Runs run_sequential_confirmation_of_dist_products_workflow
+    3. Compares output with golden dataset in test_data/golden_datasets/\
+        products_with_confirmation_cropped__chile-fire_2024
+    """
+    # Ensure that validation is relative to the test directory
+    change_local_dir(test_dir)
+    tmp_sequential_dir = test_dir / 'tmp' / 'confirmation_chile_sequential'
+    if tmp_sequential_dir.exists():
+        shutil.rmtree(tmp_sequential_dir)
+    tmp_sequential_dir.mkdir(parents=True, exist_ok=True)
+
+    # Run sequential confirmation workflow with explicit default parameters
+    # Note: These are the default values from DEFAULT_* constants to ensure test stability
+    run_sequential_confirmation_of_dist_products_workflow(
+        directory_of_dist_s1_products=unconfirmed_products_chile_fire_dir,
+        dst_dist_product_parent=tmp_sequential_dir,
+        no_day_limit=30,  # DEFAULT_NO_DAY_LIMIT
+        exclude_consecutive_no_dist=True,  # DEFAULT_EXCLUDE_CONSECUTIVE_NO_DIST
+        percent_reset_thresh=10,  # DEFAULT_PERCENT_RESET_THRESH
+        no_count_reset_thresh=7,  # DEFAULT_NO_COUNT_RESET_THRESH
+        confidence_upper_lim=32000,  # DEFAULT_CONFIDENCE_UPPER_LIM
+        confidence_thresh=31.5,  # DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD (3**2 * 3.5)
+        metric_value_upper_lim=100.0,  # DEFAULT_METRIC_VALUE_UPPER_LIM
+        tqdm_enabled=False,  # Disable progress bar for testing
+    )
+
+    # Compare each confirmed product with the corresponding golden dataset product
+    golden_products = sorted(list(confirmed_products_chile_fire_golden_dir.glob('OPERA*')))
+    confirmed_products = sorted(list(tmp_sequential_dir.glob('OPERA*')))
+
+    assert len(golden_products) == len(confirmed_products), (
+        f'Number of products mismatch: {len(golden_products)} golden vs {len(confirmed_products)} confirmed'
+    )
+
+    # Compare each product using DistS1ProductDirectory __eq__ method
+    for golden_path, confirmed_path in zip(golden_products, confirmed_products):
+        assert golden_path.name == confirmed_path.name, (
+            f'Product name mismatch: {golden_path.name} vs {confirmed_path.name}'
+        )
+
+        golden_product = DistS1ProductDirectory.from_product_path(golden_path)
+        confirmed_product = DistS1ProductDirectory.from_product_path(confirmed_path)
+
+        assert golden_product == confirmed_product, f'Product comparison failed for {golden_path.name}'
+
+    if ERASE_WORKFLOW_OUTPUTS:
+        shutil.rmtree(tmp_sequential_dir)
