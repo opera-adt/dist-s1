@@ -15,6 +15,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * More examples for confirmation workflow
 * Ability to change all parameters for algorithms from python and CLI entrypoints
 * Updated readme for confirmation workflows
+* Lower bound for distmetrics to ensure latest models included.
 
 ### Fixed
 * Browse imagery generation (was scaling dynamic range unnecessarily)
