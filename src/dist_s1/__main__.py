@@ -71,10 +71,7 @@ def cli() -> None:
     pass
 
 
-def common_options_for_confirmation_workflows(func: Callable) -> Callable:
-    @click.option(
-        '--dst_dist_product_parent', type=str, required=True, help='Path to parent directory for new DIST-S1 product.'
-    )
+def common_algo_options_for_confirmation_workflows(func: Callable) -> Callable:
     @click.option(
         '--no_day_limit',
         type=int,
@@ -363,6 +360,7 @@ def common_options_for_dist_workflows(func: Callable) -> Callable:
 # SAS Prep Workflow (No Internet Access)
 @cli.command(name='run_sas_prep')
 @common_options_for_dist_workflows
+@common_algo_options_for_confirmation_workflows
 @click.option(
     '--run_config_path',
     type=str,
@@ -403,6 +401,13 @@ def run_sas_prep(
     model_dtype: str = 'float32',
     use_date_encoding: bool = False,
     n_anniversaries_for_mw: int = DEFAULT_N_ANNIVERSARIES_FOR_MW,
+    no_day_limit: int = DEFAULT_NO_DAY_LIMIT,
+    exclude_consecutive_no_dist: bool = DEFAULT_EXCLUDE_CONSECUTIVE_NO_DIST,
+    percent_reset_thresh: int = DEFAULT_PERCENT_RESET_THRESH,
+    no_count_reset_thresh: int = DEFAULT_NO_COUNT_RESET_THRESH,
+    confidence_upper_lim: int = DEFAULT_CONFIDENCE_UPPER_LIM,
+    confidence_threshold: float = DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
+    metric_value_upper_lim: float = DEFAULT_METRIC_VALUE_UPPER_LIM,
 ) -> None:
     """Run SAS prep workflow."""
     run_dist_s1_sas_prep_workflow(
@@ -438,6 +443,13 @@ def run_sas_prep(
         model_dtype=model_dtype,
         use_date_encoding=use_date_encoding,
         n_anniversaries_for_mw=n_anniversaries_for_mw,
+        no_day_limit=no_day_limit,
+        exclude_consecutive_no_dist=exclude_consecutive_no_dist,
+        percent_reset_thresh=percent_reset_thresh,
+        no_count_reset_thresh=no_count_reset_thresh,
+        confidence_upper_lim=confidence_upper_lim,
+        confirmation_confidence_threshold=confidence_threshold,
+        metric_value_upper_lim=metric_value_upper_lim,
     )
 
 
@@ -453,12 +465,15 @@ def run_sas(run_config_path: str | Path) -> None:
 @cli.command(name='run_one_confirmation')
 @click.option('--prior_dist_s1_product', type=str, required=True, help='Path to prior DIST-S1 product.')
 @click.option(
+    '--dst_dist_product_parent', type=str, required=True, help='Path to parent directory for new DIST-S1 product.'
+)
+@click.option(
     '--current_dist_s1_product',
     type=str,
     required=True,
     help='Path to current DIST-S1 product. Confirmed product inherits name from this product.',
 )
-@common_options_for_confirmation_workflows
+@common_algo_options_for_confirmation_workflows
 def run_one_confirmation(
     prior_dist_s1_product: str | Path,
     current_dist_s1_product: str | Path,
@@ -487,7 +502,10 @@ def run_one_confirmation(
 
 @cli.command(name='run_sequential_confirmation')
 @click.option('--directory_of_dist_s1_products', type=str, required=True, help='Path to product directory.')
-@common_options_for_confirmation_workflows
+@click.option(
+    '--dst_dist_product_parent', type=str, required=True, help='Path to parent directory for new DIST-S1 product.'
+)
+@common_algo_options_for_confirmation_workflows
 def run_sequential_confirmation(
     directory_of_dist_s1_products: str | Path,
     dst_dist_product_parent: str | Path | None,
@@ -515,6 +533,7 @@ def run_sequential_confirmation(
 # Effectively runs the two workflows above in sequence
 @cli.command(name='run')
 @common_options_for_dist_workflows
+@common_algo_options_for_confirmation_workflows
 @click.option(
     '--run_config_path',
     type=str,
@@ -556,6 +575,13 @@ def run(
     n_anniversaries_for_mw: int = DEFAULT_N_ANNIVERSARIES_FOR_MW,
     run_config_path: str | Path | None = None,
     prior_dist_s1_product: str | Path | None = None,
+    no_day_limit: int = DEFAULT_NO_DAY_LIMIT,
+    exclude_consecutive_no_dist: bool = DEFAULT_EXCLUDE_CONSECUTIVE_NO_DIST,
+    percent_reset_thresh: int = DEFAULT_PERCENT_RESET_THRESH,
+    no_count_reset_thresh: int = DEFAULT_NO_COUNT_RESET_THRESH,
+    confidence_upper_lim: int = DEFAULT_CONFIDENCE_UPPER_LIM,
+    confidence_threshold: float = DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
+    metric_value_upper_lim: float = DEFAULT_METRIC_VALUE_UPPER_LIM,
 ) -> str:
     """Localize data and run dist_s1_workflow."""
     return run_dist_s1_workflow(
@@ -592,6 +618,13 @@ def run(
         use_date_encoding=use_date_encoding,
         run_config_path=run_config_path,
         prior_dist_s1_product=prior_dist_s1_product,
+        no_day_limit=no_day_limit,
+        exclude_consecutive_no_dist=exclude_consecutive_no_dist,
+        percent_reset_thresh=percent_reset_thresh,
+        no_count_reset_thresh=no_count_reset_thresh,
+        confidence_upper_lim=confidence_upper_lim,
+        confirmation_confidence_threshold=confidence_threshold,
+        metric_value_upper_lim=metric_value_upper_lim,
     )
 
 

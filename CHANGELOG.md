@@ -17,6 +17,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
 ### Fixed
+* Exposed all confirmation algorithm parameters into CLI and python interfaces
 * Changelog format from major release
 * `n_annivesaries` in CLI and workflow (was not properly set in prep workflow)
 * Duplicate CLI options (`algo_config_path` and `run_config_path`)
