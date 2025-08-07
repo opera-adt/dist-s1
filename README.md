@@ -121,7 +121,7 @@ run_dist_s1_workflow(
         prior_dist_s1_product=<PRIOR_PRODUCT_DIRECTORY>,
     )
 ```
-
+There are also ways to run confirmation on unconfirmed products (a sequence of products or a single pair). See the [examples/only_confirmation](examples/only_confirmation/) directory and sample data.
 
 ## Installation
 
