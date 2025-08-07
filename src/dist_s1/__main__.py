@@ -71,10 +71,7 @@ def cli() -> None:
     pass
 
 
-def common_options_for_confirmation_workflows(func: Callable) -> Callable:
-    @click.option(
-        '--dst_dist_product_parent', type=str, required=True, help='Path to parent directory for new DIST-S1 product.'
-    )
+def common_algo_options_for_confirmation_workflows(func: Callable) -> Callable:
     @click.option(
         '--no_day_limit',
         type=int,
@@ -153,7 +150,8 @@ def common_options_for_dist_workflows(func: Callable) -> Callable:
         type=str,
         default=str(DEFAULT_DST_DIR),
         required=False,
-        help='Path to intermediate data products',
+        help='Path to intermediate data products; this will also be where the final products are stored if '
+        'product_dst_dir is not provided.',
     )
     @click.option(
         '--memory_strategy',
@@ -345,6 +343,13 @@ def common_options_for_dist_workflows(func: Callable) -> Callable:
         required=False,
         help='Whether to use acquisition date encoding in processing.',
     )
+    @click.option(
+        '--prior_dist_s1_product',
+        type=str,
+        required=False,
+        default=None,
+        help='Path to prior DIST-S1 product. If provided, will be used for confirmation.',
+    )
     @functools.wraps(func)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         return func(*args, **kwargs)
@@ -353,7 +358,11 @@ def common_options_for_dist_workflows(func: Callable) -> Callable:
 
 
 # SAS Prep Workflow (No Internet Access)
-@cli.command(name='run_sas_prep')
+@cli.command(
+    name='run_sas_prep', help='Run SAS prep workflow to generate runconfig file and localize input OPERA RTC data.'
+)
+@common_options_for_dist_workflows
+@common_algo_options_for_confirmation_workflows
 @click.option(
     '--run_config_path',
     type=str,
@@ -361,17 +370,6 @@ def common_options_for_dist_workflows(func: Callable) -> Callable:
     required=False,
     help='Path to yaml runconfig file that will be created. If not provided, no file will be created.',
 )
-@click.option(
-    '--algo_config_path',
-    type=str,
-    default=None,
-    required=False,
-    help=(
-        'Path to save algorithm parameters to a separate yml file. '
-        'If provided, the main config will reference this file.'
-    ),
-)
-@common_options_for_dist_workflows
 def run_sas_prep(
     mgrs_tile_id: str,
     post_date: str,
@@ -398,12 +396,20 @@ def run_sas_prep(
     model_source: str,
     model_cfg_path: str | Path | None,
     model_wts_path: str | Path | None,
-    stride_for_norm_param_estimation: int = 16,
-    batch_size_for_norm_param_estimation: int = 32,
-    model_compilation: bool = False,
-    algo_config_path: str | Path | None = None,
-    model_dtype: str = 'float32',
-    use_date_encoding: bool = False,
+    stride_for_norm_param_estimation: int,
+    batch_size_for_norm_param_estimation: int,
+    model_compilation: bool,
+    algo_config_path: str | Path | None,
+    model_dtype: str,
+    use_date_encoding: bool,
+    n_anniversaries_for_mw: int,
+    no_day_limit: int,
+    exclude_consecutive_no_dist: bool,
+    percent_reset_thresh: int,
+    no_count_reset_thresh: int,
+    confidence_upper_lim: int,
+    confidence_threshold: float,
+    metric_value_upper_lim: float,
 ) -> None:
     """Run SAS prep workflow."""
     run_dist_s1_sas_prep_workflow(
@@ -438,27 +444,38 @@ def run_sas_prep(
         run_config_path=run_config_path,
         model_dtype=model_dtype,
         use_date_encoding=use_date_encoding,
+        n_anniversaries_for_mw=n_anniversaries_for_mw,
+        no_day_limit=no_day_limit,
+        exclude_consecutive_no_dist=exclude_consecutive_no_dist,
+        percent_reset_thresh=percent_reset_thresh,
+        no_count_reset_thresh=no_count_reset_thresh,
+        confidence_upper_lim=confidence_upper_lim,
+        confirmation_confidence_threshold=confidence_threshold,
+        metric_value_upper_lim=metric_value_upper_lim,
     )
 
 
 # SAS Workflow (No Internet Access)
 @cli.command(name='run_sas')
 @click.option('--run_config_path', required=True, help='Path to YAML runconfig file', type=click.Path(exists=True))
-def run_sas(run_config_path: str | Path, algo_config_path: str | Path | None = None) -> None:
+def run_sas(run_config_path: str | Path) -> None:
     """Run SAS workflow."""
     run_config = RunConfigData.from_yaml(run_config_path)
     run_dist_s1_sas_workflow(run_config)
 
 
-@cli.command(name='run_one_confirmation')
+@cli.command(name='run_one_confirmation', help='Run one confirmation of a single pair of DIST-S1 products.')
 @click.option('--prior_dist_s1_product', type=str, required=True, help='Path to prior DIST-S1 product.')
+@click.option(
+    '--dst_dist_product_parent', type=str, required=True, help='Path to parent directory for new DIST-S1 product.'
+)
 @click.option(
     '--current_dist_s1_product',
     type=str,
     required=True,
     help='Path to current DIST-S1 product. Confirmed product inherits name from this product.',
 )
-@common_options_for_confirmation_workflows
+@common_algo_options_for_confirmation_workflows
 def run_one_confirmation(
     prior_dist_s1_product: str | Path,
     current_dist_s1_product: str | Path,
@@ -480,16 +497,27 @@ def run_one_confirmation(
         percent_reset_thresh=percent_reset_thresh,
         no_count_reset_thresh=no_count_reset_thresh,
         confidence_upper_lim=confidence_upper_lim,
-        confidence_threshold=confidence_threshold,
+        confidence_thresh=confidence_threshold,
         metric_value_upper_lim=metric_value_upper_lim,
     )
 
 
-@cli.command(name='run_sequential_confirmation')
-@click.option('--directory_of_dist_s1_products', type=str, required=True, help='Path to product directory.')
-@common_options_for_confirmation_workflows
+@cli.command(
+    name='run_sequential_confirmation',
+    help='Run sequential confirmation of unconfirmed DIST-S1 products. Confirms products in order of oldest to newest.',
+)
+@click.option(
+    '--unconfirmed_dist_s1_product_dir',
+    type=str,
+    required=True,
+    help='Directory of OPERA products that are unconfirmed',
+)
+@click.option(
+    '--dst_dist_product_parent', type=str, required=True, help='Path to parent directory for new DIST-S1 product.'
+)
+@common_algo_options_for_confirmation_workflows
 def run_sequential_confirmation(
-    directory_of_dist_s1_products: str | Path,
+    unconfirmed_dist_s1_product_dir: str | Path,
     dst_dist_product_parent: str | Path | None,
     no_day_limit: int,
     exclude_consecutive_no_dist: bool,
@@ -500,7 +528,7 @@ def run_sequential_confirmation(
     metric_value_upper_lim: float,
 ) -> None:
     run_sequential_confirmation_of_dist_products_workflow(
-        directory_of_dist_s1_products=directory_of_dist_s1_products,
+        directory_of_dist_s1_products=unconfirmed_dist_s1_product_dir,
         dst_dist_product_parent=dst_dist_product_parent,
         no_day_limit=no_day_limit,
         exclude_consecutive_no_dist=exclude_consecutive_no_dist,
@@ -513,8 +541,16 @@ def run_sequential_confirmation(
 
 
 # Effectively runs the two workflows above in sequence
-@cli.command(name='run')
+@cli.command(name='run', help='Run complete DIST-S1 workflow.')
 @common_options_for_dist_workflows
+@common_algo_options_for_confirmation_workflows
+@click.option(
+    '--run_config_path',
+    type=str,
+    default=None,
+    required=False,
+    help='Path to yaml runconfig file that will be created. If not provided, no file will be created.',
+)
 def run(
     mgrs_tile_id: str,
     post_date: str,
@@ -540,13 +576,22 @@ def run(
     model_source: str,
     model_cfg_path: str | Path | None,
     model_wts_path: str | Path | None,
-    n_anniversaries_for_mw: int = DEFAULT_N_ANNIVERSARIES_FOR_MW,
-    stride_for_norm_param_estimation: int = 16,
-    batch_size_for_norm_param_estimation: int = 32,
-    model_compilation: bool = False,
-    algo_config_path: str | Path | None = None,
-    model_dtype: str = 'float32',
-    use_date_encoding: bool = False,
+    stride_for_norm_param_estimation: int,
+    batch_size_for_norm_param_estimation: int,
+    model_compilation: bool,
+    algo_config_path: str | Path | None,
+    model_dtype: str,
+    use_date_encoding: bool,
+    n_anniversaries_for_mw: int,
+    run_config_path: str | Path | None,
+    prior_dist_s1_product: str | Path | None,
+    no_day_limit: int,
+    exclude_consecutive_no_dist: bool,
+    percent_reset_thresh: int,
+    no_count_reset_thresh: int,
+    confidence_upper_lim: int,
+    confidence_threshold: float,
+    metric_value_upper_lim: float,
 ) -> str:
     """Localize data and run dist_s1_workflow."""
     return run_dist_s1_workflow(
@@ -578,8 +623,18 @@ def run(
         batch_size_for_norm_param_estimation=batch_size_for_norm_param_estimation,
         model_compilation=model_compilation,
         algo_config_path=algo_config_path,
+        n_anniversaries_for_mw=n_anniversaries_for_mw,
         model_dtype=model_dtype,
         use_date_encoding=use_date_encoding,
+        run_config_path=run_config_path,
+        prior_dist_s1_product=prior_dist_s1_product,
+        no_day_limit=no_day_limit,
+        exclude_consecutive_no_dist=exclude_consecutive_no_dist,
+        percent_reset_thresh=percent_reset_thresh,
+        no_count_reset_thresh=no_count_reset_thresh,
+        confidence_upper_lim=confidence_upper_lim,
+        confirmation_confidence_threshold=confidence_threshold,
+        metric_value_upper_lim=metric_value_upper_lim,
     )
 
 

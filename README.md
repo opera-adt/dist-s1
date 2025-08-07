@@ -15,16 +15,39 @@ This is the workflow that generates OPERA's DIST-S1 product. This workflow is de
 
 We have a command line interface (CLI) and python interface. 
 All the examples below generate the full sample product above.
-We only expose the required paramters below.
-See the [examples](examples/) directory for additional parameters available. 
+For the examples below, we only expose the parameters required to trigger the workflow.
+See the [examples](examples/) directory for examples on how to run this workflow both with confirmation and without it. 
+The parameters to trigger the `DIST-S1` workflow are:
+
+1. The date of the acquisition that is used to compare against a historical baseline
+2. The track number of this acquisition
+3. The MGRS tile to resample the product into
+4. For confirmation, the prior `DIST-S1` product in the MGRS time-series.
+
+For more in depth discussion about these parameters, please see the repository [dist-s1-enumerator](https://github.com/opera-adt/dist-s1-enumerator) and the notebooks within it.
+
+There are two parts of the `DIST-S1` workflow: (a) the disturbance alert delineation and (b) the confirmation process.
+The disturbance alert delineation (a) uses a deep learning model to quantify the  deviation between the current acquisition and a baseline of available imagery.
+The confirmation process (b) uses the alert disturbance from the recent acquisition and performs some logical operations to carry over the change that was observed previously using the prior `DIST-S1` product.
+These two steps are independent and are nominally performed in sequence.
+Triggering the workflow without a prior product just performs (a) and with a prior product performs (a) and then (b).
+To produce the operational `DIST-S1` product with confirmation, the processing must happen in order, feeding in previously confirmed products into the latest workflow.
+This ensures previously confirmed changes are populated to the most recent `DIST-S1` products.
+We will also discuss how to perform confirmation with two products or a directory of alert products (without confirmation).
 For a description about the organization of the repository see the [Design/Organization of the Repository](#designorganization-of-the-repository) section.
-To determine the relevant parameters for `DIST-S1` submission, please see the repository [dist-s1-enumerator](https://github.com/opera-adt/dist-s1-enumerator) and the notebooks within it.
 
-### Python
+### No Confirmation
 
-A variation of the script below can be found in [examples/e2e.py](examples/e2e.py). 
+This section describes how to perform an alert disturbance delineation, i.e. new disturbances.
+To trigger a `DIST-S1` workflow, you need 1 - 3 from above, namely (1) the recent acquisition date of Sentinel-1 (2) the track number and (3) the MGRS tile.
+To trigger confirmation, the prior DIST-S1 product, i.e. the disturbance product that was generated from the last available acquisition.
+
+
+#### Python
+
+A variation of the script below can be found in [examples/no_confirmation/e2e.py](examples/no_confirmation/e2e.py). 
 It is possible to run steps of the workflow after the runconfig data has been created (primarily for debugging a step of the workflow).
-An example of this step-wise execution can be found in [examples/run_steps.py](examples/run_steps.py).
+An example of this step-wise execution can be found in [examples/no_confirmation/run_steps.py](examples/no_confirmation/run_steps.py).
 The same scripts are also found in the [notebooks](notebooks) directory.
 
 ```
@@ -46,9 +69,9 @@ run_dist_s1_workflow(mgrs_tile_id,
 ```
 
 
-### CLI
+#### CLI
 
-#### Main Entrypoint
+##### Main Entrypoint
 
 The main entrypoint mirrors the python interface above and localizes all the necessary RTC-S1 inputs. 
 
@@ -61,12 +84,44 @@ dist-s1 run \
 
 #### As a SDS Science Application Software (SAS)
 
-See the [examples/sas_run.sh](examples/sas_run.sh) script for an example of how to run the DIST-S1 workflow as a SDS Science Application Software (SAS) with a preparation script to localize the necessary RTC-S1 inputs.
-
+See the [examples/no_confirmation/sas_run.sh](examples/no_confirmation/sas_run.sh) script for an example of how to run the DIST-S1 workflow as a SDS Science Application Software (SAS) with a preparation script to localize the necessary RTC-S1 inputs.
 ```
 dist-s1 run_sas --runconfig_yml_path run_config.yml
 ```
-There sample `run_config.yml` file is provided in the [examples](examples) directory from this prepatory step.
+There are sample `run_config.yml` file is provided in the [examples](examples) directory from this prepatory step.
+Note you can serialize a run config yml in the end-to-end (`run`) or preparatory (`sas_prep`) workflows by specifying a `run_config_path` that can be used in the CLI entrypoint above.
+
+
+### Confirmation
+
+The confirmation processes requires: (a) an alert disturbance product (created using the relevant acquisition date) and (b) a prior `DIST-S1` product.
+See the [examples/with_confirmation](examples/with_confirmation/) directory.
+This simply amounts to adding the keyword argument `prior_dist_s1_product` to the python interface or the option `--prior_dist_s1_product` to the CLI.
+
+For the CLI:
+
+```bash
+dist-s1 run \
+    --mgrs_tile_id '11SLT' \
+    --post_date '2025-01-21' \
+    --track_number 71 \
+    --dst_dir '../../notebooks/los-angeles' \
+    --device 'cpu' \
+    --n_workers_for_norm_param_estimation 5 \
+    --product_dst_dir './confirmed_products' \
+    --prior_dist_s1_product <PRIOR_PRODUCT_DIRECTORY> 
+```
+and python:
+
+```python
+run_dist_s1_workflow(
+        mgrs_tile_id,
+        post_date_confirmation,
+        track_number,
+        prior_dist_s1_product=<PRIOR_PRODUCT_DIRECTORY>,
+    )
+```
+There are also ways to run confirmation on unconfirmed products (a sequence of products or a single pair). See the [examples/only_confirmation](examples/only_confirmation/) directory and sample data.
 
 ## Installation
 
