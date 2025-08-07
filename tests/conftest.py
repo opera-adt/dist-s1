@@ -164,5 +164,7 @@ def unconfirmed_products_chile_fire_dir() -> Path:
 def confirmed_products_chile_fire_golden_dir() -> Path:
     """Fixture to provide the path to confirmed Chile fire products golden dataset directory."""
     test_dir = Path(__file__)
-    confirmed_dir = test_dir.parent / 'test_data' / 'golden_datasets' / 'products_with_confirmation_cropped__chile-fire_2024'
+    confirmed_dir = (
+        test_dir.parent / 'test_data' / 'golden_datasets' / 'products_with_confirmation_cropped__chile-fire_2024'
+    )
     return confirmed_dir.resolve()
