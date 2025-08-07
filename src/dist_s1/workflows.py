@@ -387,7 +387,7 @@ def run_sequential_confirmation_of_dist_products_workflow(
                 metric_value_upper_lim=metric_value_upper_lim,
             )
             prior_confirmed_dist_s1_prod = dst_dist_product_parent / current_dist_s1_product.name
-        generate_browse_image(dst_dist_product_directory)
+        generate_browse_image(dst_dist_product_directory, water_mask_path=None)
 
 
 def run_dist_s1_processing_workflow(run_config: RunConfigData) -> RunConfigData:

@@ -358,7 +358,9 @@ def common_options_for_dist_workflows(func: Callable) -> Callable:
 
 
 # SAS Prep Workflow (No Internet Access)
-@cli.command(name='run_sas_prep')
+@cli.command(
+    name='run_sas_prep', help='Run SAS prep workflow to generate runconfig file and localize input OPERA RTC data.'
+)
 @common_options_for_dist_workflows
 @common_algo_options_for_confirmation_workflows
 @click.option(
@@ -462,7 +464,7 @@ def run_sas(run_config_path: str | Path) -> None:
     run_dist_s1_sas_workflow(run_config)
 
 
-@cli.command(name='run_one_confirmation')
+@cli.command(name='run_one_confirmation', help='Run one confirmation of a single pair of DIST-S1 products.')
 @click.option('--prior_dist_s1_product', type=str, required=True, help='Path to prior DIST-S1 product.')
 @click.option(
     '--dst_dist_product_parent', type=str, required=True, help='Path to parent directory for new DIST-S1 product.'
@@ -500,14 +502,22 @@ def run_one_confirmation(
     )
 
 
-@cli.command(name='run_sequential_confirmation')
-@click.option('--directory_of_dist_s1_products', type=str, required=True, help='Path to product directory.')
+@cli.command(
+    name='run_sequential_confirmation',
+    help='Run sequential confirmation of unconfirmed DIST-S1 products. Confirms products in order of oldest to newest.',
+)
+@click.option(
+    '--unconfirmed_dist_s1_product_dir',
+    type=str,
+    required=True,
+    help='Directory of OPERA products that are unconfirmed',
+)
 @click.option(
     '--dst_dist_product_parent', type=str, required=True, help='Path to parent directory for new DIST-S1 product.'
 )
 @common_algo_options_for_confirmation_workflows
 def run_sequential_confirmation(
-    directory_of_dist_s1_products: str | Path,
+    unconfirmed_dist_s1_product_dir: str | Path,
     dst_dist_product_parent: str | Path | None,
     no_day_limit: int,
     exclude_consecutive_no_dist: bool,
@@ -518,7 +528,7 @@ def run_sequential_confirmation(
     metric_value_upper_lim: float,
 ) -> None:
     run_sequential_confirmation_of_dist_products_workflow(
-        directory_of_dist_s1_products=directory_of_dist_s1_products,
+        directory_of_dist_s1_products=unconfirmed_dist_s1_product_dir,
         dst_dist_product_parent=dst_dist_product_parent,
         no_day_limit=no_day_limit,
         exclude_consecutive_no_dist=exclude_consecutive_no_dist,
@@ -531,7 +541,7 @@ def run_sequential_confirmation(
 
 
 # Effectively runs the two workflows above in sequence
-@cli.command(name='run')
+@cli.command(name='run', help='Run complete DIST-S1 workflow.')
 @common_options_for_dist_workflows
 @common_algo_options_for_confirmation_workflows
 @click.option(
