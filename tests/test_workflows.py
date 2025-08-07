@@ -153,12 +153,14 @@ def test_dist_s1_sas_workflow_with_confirmation(
         shutil.rmtree(tmp_dir)
 
 
+@pytest.mark.parametrize('device', ['best', 'cpu'])
 def test_dist_s1_workflow_interface(
     test_dir: Path,
     change_local_dir: Callable,
     test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path],
     mocker: MockerFixture,
     monkeypatch: MonkeyPatch,
+    device: str,
 ) -> None:
     """Tests the s1 workflow interface, not the outputs."""
     change_local_dir(test_dir)
@@ -184,6 +186,8 @@ def test_dist_s1_workflow_interface(
         track_number=137,
         dst_dir=tmp_dir,
         apply_water_mask=False,
+        device=device,
+        n_workers_for_norm_param_estimation=1,  # Required for MPS/CUDA devices when device='best' resolves to GPU
     )
 
     if ERASE_WORKFLOW_OUTPUTS:

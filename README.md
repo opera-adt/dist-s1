@@ -95,8 +95,32 @@ Note you can serialize a run config yml in the end-to-end (`run`) or preparatory
 ### Confirmation
 
 The confirmation processes requires: (a) an alert disturbance product (created using the relevant acquisition date) and (b) a prior `DIST-S1` product.
+See the [examples/with_confirmation](examples/with_confirmation/) directory.
 This simply amounts to adding the keyword argument `prior_dist_s1_product` to the python interface or the option `--prior_dist_s1_product` to the CLI.
 
+For the CLI:
+
+```bash
+dist-s1 run \
+    --mgrs_tile_id '11SLT' \
+    --post_date '2025-01-21' \
+    --track_number 71 \
+    --dst_dir '../../notebooks/los-angeles' \
+    --device 'cpu' \
+    --n_workers_for_norm_param_estimation 5 \
+    --product_dst_dir './confirmed_products' \
+    --prior_dist_s1_product <PRIOR_PRODUCT_DIRECTORY> 
+```
+and python:
+
+```python
+run_dist_s1_workflow(
+        mgrs_tile_id,
+        post_date_confirmation,
+        track_number,
+        prior_dist_s1_product=<PRIOR_PRODUCT_DIRECTORY>,
+    )
+```
 
 
 ## Installation
