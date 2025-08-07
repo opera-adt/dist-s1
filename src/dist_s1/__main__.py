@@ -497,7 +497,7 @@ def run_one_confirmation(
         percent_reset_thresh=percent_reset_thresh,
         no_count_reset_thresh=no_count_reset_thresh,
         confidence_upper_lim=confidence_upper_lim,
-        confidence_threshold=confidence_threshold,
+        confidence_thresh=confidence_threshold,
         metric_value_upper_lim=metric_value_upper_lim,
     )
 

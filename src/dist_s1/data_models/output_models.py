@@ -167,6 +167,10 @@ class DistS1ProductDirectory(BaseModel):
             raise ValueError(f'Invalid product name: {product_name}; should match: {EXPECTED_FORMAT_STRING}')
         return product_name
 
+    @field_validator('dst_dir')
+    def validate_dst_dir(cls, dst_dir: Path | str) -> Path:
+        return Path(dst_dir)
+
     @model_validator(mode='after')
     def validate_product_directory(self) -> Path:
         product_dir = self.product_dir_path

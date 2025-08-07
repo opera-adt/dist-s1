@@ -13,7 +13,14 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 * More examples for confirmation workflow
+* Ability to change all parameters for algorithms from python and CLI entrypoints
 * Updated readme for confirmation workflows
+
+### Fixed
+* Browse imagery generation (was scaling dynamic range unnecessarily)
+* Sequential confirmation test data.
+* Entrypoints to confirmation only entrypoints.
+* `dst_dir` attribute of `DistS1ProductDirectory` casting to Path. 
 
 
 ### Fixed
