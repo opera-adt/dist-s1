@@ -243,3 +243,118 @@ def test_dist_s1_main_interface_external_model(
     assert model_wts_path.exists()
 
     shutil.rmtree(tmp_dir)
+
+
+def test_run_one_confirmation_main_interface(
+    cli_runner: CliRunner,
+    test_dir: Path,
+    change_local_dir: Callable[[Path], None],
+    unconfirmed_products_chile_fire_dir: Path,
+) -> None:
+    """Test the run_one_confirmation CLI interface that mirrors confirm_pair.sh.
+
+    This test mirrors the functionality of confirm_pair.sh:
+    dist-s1 run_one_confirmation \
+        --prior_dist_s1_product ./chile_fire_unconfirmed/\
+OPERA_L3_DIST-ALERT-S1_T19HBD_20240128T233646Z_20250806T142756Z_S1_30_v0.1 \
+        --current_dist_s1_product ./chile_fire_unconfirmed/\
+OPERA_L3_DIST-ALERT-S1_T19HBD_20240202T100430Z_20250806T143249Z_S1_30_v0.1 \
+        --dst_dist_product_parent ./chile_fire_confirmed/
+    """
+    change_local_dir(test_dir)
+    tmp_dir = test_dir / 'tmp_confirm_pair'
+    if tmp_dir.exists():
+        shutil.rmtree(tmp_dir)
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    # Get the sorted product directories to match the bash script exactly
+    product_dirs = sorted(list(unconfirmed_products_chile_fire_dir.glob('OPERA*')))
+    assert len(product_dirs) >= 2, 'Need at least 2 products for pair confirmation'
+
+    # Use the first two products as prior and current (chronologically ordered)
+    prior_product = product_dirs[0]
+    current_product = product_dirs[1]
+
+    # Run the CLI command
+    result = cli_runner.invoke(
+        dist_s1,
+        [
+            'run_one_confirmation',
+            '--prior_dist_s1_product',
+            str(prior_product),
+            '--current_dist_s1_product',
+            str(current_product),
+            '--dst_dist_product_parent',
+            str(tmp_dir),
+        ],
+        catch_exceptions=False,
+    )
+
+    assert result.exit_code == 0, f'CLI command failed: {result.output}'
+
+    # Verify that a confirmed product was created
+    confirmed_products = list(tmp_dir.glob('OPERA*'))
+    assert len(confirmed_products) == 1, f'Expected 1 confirmed product, got {len(confirmed_products)}'
+
+    # Verify the confirmed product inherits the name from the current product
+    expected_product_name = current_product.name
+    actual_product_name = confirmed_products[0].name
+    assert actual_product_name == expected_product_name, (
+        f'Confirmed product name mismatch: expected {expected_product_name}, got {actual_product_name}'
+    )
+
+    shutil.rmtree(tmp_dir)
+
+
+def test_run_sequential_confirmation_main_interface(
+    cli_runner: CliRunner,
+    test_dir: Path,
+    change_local_dir: Callable[[Path], None],
+    unconfirmed_products_chile_fire_dir: Path,
+) -> None:
+    """Test the run_sequential_confirmation CLI interface that mirrors confirm_sequence.sh.
+
+    This test mirrors the functionality of confirm_sequence.sh:
+    dist-s1 run_sequential_confirmation --unconfirmed_dist_s1_product_dir ./chile_fire_unconfirmed \
+                                        --dst_dist_product_parent chile_fire_confirmed
+    """
+    change_local_dir(test_dir)
+    tmp_dir = test_dir / 'tmp_confirm_sequence'
+    if tmp_dir.exists():
+        shutil.rmtree(tmp_dir)
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    # Count the number of unconfirmed products
+    unconfirmed_products = list(unconfirmed_products_chile_fire_dir.glob('OPERA*'))
+    expected_product_count = len(unconfirmed_products)
+    assert expected_product_count > 0, 'Need at least 1 product for sequential confirmation'
+
+    # Run the CLI command
+    result = cli_runner.invoke(
+        dist_s1,
+        [
+            'run_sequential_confirmation',
+            '--unconfirmed_dist_s1_product_dir',
+            str(unconfirmed_products_chile_fire_dir),
+            '--dst_dist_product_parent',
+            str(tmp_dir),
+        ],
+        catch_exceptions=False,
+    )
+
+    assert result.exit_code == 0, f'CLI command failed: {result.output}'
+
+    # Verify that all products were confirmed
+    confirmed_products = list(tmp_dir.glob('OPERA*'))
+    assert len(confirmed_products) == expected_product_count, (
+        f'Expected {expected_product_count} confirmed products, got {len(confirmed_products)}'
+    )
+
+    # Verify all confirmed products exist and have expected names
+    confirmed_product_names = {p.name for p in confirmed_products}
+    unconfirmed_product_names = {p.name for p in unconfirmed_products}
+    assert confirmed_product_names == unconfirmed_product_names, (
+        f'Product name mismatch: confirmed {confirmed_product_names} vs unconfirmed {unconfirmed_product_names}'
+    )
+
+    shutil.rmtree(tmp_dir)
