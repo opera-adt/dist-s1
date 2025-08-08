@@ -1,0 +1,23 @@
+# A minimal mkdocs.yml
+site_name: 'DIST-S1'
+
+theme:
+  name: material
+
+nav:
+  - 'Home': 'README.md'
+  - 'Run Configuration': 'run_config.md'
+  - 'Algorithm Configuration': 'algo_config.md'
+
+plugins:
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_root_heading: true
+            show_root_docstring: false
+            show_signature: false
+            show_bases: false
+            show_source: false
+            members: true
+            filters: ["!^_"]
