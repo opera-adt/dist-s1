@@ -8,7 +8,7 @@
 
 This is the workflow that generates OPERA's DIST-S1 product. This workflow is designed to delineate *generic* disturbance from a time-series of OPERA Radiometric and Terrain Corrected Sentinel-1 (OPERA RTC-S1) products. The output DIST-S1 product is resampled to a 30 meter Military Grid Reference System (MGRS) tile. Below is a sample product (T11SLT from data acquired January 21, 2025) subset over impacted areas of wildfires in Los Angeles, CA 2024-2025.
 
-![sample product](assets/subset_OPERA_L3_DIST-ALERT-S1_T11SLT_20250121T135246Z_20250205T190752Z_S1_30_v0.1.png)
+![sample product](../assets/subset_OPERA_L3_DIST-ALERT-S1_T11SLT_20250121T135246Z_20250205T190752Z_S1_30_v0.1.png)
 
 
 ## Usage
@@ -16,16 +16,16 @@ This is the workflow that generates OPERA's DIST-S1 product. This workflow is de
 We have a command line interface (CLI) and python interface. 
 All the examples below generate the full sample product above.
 We only expose the required paramters below.
-See the [examples](examples/) directory for additional parameters available. 
+See the [examples](../examples/) directory for additional parameters available. 
 For a description about the organization of the repository see the [Design/Organization of the Repository](#designorganization-of-the-repository) section.
 To determine the relevant parameters for `DIST-S1` submission, please see the repository [dist-s1-enumerator](https://github.com/opera-adt/dist-s1-enumerator) and the notebooks within it.
 
 ### Python
 
-A variation of the script below can be found in [examples/e2e.py](examples/e2e.py). 
+A variation of the script below can be found in [examples/e2e.py](../examples/e2e.py). 
 It is possible to run steps of the workflow after the runconfig data has been created (primarily for debugging a step of the workflow).
-An example of this step-wise execution can be found in [examples/run_steps.py](examples/run_steps.py).
-The same scripts are also found in the [notebooks](notebooks) directory.
+An example of this step-wise execution can be found in [examples/run_steps.py](../examples/run_steps.py).
+The same scripts are also found in the [notebooks](../notebooks) directory.
 
 ```
 from pathlib import Path
@@ -61,12 +61,12 @@ dist-s1 run \
 
 #### As a SDS Science Application Software (SAS)
 
-See the [examples/sas_run.sh](examples/sas_run.sh) script for an example of how to run the DIST-S1 workflow as a SDS Science Application Software (SAS) with a preparation script to localize the necessary RTC-S1 inputs.
+See the [examples/sas_run.sh](../examples/sas_run.sh) script for an example of how to run the DIST-S1 workflow as a SDS Science Application Software (SAS) with a preparation script to localize the necessary RTC-S1 inputs.
 
 ```
 dist-s1 run_sas --runconfig_yml_path run_config.yml
 ```
-There sample `run_config.yml` file is provided in the [examples](examples) directory from this prepatory step.
+There sample `run_config.yml` file is provided in the [examples](../examples) directory from this prepatory step.
 
 ## Installation
 
@@ -238,7 +238,7 @@ or via a specific test name:
 ```
 pytest tests/test_water_mask.py::test_antimeridian_water_mask
 ```
-There is a lot of data used to test the workflows in expedient ways. This is described in the [generation_of_input_data_subset.md](tests/generation_of_input_data_subset.md) file.
+There is a lot of data used to test the workflows in expedient ways. This is described in the [generation_of_input_data_subset.md](../tests/generation_of_input_data_subset.md) file.
 
 # Contribution Instructions
 
@@ -251,10 +251,10 @@ Because we use this plugin for producing publicly available datasets, we are hea
 
 There are two main components to the DIST-S1 workflow:
 
-1. Curation and localization of the OPERA RTC-S1 products. This is captured in the `run_dist_s1_sas_prep_workflow` function within the [`workflows.py` file](src/dist_s1/workflows.py).
-2. Application of the DIST-S1 algorithm to the localized RTC-S1 products. This is captured in the `run_dist_s1_sas_workflow` function within the [`workflows.py` file](src/dist_s1/workflows.py).
+1. Curation and localization of the OPERA RTC-S1 products. This is captured in the `run_dist_s1_sas_prep_workflow` function within the [`workflows.py` file](../src/dist_s1/workflows.py).
+2. Application of the DIST-S1 algorithm to the localized RTC-S1 products. This is captured in the `run_dist_s1_sas_workflow` function within the [`workflows.py` file](../src/dist_s1/workflows.py).
 
-These two steps can be run serially as a single workflow via `run_dist_s1_workflow` in the [`workflows.py` file](src/dist_s1/workflows.py). There are associated CLI entrypoints to the functions via the `dist-s1` main command (see [SAS usage](#as-a-sds-science-application-software-sas) or the [run_sas.sh](examples/run_sas.sh) script).
+These two steps can be run serially as a single workflow via `run_dist_s1_workflow` in the [`workflows.py` file](../src/dist_s1/workflows.py). There are associated CLI entrypoints to the functions via the `dist-s1` main command (see [SAS usage](#as-a-sds-science-application-software-sas) or the [run_sas.sh](../examples/run_sas.sh) script).
 
 In terms of design, each step of the workflow relies heavily on writing its outputs to disk. This allows for testing of each step by staging the relevant inputs on disk. It also provides a means to visually inspect the outputs of a given step (e.g. via QGIS) without additional boilerplate code to load/serialize in-memory data. There is a class `RunConfigData` (that can be serialized as a `run_config.yml`) that functions to validate the inputs provided by the user and store the necessary paths for intermediate and output products (including those required for each of the workflow's steps). Storing these paths is quite tedious and each run config instance stores these paths via tables or dictionaries to allow for efficient lookup (e.g. find all the paths of for RTC-S1 despeckled inputs by `jpl_burst_id`).
 
