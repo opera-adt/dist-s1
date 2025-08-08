@@ -53,15 +53,11 @@ def convert_geotiff_to_png(
 
         if water_mask_path is not None:
             band = apply_water_mask(band, profile_src, water_mask_path)
-
         output_height = output_height or band.shape[0]
         output_width = output_width or band.shape[1]
 
         if (output_height, output_width) != band.shape:
             band = ds.read(1, out_shape=(output_height, output_width), resampling=Resampling.nearest)
-
-        band = band.astype(np.float32)
-        band = (255 * (band - band.min()) / (band.max() - band.min())).astype(np.uint8)
 
         profile = {'driver': 'PNG', 'height': output_height, 'width': output_width, 'count': 1, 'dtype': band.dtype}
         # Dummy crs and transform to avoid warnings

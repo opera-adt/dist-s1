@@ -6,7 +6,7 @@ from dist_s1_enumerator import enumerate_one_dist_s1_product, localize_rtc_s1_ts
 
 from dist_s1.credentials import ensure_earthdata_credentials
 from dist_s1.data_models.data_utils import get_max_pre_imgs_per_burst_mw
-from dist_s1.data_models.defaults import DEFAULT_LOOKBACK_STRATEGY
+from dist_s1.data_models.defaults import DEFAULT_LOOKBACK_STRATEGY, DEFAULT_N_ANNIVERSARIES_FOR_MW
 from dist_s1.data_models.runconfig_model import RunConfigData
 
 
@@ -22,7 +22,7 @@ def localize_rtc_s1(
     dst_dir: Path | str | None = 'out',
     tqdm_enabled: bool = True,
     model_context_length: int = 10,
-    n_anniversaries_for_mw: int = 3,
+    n_anniversaries_for_mw: int = DEFAULT_N_ANNIVERSARIES_FOR_MW,
 ) -> RunConfigData:
     """Localize RTC-S1 data and create RunConfigData.
 

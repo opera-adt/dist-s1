@@ -6,9 +6,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2025-08-07
+
+### Changed
+* Updated imports of defaults in `runconfig_model.py`
+
+### Added
+* More examples for confirmation workflow
+* Ability to change all parameters for algorithms from python and CLI entrypoints
+* Updated readme for confirmation workflows
+* Lower bound for distmetrics to ensure latest models included.
+
+### Fixed
+* Browse imagery generation (was scaling dynamic range unnecessarily)
+* Sequential confirmation test data.
+* Entrypoints to confirmation only entrypoints.
+* `dst_dir` attribute of `DistS1ProductDirectory` casting to Path. 
+
+
+### Fixed
+* Exposed all confirmation algorithm parameters into CLI and python interfaces
+* Changelog format from major release
+* `n_annivesaries` in CLI and workflow (was not properly set in prep workflow)
+* Duplicate CLI options (`algo_config_path` and `run_config_path`)
+* Ensure for `prep` workflows and `run` workflows (and associated CLI) that if `run_config_path` is provided, then `run_config.yml` and `algo_config.yml` are created and then serialized.
+
+
 ## [2.0.0] - 2025-07-16
 
-## Removed
+### Removed
 - `n_lookbacks` (which should have been called `n_baselines`) for computing confirmation within the SAS
    - Removed overly complicated accounting for in SAS confirmation
    - Only confirmation now is either by passing a previous product OR passing a directory of products
@@ -16,7 +42,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Extra validation for confirmation packaging
 - Support for `immediate_lookback` - to add back will need to add logic for calculations of lookbacks, etc.
 
-## Changed
+### Changed
 - Multiwindow strategy is now the default in both python API and CLI
 - Confirmation_strategy is now simply determined with respect to `prior_dist_s1_product`. If it is `None`, then no confirmation is performed. If it is a path, then it uses this directory and it's tiffs to perform confirmation.
 - Now retrieves the umd distance to land and use a water mask that excluded 1 km from ocean.
@@ -42,7 +68,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Use dist-s1-enumerator and updated keyword arguments.
 - Golden datasets now use multi-window baselines.
 
-## Added
+### Added
 - Confirmation python API and CLI
 - Constants for CLI and `RunConfigData` - allows for consistent data parsing.
 - Ability to use algorithm parameters to supplement runconfig for SDS operations.
@@ -65,7 +91,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Use specified model context length from specified model to calculate `max_pre_imgs_per_burst_mw` and `delta_lookback_days_mw` if the latter two are unspecified
 - Examples of enumeration of inputs for DIST-S1 triggering with `dist-s1-enumerator>=1.0.0` (used in creation of DIST-S1 time-series and confirmation).
 
-## Fixed
+### Fixed
 - Sequential Confirmation Workflow and downstream functions
 - All the tests with the updates above.
 - Correct loading of algo_config.yml in `prep` steps.
