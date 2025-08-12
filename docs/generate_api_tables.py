@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Any
 
 
-# Add src to path to import dist_s1 modules
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 from dist_s1.data_models.algoconfig_model import AlgoConfigData
@@ -33,7 +32,7 @@ def is_field_required(field_info: Any) -> bool:  # noqa: ANN401
         except KeyError:
             pass
 
-    # Check if type hint indicates Optional (Union with None)
+    # Check if type hint indicates Optional ( with None)
     type_hint = field_info.annotation
     if type_hint is not None:
         type_str = str(type_hint)
@@ -49,9 +48,9 @@ def get_default_value(field_name: str, field_info: Any) -> str:  # noqa: ANN401
     # First check if field has a default value
     if field_info.default is not None and str(field_info.default) != 'PydanticUndefined':
         default_value = field_info.default
-        if isinstance(default_value, (str, int, float, bool)):
+        if isinstance(default_value, str | int | float | bool):
             return str(default_value)
-        elif isinstance(default_value, (list, tuple)):
+        elif isinstance(default_value, list | tuple):
             return str(default_value)
         elif isinstance(default_value, Path):
             return f'`{default_value}`'
@@ -64,9 +63,9 @@ def get_default_value(field_name: str, field_info: Any) -> str:  # noqa: ANN401
         default_value = globals()[default_var_name]
         if default_value is None:
             return 'None'
-        elif isinstance(default_value, (str, int, float, bool)):
+        elif isinstance(default_value, str | int | float | bool):
             return str(default_value)
-        elif isinstance(default_value, (list, tuple)):
+        elif isinstance(default_value, list | tuple):
             return str(default_value)
         elif isinstance(default_value, Path):
             return f'`{default_value}`'
