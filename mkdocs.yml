@@ -1,23 +1,27 @@
-# A minimal mkdocs.yml
-site_name: 'DIST-S1'
-
+site_name: DIST-S1 Docs
+repo_url: https://github.com/opera-adt/dist-s1
 theme:
   name: material
-
 nav:
-  - 'Home': 'README.md'
-  - 'Run Configuration': 'run_config.md'
-  - 'Algorithm Configuration': 'algo_config.md'
-
+  - Home: index.md
+  - API:
+      - AlgoConfigData: api/algoconfig.md
+      - RunConfigData: api/runconfig.md
 plugins:
+  - search
   - mkdocstrings:
       handlers:
         python:
           options:
-            show_root_heading: true
-            show_root_docstring: false
-            show_signature: false
-            show_bases: false
+            extensions:
+              - griffe_pydantic:
+                  schema: true
+            docstring_style: numpy
+            show_signature_annotations: true
             show_source: false
-            members: true
-            filters: ["!^_"]
+            members_order: source
+            show_bases: false
+markdown_extensions:
+  - tables
+watch:
+  - src
