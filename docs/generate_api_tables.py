@@ -1,24 +1,18 @@
 #!/usr/bin/env python3
-"""
-Script to dynamically generate API documentation tables for DIST-S1 data models.
-This script extracts field information from Pydantic models and default values
-from defaults.py to create comprehensive documentation tables.
-"""
-
-import inspect
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
+
 
 # Add src to path to import dist_s1 modules
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 from dist_s1.data_models.algoconfig_model import AlgoConfigData
+from dist_s1.data_models.defaults import *  # noqa: F403
 from dist_s1.data_models.runconfig_model import RunConfigData
-from dist_s1.data_models.defaults import *
 
 
-def get_default_value(field_name: str, field_info: Any) -> str:
+def get_default_value(field_name: str, field_info: Any) -> str:  # noqa: ANN401
     """Get the default value for a field from defaults.py or field default."""
     # First check if field has a default value
     if field_info.default is not None and str(field_info.default) != 'PydanticUndefined':
@@ -50,7 +44,7 @@ def get_default_value(field_name: str, field_info: Any) -> str:
         return 'No default'
 
 
-def format_type_hint(type_hint: Any) -> str:
+def format_type_hint(type_hint: Any) -> str:  # noqa: ANN401
     """Format type hints for display in documentation."""
     if type_hint is None:
         return 'Any'
@@ -77,7 +71,7 @@ def format_type_hint(type_hint: Any) -> str:
     return type_str
 
 
-def extract_field_info(model_class: type) -> List[Dict[str, str]]:
+def extract_field_info(model_class: type) -> list[dict[str, str]]:
     """Extract field information from a Pydantic model."""
     fields = []
 
@@ -100,7 +94,7 @@ def extract_field_info(model_class: type) -> List[Dict[str, str]]:
     return fields
 
 
-def generate_markdown_table(fields: List[Dict[str, str]], title: str) -> str:
+def generate_markdown_table(fields: list[dict[str, str]], title: str) -> str:
     """Generate a markdown table from field information."""
     markdown = f'## {title}\n\n'
     markdown += '| Attribute | Type | Default | Description |\n'
@@ -114,7 +108,7 @@ def generate_markdown_table(fields: List[Dict[str, str]], title: str) -> str:
     return markdown
 
 
-def main():
+def main() -> None:
     """Generate API documentation tables."""
     docs_dir = Path(__file__).parent
 
@@ -127,10 +121,10 @@ def main():
     algoconfig_md = generate_markdown_table(algoconfig_fields, 'AlgoConfigData')
 
     # Write to files
-    with open(docs_dir / 'api' / 'runconfig.md', 'w') as f:
+    with Path.open(docs_dir / 'api' / 'runconfig.md', 'w', encoding='utf-8') as f:
         f.write(runconfig_md)
 
-    with open(docs_dir / 'api' / 'algoconfig.md', 'w') as f:
+    with Path.open(docs_dir / 'api' / 'algoconfig.md', 'w', encoding='utf-8') as f:
         f.write(algoconfig_md)
 
     print('API documentation tables generated successfully!')
