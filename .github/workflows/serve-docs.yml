@@ -27,7 +27,9 @@ jobs:
         with:
           environment-file: environment.yml
           environment-name: dist-s1-env
-          cache-environment: true
+          create-args: >-
+            python=${{ matrix.python-version }}
+
 
       - name: Install dist-s1
         shell: bash -l {0}
@@ -35,7 +37,9 @@ jobs:
             python -m pip install --no-deps .
 
       - name: Build MkDocs site
-        run: mkdocs build
+        shell: bash -l {0}
+        run: |
+            mkdocs build
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
