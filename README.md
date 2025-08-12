@@ -5,6 +5,8 @@
 [![PyPI version](https://img.shields.io/pypi/v/dist-s1.svg)](https://pypi.python.org/pypi/dist-s1/)
 [![Conda version](https://img.shields.io/conda/vn/conda-forge/dist-s1)](https://anaconda.org/conda-forge/dist-s1)
 [![Conda platforms](https://img.shields.io/conda/pn/conda-forge/dist-s1)](https://anaconda.org/conda-forge/dist-s1)
+[![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://opera-adt.github.io/dist-s1/)
+
 
 This is the workflow that generates OPERA's DIST-S1 product. This workflow is designed to delineate *generic* disturbance from a time-series of OPERA Radiometric and Terrain Corrected Sentinel-1 (OPERA RTC-S1) products. The output DIST-S1 product is resampled to a 30 meter Military Grid Reference System (MGRS) tile. Below is a sample product (T11SLT from data acquired January 21, 2025) subset over impacted areas of wildfires in Los Angeles, CA 2024-2025.
 
@@ -197,10 +199,12 @@ python -m ipykernel install --user --name dist-s1-env
 
 ## Documentation
 
-The project documentation is located in the [`docs/`](docs/) directory and includes:
+Documentation for the SDS interface (i.e `run_sas` entrypoint) is available at: [https://opera-adt.github.io/dist-s1/](https://opera-adt.github.io/dist-s1/). It provides documentation about fields exposed in the Run Config data model.
 
-- **API Documentation** - Dynamically generated from Pydantic models
-- **Configuration Guides** - RunConfigData and AlgoConfigData documentation
+
+The project documentation can also be generated locally. The materials to do so are located in the [`docs/`](docs/) directory and includes:
+
+- **Config Documentation** - Dynamically generated from Pydantic models for `RunConfigData` and `AlgoConfigData`
 - **Development Guides** - Building and serving documentation locally
 
 ### Quick Start

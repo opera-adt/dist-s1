@@ -4,9 +4,9 @@ theme:
   name: material
 nav:
   - Home: index.md
-  - API:
-      - AlgoConfigData: api/algoconfig.md
-      - RunConfigData: api/runconfig.md
+  - Config Models:
+      - AlgoConfigData: config/algoconfig.md
+      - RunConfigData: config/runconfig.md
 plugins:
   - search
 markdown_extensions:

@@ -117,11 +117,15 @@ class AlgoConfigData(BaseModel):
     )
     max_pre_imgs_per_burst_mw: tuple[int, ...] | None = Field(
         default=DEFAULT_MAX_PRE_IMGS_PER_BURST_MW,
-        description='Max number of pre-images per burst within each window',
+        description='Max number of pre-images per burst within each window. '
+        'If `None`, the value will be calculated based on the model context length and the number of '
+        'anniversaries. Specifically, the value will be context_length // n_anniversaries with '
+        'remainder added to the first window.',
     )
     delta_lookback_days_mw: tuple[int, ...] | None = Field(
         default=DEFAULT_DELTA_LOOKBACK_DAYS_MW,
-        description='Delta lookback days for each window relative to post-image acquisition date',
+        description='Delta lookback days for each window relative to post-image acquisition date. '
+        'If `None`, the value will be calculated based on the number of anniversaries (default is 3).',
     )
     low_confidence_alert_threshold: float = Field(
         default=DEFAULT_LOW_CONFIDENCE_ALERT_THRESHOLD,

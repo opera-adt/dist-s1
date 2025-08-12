@@ -9,7 +9,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [2.0.2] - 2025-08-12
 
 ### Added
-* Mkdocs
+* Mkdocs provides documentation for the SDS interface of the SAS.
 
 
 ## [2.0.1] - 2025-08-07
