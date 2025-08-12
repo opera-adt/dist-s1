@@ -1,0 +1,42 @@
+name: Deploy MkDocs to GitHub Pages
+
+# Run this workflow every time a new commit is pushed to the 'dev' branch
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  deploy:
+    name: Deploy site
+    runs-on: ubuntu-latest 
+
+    # Grant GITHUB_TOKEN the permissions it needs to deploy to GitHub Pages
+    permissions:
+      contents: write
+
+    steps:
+      # 1. Check out the repository so the workflow can access it
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      # 2. Set up Python, which is needed to run MkDocs
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      # 3. Install the dependencies from requirements.txt
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # 4. Build the MkDocs site
+      - name: Build MkDocs site
+        run: mkdocs build
+
+      # 5. Deploy the built site to the 'gh-pages' branch
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
