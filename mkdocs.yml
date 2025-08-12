@@ -9,18 +9,6 @@ nav:
       - RunConfigData: api/runconfig.md
 plugins:
   - search
-  - mkdocstrings:
-      handlers:
-        python:
-          options:
-            extensions:
-              - griffe_pydantic:
-                  schema: true
-            docstring_style: numpy
-            show_signature_annotations: true
-            show_source: false
-            members_order: source
-            show_bases: false
 markdown_extensions:
   - tables
 watch:
