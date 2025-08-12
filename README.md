@@ -195,6 +195,28 @@ python -m ipykernel install --user --name dist-s1-env
 ```
 
 
+## Documentation
+
+The project documentation is located in the [`docs/`](docs/) directory and includes:
+
+- **API Documentation** - Dynamically generated from Pydantic models
+- **Configuration Guides** - RunConfigData and AlgoConfigData documentation
+- **Development Guides** - Building and serving documentation locally
+
+### Quick Start
+
+```bash
+# Build and serve documentation locally
+conda activate dist-s1-env
+mkdocs serve
+
+# Regenerate API documentation
+./docs/update_api_docs.sh
+```
+
+For more details, see the [Documentation README](docs/README.md).
+
+
 ## Docker
 
 ### Downloading a Docker Image
