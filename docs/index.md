@@ -1,13 +1,12 @@
 ## DIST-S1 Documentation
 
-Welcome! This site documents the DIST-S1 package. Currently, the documentation is focused on the Science-Data System (SDS) interface and using `run_sas` entrypoint.
+Welcome! This site documents the DIST-S1 package. Currently, the documentation is focused on the Science-Data System (SDS) interface and using `run_sas` entrypoint. For complete set of use cases, please see the DIST-S1 [readme](https://github.com/opera-adt/dist-s1).
 
-This interface assumes all the requisite OPERA RTC-S1 data is downloaded and a runconfig.yml has been provided so that you can run:
+The SDS interface assumes all the requisite OPERA RTC-S1 data is downloaded and a runconfig.yml has been provided with relevant local paths provided so that you run:
 ```
 run_sas --run_config_path run_config.yml
 ```
-For a complete example (in which a `run_config` is generate):
-
+For a complete example (in which a `run_config` is generated in the process) use:
 ```
 dist-s1 run_sas_prep --mgrs_tile_id '11SLT' \
     --post_date '2025-01-21' \
@@ -29,7 +28,6 @@ dist-s1 run_sas_prep --mgrs_tile_id '11SLT' \
     --run_config_path run_config.yml && \
 dist-s1 run_sas --run_config_path run_config.yml
 ```
-
 Sample yml configs can be found here:
 
 - [run_config.yml](https://github.com/opera-adt/dist-s1/blob/dev/examples/no_confirmation/_run_config.yml)
