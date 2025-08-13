@@ -1,10 +1,5 @@
-#!/usr/bin/env python3
-import sys
 from pathlib import Path
 from typing import Any
-
-
-sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 from dist_s1.data_models.algoconfig_model import AlgoConfigData
 from dist_s1.data_models.defaults import *  # noqa: F403

@@ -12,7 +12,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * Mkdocs provides documentation for:
    - RunConfigData and AlgoConfigData parameters
    - Product layers and their descriptions
-
+* Mkdocs added to environment.
 
 ## [2.0.1] - 2025-08-07
 
