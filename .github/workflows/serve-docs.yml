@@ -36,7 +36,7 @@ jobs:
       - name: Generate API documentation tables
         shell: bash -l {0}
         run: |
-          python docs/generate_api_tables.py
+          python docs/generate_config_tables.py
           python docs/generate_product_tables.py
 
       - name: Build MkDocs site

@@ -13,7 +13,7 @@ The API documentation is dynamically generated from the Pydantic models in the c
 
 ```bash
 # Use the convenience script
-./docs/update_api_docs.sh
+./docs/update_config_docs.sh
 ./docs/update_product_docs.sh
 
 # Or run manually
