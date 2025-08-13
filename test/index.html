@@ -10,7 +10,7 @@
       
       
       
-        <link rel="next" href="config/algoconfig/">
+        <link rel="next" href="pages/config/overview/">
       
       
       <link rel="icon" href="assets/images/favicon.png">
@@ -323,12 +323,12 @@
   
   
     <li class="md-nav__item">
-      <a href="config/algoconfig/" class="md-nav__link">
+      <a href="pages/config/overview/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    AlgoConfigData
+    Overview
     
   </span>
   
@@ -346,12 +346,172 @@
   
   
     <li class="md-nav__item">
-      <a href="config/runconfig/" class="md-nav__link">
+      <a href="pages/config/runconfig/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    RunConfigData
+    Run Config Parameters
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="pages/config/algoconfig/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Algorithm Config Parameters
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Product Documentation
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Product Documentation
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="pages/product_documentation/product_documentation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="pages/product_documentation/product_layers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Product Layers
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="pages/product_documentation/product_models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Product Models
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="pages/product_documentation/disturbance_labels/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Disturbance Labels
     
   </span>
   
@@ -424,41 +584,13 @@
   <h1>Home</h1>
 
 <h2 id="dist-s1-documentation">DIST-S1 Documentation</h2>
-<p>Welcome! This site documents the DIST-S1 package. Currently, the documentation is focused on the Science-Data System (SDS) interface and using <code>run_sas</code> entrypoint. For complete set of use cases, please see the DIST-S1 <a href="https://github.com/opera-adt/dist-s1">readme</a>.</p>
-<p>The SDS interface assumes all the requisite OPERA RTC-S1 data is downloaded and a runconfig.yml has been provided with relevant local paths provided so that you run:</p>
-<pre><code>run_sas --run_config_path run_config.yml
-</code></pre>
-<p>For a complete example (in which a <code>run_config</code> is generated in the process) use:</p>
-<pre><code>dist-s1 run_sas_prep --mgrs_tile_id '11SLT' \
-    --post_date '2025-01-21' \
-    --track_number 71 \
-    --dst_dir '../../notebooks/los-angeles' \
-    --memory_strategy 'high' \
-    --low_confidence_alert_threshold 3.5 \
-    --high_confidence_alert_threshold 5.5 \
-    --apply_water_mask true \
-    --device 'cpu' \
-    --product_dst_dir '../../notebooks/los-angeles' \
-    --model_source 'transformer_original' \
-    --use_date_encoding false \
-    --model_dtype 'float32' \
-    --n_workers_for_norm_param_estimation 4 \
-    --batch_size_for_norm_param_estimation 32 \
-    --stride_for_norm_param_estimation 4 \
-    --algo_config_path algo_config.yml \
-    --run_config_path run_config.yml &amp;&amp; \
-dist-s1 run_sas --run_config_path run_config.yml
-</code></pre>
-<p>Sample yml configs can be found here:</p>
-<ul>
-<li><a href="https://github.com/opera-adt/dist-s1/blob/dev/examples/no_confirmation/_run_config.yml">run_config.yml</a></li>
-<li><a href="https://github.com/opera-adt/dist-s1/blob/dev/examples/no_confirmation/_algo_config.yml">algo_config.yml</a></li>
-</ul>
-<p>We have provided tables to the relevant fields for the configuration ymls here:</p>
-<ul>
-<li><a href="config/runconfig/">RunConfig Table</a></li>
-<li><a href="config/algoconfig/">AlgoConfig Table</a></li>
-</ul>
+<p><img alt="sample_product" src="assets/subset_OPERA_L3_DIST-ALERT-S1_T11SLT_20250121T135246Z_20250205T190752Z_S1_30_v0.1.png" /></p>
+<p>Welcome! This site documents the DIST-S1 package. The documentation is focused two important aspects of the <code>DIST-S1</code> package:</p>
+<ol>
+<li>The available parameters and their description exposed via <code>RunConfigData</code> and <code>AlgoConfigData</code> (see <a href="pages/config/overview/">Config Overview</a>). This is related to the <code>run_sas</code> entrypoint relevant for Hybrid Science Data System (HySDS) usage.</li>
+<li>The product structure of the <code>DIST-S1</code> product (see <a href="pages/product_documentation/product_documentation/">Product Overview</a>) </li>
+</ol>
+<p>For complete set of entrypoints of <code>DIST-S1</code>, please see the DIST-S1 <a href="https://github.com/opera-adt/dist-s1/blob/dev/README.md">Readme.md</a> and examples on the repository.</p>
 
 
 
