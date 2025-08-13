@@ -199,13 +199,15 @@ python -m ipykernel install --user --name dist-s1-env
 
 ## Documentation
 
-Documentation for the SDS interface (i.e `run_sas` entrypoint) is available at: [https://opera-adt.github.io/dist-s1/](https://opera-adt.github.io/dist-s1/). It provides documentation about fields exposed in the Run Config data model.
+We have documentation for this package. It focuses on two important aspects of this software not covered in the readme:
+
+1. The available parameters exposed via `RunConfigData` and `AlgoConfigData`
+2. The product structure of the `DIST-S1` product
+
+The documentation is available at [https://opera-adt.github.io/dist-s1/](https://opera-adt.github.io/dist-s1/).
 
 
-The project documentation can also be generated locally. The materials to do so are located in the [`docs/`](docs/) directory and includes:
-
-- **Config Documentation** - Dynamically generated from Pydantic models for `RunConfigData` and `AlgoConfigData`
-- **Development Guides** - Building and serving documentation locally
+The project documentation can also be generated locally. The materials to do so are located in the [`docs/`](docs/) directory (see the [docs/README.md](docs/README.md))
 
 ### Quick Start
 
