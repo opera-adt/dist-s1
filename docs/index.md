@@ -1,39 +1,9 @@
 ## DIST-S1 Documentation
 
-Welcome! This site documents the DIST-S1 package. Currently, the documentation is focused on the Science-Data System (SDS) interface and using `run_sas` entrypoint. For complete set of use cases, please see the DIST-S1 [readme](https://github.com/opera-adt/dist-s1).
+![sample_product](assets/subset_OPERA_L3_DIST-ALERT-S1_T11SLT_20250121T135246Z_20250205T190752Z_S1_30_v0.1.png)
 
-The SDS interface assumes all the requisite OPERA RTC-S1 data is downloaded and a runconfig.yml has been provided with relevant local paths provided so that you run:
-```
-run_sas --run_config_path run_config.yml
-```
-For a complete example (in which a `run_config` is generated in the process) use:
-```
-dist-s1 run_sas_prep --mgrs_tile_id '11SLT' \
-    --post_date '2025-01-21' \
-    --track_number 71 \
-    --dst_dir '../../notebooks/los-angeles' \
-    --memory_strategy 'high' \
-    --low_confidence_alert_threshold 3.5 \
-    --high_confidence_alert_threshold 5.5 \
-    --apply_water_mask true \
-    --device 'cpu' \
-    --product_dst_dir '../../notebooks/los-angeles' \
-    --model_source 'transformer_original' \
-    --use_date_encoding false \
-    --model_dtype 'float32' \
-    --n_workers_for_norm_param_estimation 4 \
-    --batch_size_for_norm_param_estimation 32 \
-    --stride_for_norm_param_estimation 4 \
-    --algo_config_path algo_config.yml \
-    --run_config_path run_config.yml && \
-dist-s1 run_sas --run_config_path run_config.yml
-```
-Sample yml configs can be found here:
+Welcome! This site documents the DIST-S1 package. The documentation is focused two important aspects of the `DIST-S1` package:
+1. The available parameters and their description exposed via `RunConfigData` and `AlgoConfigData` (see [Config Overview](pages/config/overview.md)). This is related to the `run_sas` entrypoint relevant for Hybrid Science Data System (HySDS) usage.
+2. The product structure of the `DIST-S1` product (see [Product Overview](pages/product_documentation/product_documentation.md)) 
+For complete set of entrypoints of `DIST-S1`, please see the DIST-S1 [Readme.md](https://github.com/opera-adt/dist-s1/blob/dev/README.md) and examples on the repository.
 
-- [run_config.yml](https://github.com/opera-adt/dist-s1/blob/dev/examples/no_confirmation/_run_config.yml)
-- [algo_config.yml](https://github.com/opera-adt/dist-s1/blob/dev/examples/no_confirmation/_algo_config.yml)
-
-We have provided tables to the relevant fields for the configuration ymls here:
-
-- [RunConfig Table](config/runconfig.md)
-- [AlgoConfig Table](config/algoconfig.md)

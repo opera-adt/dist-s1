@@ -5,13 +5,14 @@ theme:
 nav:
   - Home: index.md
   - Config Models:
-      - AlgoConfigData: config/algoconfig.md
-      - RunConfigData: config/runconfig.md
+      - Overview: pages/config/overview.md
+      - Run Config Parameters: pages/config/runconfig.md
+      - Algorithm Config Parameters: pages/config/algoconfig.md
   - Product Documentation:
-      - Overview: product_documentation.md
-      - Product Layers: product_layers.md
-      - Product Models: product_models.md
-      - Disturbance Labels: disturbance_labels.md
+      - Overview: pages/product_documentation/product_documentation.md
+      - Product Layers: pages/product_documentation/product_layers.md
+      - Product Models: pages/product_documentation/product_models.md
+      - Disturbance Labels: pages/product_documentation/disturbance_labels.md
 plugins:
   - search
 markdown_extensions:
