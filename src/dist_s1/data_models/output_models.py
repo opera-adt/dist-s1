@@ -5,7 +5,7 @@ from warnings import warn
 
 import numpy as np
 import rasterio
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from dist_s1.constants import EXPECTED_FORMAT_STRING, PRODUCT_VERSION, TIF_LAYERS, TIF_LAYER_DTYPES
 from dist_s1.data_models.data_utils import get_acquisition_datetime
@@ -24,9 +24,9 @@ REQUIRED_PRODUCT_TAGS = PRODUCT_TAGS_FOR_EQUALITY + ['version']
 
 
 class ProductNameData(BaseModel):
-    mgrs_tile_id: str
-    acq_date_time: datetime
-    processing_date_time: datetime
+    mgrs_tile_id: str = Field(description='MGRS (Military Grid Reference System) tile identifier')
+    acq_date_time: datetime = Field(description='Acquisition datetime of the Sentinel-1 data')
+    processing_date_time: datetime = Field(description='Processing datetime when the product was generated')
 
     def __str__(self) -> str:
         tokens = [

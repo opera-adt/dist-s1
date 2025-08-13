@@ -46,6 +46,26 @@ TIF_LAYER_NODATA_VALUES = {
     'GEN-DIST-DUR': -1,
     'GEN-DIST-LAST-DATE': -1,
 }
+TIF_LAYER_DESCRIPTIONS = {
+    'GEN-DIST-STATUS': 'Status of the generic disturbance classification (see the disturbance labels table for more '
+    'details on the status labels).',
+    'GEN-METRIC': 'Metric value for the generic disturbance classification. Can be viewed as number of standard '
+    'devations from the mean. Value is a non-negative real number.',
+    'GEN-DIST-STATUS-ACQ': 'Status of the generic disturbance classification with respect to the latest acquisition '
+    'date (see disturbance labels table for more details on the status labels)',
+    'GEN-METRIC-MAX': 'Maximum metric value for the generic disturbance classification over all acquisition dates since'
+    'first disturbance. Reset to 0 when a new disturbance is detected. Value is a non-negative real number.',
+    'GEN-DIST-CONF': 'Confidence level for the generic disturbance classification. Value is a non-negative real number.'
+    ' Reset to 0 when a new disturbance is detected. -1 is nodata or no acquisition data available over previous '
+    'dates.',
+    'GEN-DIST-DATE': 'Date of the generic disturbance classification. Value is a non-negative integer and is the number'
+    f' of days from {BASE_DATE_FOR_CONFIRMATION.strftime("%Y-%m-%d")}. -1 is nodata or no acquisition data available.'
+    'over previous dates.',
+    'GEN-DIST-COUNT': 'The number of generic disturbances since first detection. Value is a non-negative integer.',
+    'GEN-DIST-PERC': 'Percentage of the generic disturbance disturbance since first detection.',
+    'GEN-DIST-DUR': 'Duration of the generic disturbance classification since first detection in days.',
+    'GEN-DIST-LAST-DATE': 'Latest generic disturbance detection.',
+}
 TIF_LAYERS = TIF_LAYER_DTYPES.keys()
 EXPECTED_FORMAT_STRING = (
     'OPERA_L3_DIST-ALERT-S1_T{mgrs_tile_id}_{acq_datetime}_{proc_datetime}_S1_30_v{PRODUCT_VERSION}'

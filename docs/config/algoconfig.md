@@ -13,8 +13,8 @@
 | `lookback_strategy` | `str` | multi_window | No | Lookback strategy to use for data curation of the baseline. `multi_window` will use a multi-window lookback strategy and is default for OEPRA DIST-S1, `immediate_lookback` will use an immediate lookback strategy using acquisitions preceding the post-date. `immediate_lookback` is not supported yet. |
 | `post_date_buffer_days` | `int` | 1 | No | Buffer days around post-date for data collection to create acqusition image to compare baseline to. |
 | `model_compilation` | `bool` | False | No | Whether to compile the model for CPU or GPU. False, use the model as is. True, load the model and compile for CPU or GPU optimizations. |
-| `max_pre_imgs_per_burst_mw` | `tuple[int, ...] | None` | None | Yes | Max number of pre-images per burst within each window |
-| `delta_lookback_days_mw` | `tuple[int, ...] | None` | None | Yes | Delta lookback days for each window relative to post-image acquisition date |
+| `max_pre_imgs_per_burst_mw` | `tuple[int, ...] | None` | None | Yes | Max number of pre-images per burst within each window. If `None`, the value will be calculated based on the model context length and the number of anniversaries. Specifically, the value will be context_length // n_anniversaries with remainder added to the first window. |
+| `delta_lookback_days_mw` | `tuple[int, ...] | None` | None | Yes | Delta lookback days for each window relative to post-image acquisition date. If `None`, the value will be calculated based on the number of anniversaries (default is 3). |
 | `low_confidence_alert_threshold` | `float` | 3.5 | No | Low confidence alert threshold for detecting disturbance between baseline and post-image. |
 | `high_confidence_alert_threshold` | `float` | 5.5 | No | High confidence alert threshold for detecting disturbance between baseline and post-image. |
 | `no_day_limit` | `int` | 30 | No | Number of days to limit confirmation process logic to. Confirmation must occur within first observance of disturbance and `no_day_limit` days after first disturbance. |

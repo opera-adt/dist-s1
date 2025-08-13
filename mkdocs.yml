@@ -7,6 +7,11 @@ nav:
   - Config Models:
       - AlgoConfigData: config/algoconfig.md
       - RunConfigData: config/runconfig.md
+  - Product Documentation:
+      - Overview: product_documentation.md
+      - Product Layers: product_layers.md
+      - Product Models: product_models.md
+      - Disturbance Labels: disturbance_labels.md
 plugins:
   - search
 markdown_extensions:

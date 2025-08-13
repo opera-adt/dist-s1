@@ -14,10 +14,12 @@ The API documentation is dynamically generated from the Pydantic models in the c
 ```bash
 # Use the convenience script
 ./docs/update_api_docs.sh
+./docs/update_product_docs.sh
 
 # Or run manually
 conda activate dist-s1-env
 python docs/generate_api_tables.py
+python docs/generate_product_tables.py
 ```
 
 ### Building the Documentation
