@@ -5,7 +5,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/dist-s1.svg)](https://pypi.python.org/pypi/dist-s1/)
 [![Conda version](https://img.shields.io/conda/vn/conda-forge/dist-s1)](https://anaconda.org/conda-forge/dist-s1)
 [![Conda platforms](https://img.shields.io/conda/pn/conda-forge/dist-s1)](https://anaconda.org/conda-forge/dist-s1)
-[![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://opera-adt.github.io/dist-s1/)
+[![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://opera-adt.github.io/dist-s1/stable/)
 
 
 This is the workflow that generates OPERA's DIST-S1 product. This workflow is designed to delineate *generic* disturbance from a time-series of OPERA Radiometric and Terrain Corrected Sentinel-1 (OPERA RTC-S1) products. The output DIST-S1 product is resampled to a 30 meter Military Grid Reference System (MGRS) tile. Below is a sample product (T11SLT from data acquired January 21, 2025) subset over impacted areas of wildfires in Los Angeles, CA 2024-2025.
