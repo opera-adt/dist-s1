@@ -1,6 +1,6 @@
 # Configuration Overview
 
-The SDS interface assumes all the requisite OPERA RTC-S1 data is downloaded and a runconfig.yml has been provided with relevant local paths provided so that you run:
+The Hybrid Science Data System (HySDS) interface (i.e. `dist-s1 run_sas`) assumes all the requisite OPERA RTC-S1 data is localized to the runtime environment and a runconfig.yml has been provided with relevant local paths. To run this entrypoint is simply:
 ```bash
 dist-s1 run_sas --run_config_path run_config.yml
 ```
@@ -31,10 +31,10 @@ Sample yml configs can be found here:
 - [run_config.yml](https://github.com/opera-adt/dist-s1/blob/dev/examples/no_confirmation/_run_config.yml)
 - [algo_config.yml](https://github.com/opera-adt/dist-s1/blob/dev/examples/no_confirmation/_algo_config.yml)
 
-We have provided tables to the relevant fields for the configuration ymls here:
+**Note**: There is a field `algo_config_path` in `run_config.yml` so that the `algo_config.yml` is also loaded. The algorithm config initialized with such yml parameters within `RunConfigData` data model. We have provided tables to the relevant fields for the configuration ymls here:
 
-- [RunConfig Table](runconfig.md)
-- [AlgoConfig Table](algoconfig.md)
+- [RunConfig Parameter Table](runconfig.md)
+- [AlgoConfig Parameter Table](algoconfig.md)
 
 A RunConfig and AlgoConfig expose all the different parameters that can be specified for the generation of a `DIST-S1` product.
 The parameters are written as gdal tags to the final `DIST-S1` product for provenance and can be read through `rasterio` in any of the final COG layers:
