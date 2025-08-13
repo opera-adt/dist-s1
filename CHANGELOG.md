@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.2] - 2025-08-12
+
+### Added
+* Mkdocs provides documentation for:
+   - RunConfigData and AlgoConfigData parameters
+   - Product layers and their descriptions
+* Mkdocs added to environment.
+
 ## [2.0.1] - 2025-08-07
 
 ### Changed

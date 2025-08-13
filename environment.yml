@@ -35,3 +35,9 @@ dependencies:
  - shapely
  - tile_mate>=0.0.14 
  - tqdm
+ # Docs
+ - mkdocs
+ - mkdocs-material 
+ - mkdocstrings-python
+ - mkdocs-redirects
+ - griffe-pydantic>=0.1.1

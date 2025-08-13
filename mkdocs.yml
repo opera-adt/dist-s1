@@ -1,0 +1,21 @@
+site_name: DIST-S1 Docs
+repo_url: https://github.com/opera-adt/dist-s1
+theme:
+  name: material
+nav:
+  - Home: index.md
+  - Config Models:
+      - Overview: pages/config/overview.md
+      - Run Config Parameters: pages/config/runconfig.md
+      - Algorithm Config Parameters: pages/config/algoconfig.md
+  - Product Documentation:
+      - Overview: pages/product_documentation/product_documentation.md
+      - Product Layers: pages/product_documentation/product_layers.md
+      - Product Models: pages/product_documentation/product_models.md
+      - Disturbance Labels: pages/product_documentation/disturbance_labels.md
+plugins:
+  - search
+markdown_extensions:
+  - tables
+watch:
+  - src

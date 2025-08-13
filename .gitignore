@@ -125,3 +125,6 @@ _testing
 examples/with_confirmation/confirmed_products/
 examples/with_confirmation/unconfirmed_products/
 examples/only_confirmation/chile_fire_confirmed/
+
+# Mkdocs
+site/
