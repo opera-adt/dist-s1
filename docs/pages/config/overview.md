@@ -31,7 +31,7 @@ Sample yml configs can be found here:
 - [run_config.yml](https://github.com/opera-adt/dist-s1/blob/dev/examples/no_confirmation/_run_config.yml)
 - [algo_config.yml](https://github.com/opera-adt/dist-s1/blob/dev/examples/no_confirmation/_algo_config.yml)
 
-**Note**: There is a field `algo_config_path` in `run_config.yml` so that the `algo_config.yml` is also loaded. The algorithm config initialized with such yml parameters within `RunConfigData` data model. We have provided tables to the relevant fields for the configuration ymls here:
+**Note**: There is a field `algo_config_path` in `run_config.yml` so that the `<algo_config_path>.yml` is loaded within `RunConfigData` data model to specify an appropriate `AlgoConfigData` instance that is in line with the `algo_config.yml`. We have provided tables to the relevant fields for the configuration ymls here:
 
 - [RunConfig Parameter Table](runconfig.md)
 - [AlgoConfig Parameter Table](algoconfig.md)
