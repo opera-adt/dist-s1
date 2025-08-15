@@ -161,6 +161,9 @@ class DistS1ProductDirectory(BaseModel):
         path = self.dst_dir / self.product_name
         return path
 
+    def __str__(self) -> str:
+        return str(self.product_dir_path)
+
     @field_validator('product_name')
     def validate_product_name(cls, product_name: str) -> str:
         if not ProductNameData.validate_product_name(product_name):
