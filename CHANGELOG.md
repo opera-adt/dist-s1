@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+<<<<<<< HEAD
 ## [2.0.3] - 2025-08-12
 
 ### Added
@@ -20,6 +21,12 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * Serialization of `algo_config_path` -- model_dump() in pydantic works recursively on attributes!
 * Serialization and read of `prior_dist_s1_product` - allows for str and paths
 
+=======
+## [2.0.3] - 2025-08-13
+
+### Fixed
+* Links to documenation (use stable).
+>>>>>>> dev
 
 ## [2.0.2] - 2025-08-12
 

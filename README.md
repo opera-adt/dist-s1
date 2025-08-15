@@ -5,7 +5,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/dist-s1.svg)](https://pypi.python.org/pypi/dist-s1/)
 [![Conda version](https://img.shields.io/conda/vn/conda-forge/dist-s1)](https://anaconda.org/conda-forge/dist-s1)
 [![Conda platforms](https://img.shields.io/conda/pn/conda-forge/dist-s1)](https://anaconda.org/conda-forge/dist-s1)
-[![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://opera-adt.github.io/dist-s1/)
+[![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://opera-adt.github.io/dist-s1/stable/)
 
 
 This is the workflow that generates OPERA's DIST-S1 product. This workflow is designed to delineate *generic* disturbance from a time-series of OPERA Radiometric and Terrain Corrected Sentinel-1 (OPERA RTC-S1) products. The output DIST-S1 product is resampled to a 30 meter Military Grid Reference System (MGRS) tile. Below is a sample product (T11SLT from data acquired January 21, 2025) subset over impacted areas of wildfires in Los Angeles, CA 2024-2025.
@@ -224,7 +224,7 @@ We have documentation for this package. It focuses on two important aspects of t
 1. The available parameters exposed via `RunConfigData` and `AlgoConfigData`
 2. The product structure of the `DIST-S1` product
 
-The documentation is available at [https://opera-adt.github.io/dist-s1/](https://opera-adt.github.io/dist-s1/).
+The documentation is available at [https://opera-adt.github.io/dist-s1/stable/](https://opera-adt.github.io/dist-s1/stable/).
 
 
 The project documentation can also be generated locally. The materials to do so are located in the [`docs/`](docs/) directory (see the [docs/README.md](docs/README.md)). For more details, see the [Documentation README](docs/README.md).
