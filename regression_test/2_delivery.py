@@ -18,7 +18,7 @@ def upload_directory_to_s3(
 
     for file_path in directory_path.rglob('*'):
         if file_path.is_file():
-            relative_path = file_path.relative_to(directory_path.parent)
+            relative_path = file_path.relative_to(Path.cwd())
             s3_key = str(relative_path)
             files_to_upload.append((file_path, s3_key, prefix))
 
@@ -45,16 +45,17 @@ def upload_data_to_s3(
     all_files_to_upload: list[tuple[Path, str, str]] = []
 
     for path_str in paths:
-        path = Path(path_str)
+        path = Path(path_str).resolve()
 
         if path.is_dir():
             for file_path in path.rglob('*'):
                 if file_path.is_file():
-                    relative_path = file_path.relative_to(path)
+                    relative_path = file_path.relative_to(Path.cwd())
                     s3_key = str(relative_path)
                     all_files_to_upload.append((file_path, s3_key, full_prefix))
         elif path.is_file():
-            s3_key = str(Path(path.parent) / path.name) if str(path.parent) != '.' else path.name
+            relative_path = path.relative_to(Path.cwd())
+            s3_key = str(relative_path)
             all_files_to_upload.append((path, s3_key, full_prefix))
 
     if all_files_to_upload:
