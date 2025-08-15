@@ -128,3 +128,15 @@ examples/only_confirmation/chile_fire_confirmed/
 
 # Mkdocs
 site/
+
+# regression test
+regression_test/out_0/
+regression_test/out_1/
+regression_test/product_0/
+regression_test/product_1/
+regression_test/golden_dataset/
+regression_test/test_out/
+regression_test/test_product/
+regression_test/runconfig_test.yml
+regression_test/runconfig.yml
+regression_test/algo_config.yml
