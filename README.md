@@ -197,9 +197,29 @@ python -m ipykernel install --user --name dist-s1-env
 ```
 
 
+## Test Suite
+
+We have a comprehensive test suite to ensure proper functioning of the software.
+To run the test suite locally, run:
+```
+pytest tests
+```
+You can also run individual tests by specifying the test file:
+```
+pytest tests/test_workflows.py
+```
+or via a specific test name:
+```
+pytest tests/test_water_mask.py::test_antimeridian_water_mask
+```
+These tests are run upon each PR to `dev` or `main` and are required for new features.
+The test suite uses curated to ensure proper running of the software in an efficient way. 
+This is described in the [generation_of_input_data_subset.md](tests/generation_of_input_data_subset.md) file.
+
+
 ## Documentation
 
-We have documentation for this package. It focuses on two important aspects of this software not covered in the readme:
+We have documentation for this package. It focuses on two important aspects of this software not covered in this readme:
 
 1. The available parameters exposed via `RunConfigData` and `AlgoConfigData`
 2. The product structure of the `DIST-S1` product
@@ -207,20 +227,7 @@ We have documentation for this package. It focuses on two important aspects of t
 The documentation is available at [https://opera-adt.github.io/dist-s1/stable/](https://opera-adt.github.io/dist-s1/stable/).
 
 
-The project documentation can also be generated locally. The materials to do so are located in the [`docs/`](docs/) directory (see the [docs/README.md](docs/README.md))
-
-### Quick Start
-
-```bash
-# Build and serve documentation locally
-conda activate dist-s1-env
-mkdocs serve
-
-# Regenerate API documentation
-./docs/update_api_docs.sh
-```
-
-For more details, see the [Documentation README](docs/README.md).
+The project documentation can also be generated locally. The materials to do so are located in the [`docs/`](docs/) directory (see the [docs/README.md](docs/README.md)). For more details, see the [Documentation README](docs/README.md).
 
 
 ## Docker
@@ -234,13 +241,14 @@ Where `<tag>` is the semantic version of the release you want to download.
 
 Notes: 
 - The containers are meant for `x86_64` architecture and may not work as expected on Mac ARM64 (i.e. M1) architecture.
-- There is still more work to be done in order to support GPU processing utilizing the docker image.
+- There is still more work to be done in order to support GPU processing utilizing the docker image. OPERA will focus on generation of the DIST-S1 via CPU instances, so this will not be pursued further.
 
 ### Building the Docker Image Locally
 
-Make sure you have Docker installed for [Mac](https://docs.docker.com/desktop/setup/install/mac-install/) or [Windows](https://docs.docker.com/desktop/setup/install/windows-install/). We call the docker image `dist_s1_img` for the remainder of this README.
+Make sure you have Docker installed for [Mac](https://docs.docker.com/desktop/setup/install/mac-install/) or [Windows](https://docs.docker.com/desktop/setup/install/windows-install/). We call (i.e. tag) the docker image `dist_s1_img` for the remainder of this README.
 We have two dockerfiles: `Dockerfile` and `Dockerfile.nvidia`.
-They both utilize `miniforge`, but the former has a base from `conda-forge` and the latter has a base from `nvidia` that includes a nvidia cuda base image.
+They both utilize `miniforge`, but the former has a base distributed with `conda-forge` and the latter has a base from `nvidia` that includes a nvidia cuda base image.
+The latter contains a lot of drivers that are unnecessary and will not be used.
 To build the image on Linux, run:
 ```
 docker build -f Dockerfile -t dist-s1-img .
@@ -261,18 +269,13 @@ See the `src/dist_s1/etc/entrypoint.sh` file for the entrypoint of the container
 
 #### Generating and *Saving* a Sample Product
 
-For debugging, it's essential to see the outputs of the docker run. This is currently a work in progress (need to fix the `--user` field).
+For debugging, it's essential to see the outputs of the docker run. 
+<!-- This is currently a work in progress (need to fix the `--user` field). -->
 Create a directory to run the test, navigate to it, and run `chmod 777 .`
 
 ```
 docker run -ti --rm -e EARTHDATA_USERNAME=<USERNAME> -e EARTHDATA_PASSWORD=<PASSWORD> -v "$(pwd)":/home/ops/dist-s1-data --entrypoint "/bin/bash" dist-s1-img -l -c "cd dist-s1-data && python -um dist_s1 run --mgrs_tile_id '11SLT' --post_date '2025-01-21' --track_number 71"
 ```
-
-### GPU Docker Image
-
-Getting docker to work with a GPU enabled container is a work in progress, i.e. `docker run --gpus all ...`.
-The image utilizes the `Dockerfile.nvidia` file to ensure a specific CUDA version is utilized.
-See issue [#22](https://github.com/opera-adt/dist-s1/issues/22) for more details and discussion.
 
 ### Running the Container Interactively
 
@@ -285,52 +288,28 @@ The `--rm` ensures that the container is removed after we exit the shell.
 The bash shell should automatically activate the `dist-s1-env` associated with the `environment_gpu.yml` file.
 
 
-### Running the Container for Delivery
+### Running the Test Suite in a Container
 
-There are certain releases associated with OPERA project deliveries. Here we provide instructions for how to run and verify the DIST-S1 workflow.
-
-We have included sample input data, associated a Docker image via the Github registry, and run tests via github actions all within this repository.
+To ensure proper running of the test suite, we are including these instructions to run the test suite in a docker container.
 
 ```
-docker pull ghcr.io/opera-adt/dist-s1
+docker pull ghcr.io/opera-adt/dist-s1  # can specify specific version too: ghcr.io/opera-adt/dist-s1:0.0.4
 ```
-If a specific version is required (or assumed for a delivery), then you use `docker pull ghcr.io/opera-adt/dist-s1:<version>` e.g.
-```
-docker pull ghcr.io/opera-adt/dist-s1:0.0.4
-```
-The command will pull the latest released version of the Docker image. To run the test suite, run:
-
+To run the test suite, run:
 ```
 docker run --rm --entrypoint '/bin/bash' ghcr.io/opera-adt/dist-s1 -c -l 'cd dist-s1 && pytest tests'
 ``` 
 Note we have to use the `--entrypoint` flag to overwrite the entrypoint of the container which is `python -um dist_s1 run` by default.
 
 
-# Testing
-
-We have a comprehensive test suite that is run via the CI/CD pipeline with each PR to `dev`/`main`.
-To run the test suite locally, run:
-```
-pytest tests
-```
-You can also run individual tests by specifying the test file:
-```
-pytest tests/test_workflows.py
-```
-or via a specific test name:
-```
-pytest tests/test_water_mask.py::test_antimeridian_water_mask
-```
-There is a lot of data used to test the workflows in expedient ways. This is described in the [generation_of_input_data_subset.md](tests/generation_of_input_data_subset.md) file.
-
-# Contribution Instructions
+## Contribution Instructions
 
 This is an open-source plugin and we welcome contributions and issue tickets. 
 
 Because we use this plugin for producing publicly available datasets, we are heavily reliant on utilizing our test suite and CI/CD pipeline for more rapid development. If you are apart of the OPERA project, please ask to be added to the Github organization so you can create a PR via branch in this repository. That way, you will have access to the secrets needed to run the test suite and build the Docker image. That said, a maintainer can always integrate a PR from a fork to ensure the automated CI/CD is working as expected.
 
 
-# Design/Organization of the Repository
+## Design/Organization of the Repository
 
 There are two main components to the DIST-S1 workflow:
 
@@ -350,7 +329,13 @@ There are also important libraries used to do the core of the disturbance detect
 These are all available via `conda-forge` and maintained by the DIST-S1 team.
 
 
-# Checking if DIST-S1 Products are Equal
+## Regression Testing
+
+### Golden Datasets
+
+See the instructions in [regression_test/README.md](regression_test/README.md) for running a regression test on available versions and delivering a new golden dataset.
+
+### Checking if DIST-S1 Products are Equal
 
 The final DIST-S1 product consists of a directory with GeoTiff and a png browse image.
 Here, here we define equality of products if the generated products contain the same numerical arrays (within the GeoTiff layers), are georeferenced consistently, and utilized the same inputs.
@@ -366,6 +351,8 @@ product_2 = ProductDirectoryData.from_product_path('path/to/product_2')
 
 product_1 == product_2
 ```
-Warnings will be raised regarding what data is not consistent between the two products.
+Warnings will be raised regarding what data is not consistent between the two products. You can also run the same from the CLI via:
 
-
+```
+dist_s1 check_equality <prod_0_dir> <prod_1_dir>
+```

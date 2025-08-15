@@ -8,7 +8,16 @@ from dist_s1_enumerator.asf import append_pass_data, extract_pass_id
 from dist_s1_enumerator.mgrs_burst_data import get_lut_by_mgrs_tile_ids
 from dist_s1_enumerator.tabular_models import dist_s1_loc_input_schema
 from pandera.pandas import check_input
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, ValidationInfo, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    ValidationInfo,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
 
 from dist_s1.data_models.algoconfig_model import AlgoConfigData
 from dist_s1.data_models.data_utils import (
@@ -36,7 +45,7 @@ class RunConfigData(BaseModel):
     pre_rtc_crosspol: list[Path | str] = Field(..., description='List of paths to pre-rtc crosspolarization data.')
     post_rtc_copol: list[Path | str] = Field(..., description='List of paths to post-rtc copolarization data.')
     post_rtc_crosspol: list[Path | str] = Field(..., description='List of paths to post-rtc crosspolarization data.')
-    prior_dist_s1_product: DistS1ProductDirectory | None = Field(
+    prior_dist_s1_product: DistS1ProductDirectory | str | Path | None = Field(
         default=None,
         description='Path to prior DIST-S1 product. Can accept str, Path, or DistS1ProductDirectory. '
         'If None, no prior product is used and confirmation is not performed.',
@@ -131,7 +140,7 @@ class RunConfigData(BaseModel):
         if dst_dir.exists() and not dst_dir.is_dir():
             raise ValidationError(f"Path '{dst_dir}' exists but is not a directory")
         dst_dir.mkdir(parents=True, exist_ok=True)
-        return dst_dir.resolve()
+        return dst_dir
 
     @field_validator('product_dst_dir', mode='before')
     def validate_product_dst_dir(cls, product_dst_dir: Path | str | None, info: ValidationInfo) -> Path:
@@ -142,7 +151,7 @@ class RunConfigData(BaseModel):
         if product_dst_dir.exists() and not product_dst_dir.is_dir():
             raise ValidationError(f"Path '{product_dst_dir}' exists but is not a directory")
         product_dst_dir.mkdir(parents=True, exist_ok=True)
-        return product_dst_dir.resolve()
+        return product_dst_dir
 
     @field_validator('input_data_dir', mode='before')
     def validate_input_data_dir(cls, input_data_dir: Path | str | None) -> Path | None:
@@ -154,7 +163,7 @@ class RunConfigData(BaseModel):
             raise ValueError(f'Input data directory does not exist: {input_data_dir}')
         if not input_data_dir.is_dir():
             raise ValueError(f'Input data directory is not a directory: {input_data_dir}')
-        return input_data_dir.resolve()
+        return input_data_dir
 
     @field_validator('pre_rtc_crosspol', 'post_rtc_crosspol')
     def check_matching_lengths_copol_and_crosspol(
@@ -199,11 +208,12 @@ class RunConfigData(BaseModel):
         cls, prior_dist_s1_product: DistS1ProductDirectory | Path | str | None
     ) -> DistS1ProductDirectory | None:
         """Convert string or Path to DistS1ProductDirectory using from_product_path if needed."""
-        if prior_dist_s1_product is None:
+        if (prior_dist_s1_product is None) or (isinstance(prior_dist_s1_product, str) and prior_dist_s1_product == ''):
             return None
         if isinstance(prior_dist_s1_product, DistS1ProductDirectory):
             return prior_dist_s1_product
-        return DistS1ProductDirectory.from_product_path(prior_dist_s1_product)
+        elif isinstance(prior_dist_s1_product, str | Path):
+            return DistS1ProductDirectory.from_product_path(prior_dist_s1_product)
 
     @property
     def confirmation(self) -> bool:
@@ -237,11 +247,7 @@ class RunConfigData(BaseModel):
     def product_data_model(self) -> DistS1ProductDirectory:
         if self._product_data_model is None:
             product_name = self.product_name
-            dst_dir = (
-                Path(self.product_dst_dir).resolve()
-                if self.product_dst_dir is not None
-                else Path(self.dst_dir).resolve()
-            )
+            dst_dir = Path(self.product_dst_dir) if self.product_dst_dir is not None else Path(self.dst_dir)
             self._product_data_model = DistS1ProductDirectory(
                 dst_dir=dst_dir,
                 product_name=product_name,
@@ -457,7 +463,7 @@ class RunConfigData(BaseModel):
     def handle_input_data_dir_default(self) -> 'RunConfigData':
         """Set input_data_dir to dst_dir if None."""
         if self.input_data_dir is None:
-            self.input_data_dir = self.dst_dir
+            self.input_data_dir = Path(self.dst_dir)
         return self
 
     @model_validator(mode='after')
@@ -467,3 +473,9 @@ class RunConfigData(BaseModel):
             self.algo_config.__dict__.update(algo_config_data.model_dump())
             self._algo_config_loaded = True
         return self
+
+    @field_serializer('prior_dist_s1_product')
+    def serialize_prior_dist_s1_product(self, prior_dist_s1_product: DistS1ProductDirectory | Path | str | None) -> str:
+        if prior_dist_s1_product is None:
+            return ''
+        return str(prior_dist_s1_product)

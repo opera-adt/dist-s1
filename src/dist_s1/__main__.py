@@ -37,6 +37,7 @@ from dist_s1.data_models.defaults import (
     DEFAULT_TQDM_ENABLED,
     DEFAULT_USE_DATE_ENCODING,
 )
+from dist_s1.data_models.output_models import DistS1ProductDirectory
 from dist_s1.data_models.runconfig_model import RunConfigData
 from dist_s1.workflows import (
     run_dist_s1_sas_prep_workflow,
@@ -636,6 +637,18 @@ def run(
         confirmation_confidence_threshold=confidence_threshold,
         metric_value_upper_lim=metric_value_upper_lim,
     )
+
+
+@cli.command(name='check_equality', help='Check equality of two DIST-S1 products.')
+@click.argument('dist-s1-product-0', type=click.Path(exists=True, file_okay=False))
+@click.argument('dist-s1-product-1', type=click.Path(exists=True, file_okay=False))
+def check_equality(dist_s1_product_0: str | Path, dist_s1_product_1: str | Path) -> None:
+    product_0 = DistS1ProductDirectory.from_product_path(dist_s1_product_0)
+    product_1 = DistS1ProductDirectory.from_product_path(dist_s1_product_1)
+    if product_0 != product_1:
+        print('Products are  NOT equal')
+    else:
+        print('Products are equal')
 
 
 if __name__ == '__main__':
