@@ -333,7 +333,7 @@ These are all available via `conda-forge` and maintained by the DIST-S1 team.
 
 ### Golden Datasets
 
-TODO
+See the instructions in [regression_test/README.md](regression_test/README.md) for running a regression test on available versions and delivering a new golden dataset.
 
 ### Checking if DIST-S1 Products are Equal
 
@@ -351,6 +351,8 @@ product_2 = ProductDirectoryData.from_product_path('path/to/product_2')
 
 product_1 == product_2
 ```
-Warnings will be raised regarding what data is not consistent between the two products.
+Warnings will be raised regarding what data is not consistent between the two products. You can also run the same from the CLI via:
 
-
+```
+dist_s1 check_equality <prod_0_dir> <prod_1_dir>
+```

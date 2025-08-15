@@ -13,15 +13,15 @@ def main() -> None:
     # Force device to be cpu even on Mac M1
     device = 'cpu'
 
-    # run_dist_s1_workflow(
-    #     mgrs_tile_id,
-    #     post_date_initial,
-    #     track_number,
-    #     device=device,
-    #     dst_dir=dst_dir,
-    #     product_dst_dir=product_dst_dir,
-    #     run_config_path=run_config_path,
-    # )
+    run_dist_s1_workflow(
+        mgrs_tile_id,
+        post_date_initial,
+        track_number,
+        device=device,
+        dst_dir=dst_dir,
+        product_dst_dir=product_dst_dir,
+        run_config_path=run_config_path,
+    )
 
     opera_products = list(product_dst_dir.glob('OPERA_L3_DIST-ALERT-S1_*'))
 
