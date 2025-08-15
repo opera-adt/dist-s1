@@ -10,6 +10,8 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 * Regression testing
+* profile to aws file uploading for regression testing
+* multithreaded boto3 (probably should just use aws s3 sync...)
 
 ### Changed
 * Paths in runconfig are relative to allow for easier reproducibility and regression testing.
