@@ -27,7 +27,7 @@ You can replace the last run by running `aws s3 sync . s3://dist-s1-golden-datas
 
 1. Determine available versions via:
     ```bash
-    aws s3 list dist-s1-golden-datasets
+    aws s3 ls dist-s1-golden-datasets
     ```
     and select the relevant release
     ```bash
