@@ -10,8 +10,6 @@ from dist_s1.rio_tools import open_one_ds, serialize_one_2d_ds
 
 @dataclass
 class ProcessingArgs:
-    """Container for processing arguments to make multiprocessing more readable."""
-
     source_path: Path
     destination_path: Path
     interpolation_method: str

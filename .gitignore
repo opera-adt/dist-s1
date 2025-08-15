@@ -140,3 +140,5 @@ regression_test/test_product/
 regression_test/runconfig_test.yml
 regression_test/runconfig.yml
 regression_test/algo_config.yml
+regression_test/algo_params.yml
+regression_test_2/
