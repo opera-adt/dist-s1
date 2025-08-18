@@ -1,6 +1,5 @@
 from pathlib import Path
 
-from dist_s1.data_models.output_models import DistS1ProductDirectory
 from dist_s1.data_models.runconfig_model import RunConfigData
 
 
