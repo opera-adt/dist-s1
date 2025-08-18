@@ -51,8 +51,10 @@ echo "Container work directory: ${CONTAINER_WORK_DIR}"
 docker run -ti --rm \
     --platform linux/amd64 \
     --user "$(id -u):$(id -g)" \
+    -e EARTHDATA_USERNAME="${EARTHDATA_USERNAME}" \
+    -e EARTHDATA_PASSWORD="${EARTHDATA_PASSWORD}" \
     -v "$(pwd)":"${CONTAINER_WORK_DIR}" \
-    -v ~/.netrc:/home/ops/.netrc:ro \
+    -v ~/.netrc:/.netrc:ro \
     --entrypoint "/bin/bash" \
     "${DOCKER_IMAGE_NAME}" \
     -l -c "source /opt/conda/etc/profile.d/conda.sh && conda activate dist-s1-env && cd ${CONTAINER_WORK_DIR} && python 0_generate_golden_dataset.py"
