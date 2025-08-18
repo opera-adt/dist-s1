@@ -11,6 +11,11 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Fixed
 * The 2_delivery.py was not preserving relative paths for the creation of a golden dataset.
 
+## Changed
+* Changed defaults:
+  * Defaults of `low/high_confidence_alert_thresholds` lowered to `2.5`/`4.5` from `3.5`/`5.5`.
+  * Updated the confirmation threshold accordingly.
+
 
 ## [2.0.3] - 2025-08-12
 
