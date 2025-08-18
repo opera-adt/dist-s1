@@ -24,6 +24,14 @@ if [ ! -f ~/.netrc ]; then
     exit 1
 fi
 
+# Extract credentials from .netrc as backup
+EARTHDATA_USERNAME=$(grep -A2 "machine urs.earthdata.nasa.gov" ~/.netrc | grep "login" | awk '{print $2}')
+EARTHDATA_PASSWORD=$(grep -A2 "machine urs.earthdata.nasa.gov" ~/.netrc | grep "password" | awk '{print $2}')
+
+if [ -z "$EARTHDATA_USERNAME" ] || [ -z "$EARTHDATA_PASSWORD" ]; then
+    echo "Warning: Could not extract credentials from .netrc. Make sure it's properly formatted."
+fi
+
 # Clean up any existing output directories to avoid permission issues
 echo "Cleaning up existing output directories..."
 rm -rf product_0 golden_dataset out_0 out_1
