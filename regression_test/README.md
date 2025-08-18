@@ -21,7 +21,7 @@ python 1_update_config_and_check.py
 python 2_delivery.py
 ```
 
-You can replace the last run by running `aws s3 sync . s3://dist-s1-golden-datasets/<DIST_S1_VERSION>`.
+The delivery script is fundamentally `aws s3 sync` to `s3://dist-s1-golden-datasets/<DIST_S1_VERSION>` using a few key files.
 
 ## Regression testing
 
