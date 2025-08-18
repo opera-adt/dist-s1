@@ -1,4 +1,3 @@
-import subprocess
 from pathlib import Path
 
 from dist_s1.data_models.output_models import DistS1ProductDirectory
