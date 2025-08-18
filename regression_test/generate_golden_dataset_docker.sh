@@ -47,7 +47,7 @@ docker run -ti --rm \
     -v ~/.netrc:/home/ops/.netrc:ro \
     --entrypoint "/bin/bash" \
     "${DOCKER_IMAGE_NAME}" \
-    -l -c "cd ${CONTAINER_WORK_DIR} && python 0_generate_golden_dataset.py"
+    -l -c "source /opt/conda/etc/profile.d/conda.sh && conda activate dist-s1-env && cd ${CONTAINER_WORK_DIR} && python 0_generate_golden_dataset.py"
 
 echo "Golden dataset generation completed!"
 echo "Check the current directory for outputs:"
