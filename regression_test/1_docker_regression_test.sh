@@ -26,7 +26,16 @@ if [ -z "$EARTHDATA_USERNAME" ] || [ -z "$EARTHDATA_PASSWORD" ]; then
     echo "Warning: Could not extract credentials from .netrc. Make sure it's properly formatted."
 fi
 
-echo "Step 1: Running DIST-S1 SAS to generate test dataset..."
+echo "Step 1: Updating runconfig for test dataset generation..."
+docker run -ti --rm \
+    --platform linux/amd64 \
+    --user "$(id -u):$(id -g)" \
+    -v "$(pwd)":"${CONTAINER_WORK_DIR}" \
+    --entrypoint "/bin/bash" \
+    "${DOCKER_IMAGE_NAME}" \
+    -l -c "source /opt/conda/etc/profile.d/conda.sh && conda activate dist-s1-env && cd ${CONTAINER_WORK_DIR} && python 1_update_config.py"
+
+echo "Step 2: Running DIST-S1 SAS to generate test dataset..."
 docker run -ti --rm \
     --platform linux/amd64 \
     --user "$(id -u):$(id -g)" \
@@ -38,7 +47,7 @@ docker run -ti --rm \
     "${DOCKER_IMAGE_NAME}" \
     -l -c "source /opt/conda/etc/profile.d/conda.sh && conda activate dist-s1-env && cd ${CONTAINER_WORK_DIR} && dist-s1 run_sas --run_config_path runconfig.yml"
 
-echo "Step 2: Finding latest OPERA_ID in golden dataset..."
+echo "Step 3: Finding latest OPERA_ID in golden dataset..."
 if [ ! -d "golden_dataset" ]; then
     echo "Error: golden_dataset directory not found"
     exit 1
@@ -51,7 +60,7 @@ if [ -z "$GOLDEN_OPERA_ID" ]; then
 fi
 echo "Found golden dataset OPERA_ID: $GOLDEN_OPERA_ID"
 
-echo "Step 3: Finding latest OPERA_ID in test dataset..."
+echo "Step 4: Finding latest OPERA_ID in test dataset..."
 if [ ! -d "test_product" ]; then
     echo "Error: test_product directory not found"
     exit 1
@@ -64,7 +73,7 @@ if [ -z "$TEST_OPERA_ID" ]; then
 fi
 echo "Found test dataset OPERA_ID: $TEST_OPERA_ID"
 
-echo "Step 4: Comparing datasets..."
+echo "Step 5: Comparing datasets..."
 GOLDEN_PATH="golden_dataset/$GOLDEN_OPERA_ID"
 TEST_PATH="test_product/$TEST_OPERA_ID"
 
