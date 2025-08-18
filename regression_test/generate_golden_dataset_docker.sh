@@ -24,6 +24,10 @@ if [ ! -f ~/.netrc ]; then
     exit 1
 fi
 
+# Clean up any existing output directories to avoid permission issues
+echo "Cleaning up existing output directories..."
+rm -rf product_0 golden_dataset out_0 out_1
+
 echo "Running golden dataset generation in Docker container..."
 echo "Working directory: $(pwd)"
 echo "Container work directory: ${CONTAINER_WORK_DIR}"
@@ -35,8 +39,10 @@ echo "Container work directory: ${CONTAINER_WORK_DIR}"
 # - Remove container after completion
 # - Override entrypoint to run python script directly
 # - Platform specification for M1 Mac compatibility
+# - Run as current user to avoid permission issues
 docker run -ti --rm \
     --platform linux/amd64 \
+    --user "$(id -u):$(id -g)" \
     -v "$(pwd)":"${CONTAINER_WORK_DIR}" \
     -v ~/.netrc:/home/ops/.netrc:ro \
     --entrypoint "/bin/bash" \
