@@ -1,4 +1,5 @@
 import functools
+import sys
 from collections.abc import Callable
 from pathlib import Path
 from typing import ParamSpec, TypeVar
@@ -647,8 +648,10 @@ def check_equality(dist_s1_product_0: str | Path, dist_s1_product_1: str | Path)
     product_1 = DistS1ProductDirectory.from_product_path(dist_s1_product_1)
     if product_0 != product_1:
         print('Products are  NOT equal')
+        sys.exit(1)
     else:
         print('Products are equal')
+        sys.exit(0)
 
 
 if __name__ == '__main__':

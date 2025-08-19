@@ -125,7 +125,7 @@ def confirm_disturbance_arr(
     # Reset status for pixels that were NODATA and are now not disturbed
     status_reset_mask = current_not_disturbed_mask & (current_alert_status == nodata_label)
     current_alert_status[status_reset_mask] = no_disturbance_label
-    current_percent[status_reset_mask] = 255
+    current_percent[status_reset_mask] = TIF_LAYER_NODATA_VALUES['GEN-DIST-PERC']
     current_count[status_reset_mask] = 0
     current_max_metric[status_reset_mask] = 0
     current_confidence[status_reset_mask] = 0

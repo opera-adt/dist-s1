@@ -142,3 +142,6 @@ regression_test/runconfig.yml
 regression_test/algo_config.yml
 regression_test/algo_params.yml
 regression_test_2/
+
+# Claude
+claude.md
