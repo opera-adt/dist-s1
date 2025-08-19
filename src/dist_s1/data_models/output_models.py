@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import ClassVar
@@ -7,7 +8,15 @@ import numpy as np
 import rasterio
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from dist_s1.constants import EXPECTED_FORMAT_STRING, PRODUCT_VERSION, TIF_LAYERS, TIF_LAYER_DTYPES
+from dist_s1.constants import (
+    EXPECTED_FORMAT_STRING,
+    MAX_FLOAT_LAYER_DIFF,
+    MAX_INT_LAYER_DIFF,
+    PRODUCT_VERSION,
+    TIF_LAYERS,
+    TIF_LAYER_DTYPES,
+    TIF_LAYER_NODATA_VALUES,
+)
 from dist_s1.data_models.data_utils import get_acquisition_datetime
 from dist_s1.rio_tools import get_mgrs_profile
 from dist_s1.water_mask import apply_water_mask
@@ -21,6 +30,31 @@ PRODUCT_TAGS_FOR_EQUALITY = [
     'model_source',
 ]
 REQUIRED_PRODUCT_TAGS = PRODUCT_TAGS_FOR_EQUALITY + ['version']
+
+
+@dataclass
+class LayerComparisonResult:
+    layer_name: str
+    is_equal: bool
+    max_difference: float
+    tolerance_used: float
+    arrays_close: bool
+    metadata_matches: bool
+    percent_mismatch: float
+    percent_nodata_mismatch: float
+    error_message: str = ''
+
+
+@dataclass
+class ProductComparisonResult:
+    is_equal: bool
+    mgrs_matches: bool
+    datetime_matches: bool
+    layer_results: dict[str, LayerComparisonResult]
+
+    @property
+    def failed_layers(self) -> list[str]:
+        return [name for name, result in self.layer_results.items() if not result.is_equal]
 
 
 class ProductNameData(BaseModel):
@@ -197,6 +231,11 @@ class DistS1ProductDirectory(BaseModel):
     def acq_datetime(self) -> datetime:
         return get_acquisition_datetime(self.product_dir_path)
 
+    @property
+    def mgrs_tile_id(self) -> str:
+        tokens = self.product_name.split('_')
+        return tokens[3][1:]
+
     def validate_layer_paths(self) -> bool:
         failed_layers = []
         for layer, path in self.layer_path_dict.items():
@@ -222,92 +261,145 @@ class DistS1ProductDirectory(BaseModel):
                         failed_layers.append(layer)
         return len(failed_layers) == 0
 
-    def __eq__(
-        self, other: 'DistS1ProductDirectory', *, rtol: float = 1e-05, atol: float = 1e-05, equal_nan: bool = True
-    ) -> bool:
-        """Compare two ProductDirectoryData instances for equality.
-
-        Checks that:
-        1. The MGRS tile IDs match
-        2. The acquisition datetimes match
-        3. All TIF layers have numerically close data using numpy.allclose
+    def compare_products(self, other: 'DistS1ProductDirectory') -> ProductComparisonResult:
+        """Compare two ProductDirectoryData instances with detailed results.
 
         Parameters
         ----------
         other : ProductDirectoryData
             The other instance to compare against
-        rtol : float, optional
-            Relative tolerance for numpy.allclose, by default 1e-05
-        atol : float, optional
-            Absolute tolerance for numpy.allclose, by default 1e-08
-        equal_nan : bool, optional
-            Whether to compare NaN's as equal, by default True
+
+        Returns
+        -------
+        ProductComparisonResult
+            Detailed comparison results
+        """
+        tokens_self = self.product_name.split('_')
+        tokens_other = other.product_name.split('_')
+
+        mgrs_self = tokens_self[3][1:]
+        mgrs_other = tokens_other[3][1:]
+        mgrs_matches = mgrs_self == mgrs_other
+
+        acq_dt_self = datetime.strptime(tokens_self[4], '%Y%m%dT%H%M%SZ')
+        acq_dt_other = datetime.strptime(tokens_other[4], '%Y%m%dT%H%M%SZ')
+        datetime_matches = acq_dt_self == acq_dt_other
+
+        layer_results = {}
+        for layer in self.layers:
+            path_self = self.layer_path_dict[layer]
+            path_other = other.layer_path_dict[layer]
+
+            with rasterio.open(path_self) as src_self, rasterio.open(path_other) as src_other:
+                data_self = src_self.read(1)
+                data_other = src_other.read(1)
+
+                layer_dtype = self.tif_layer_dtypes[layer]
+                tolerance = (
+                    MAX_FLOAT_LAYER_DIFF if np.issubdtype(np.dtype(layer_dtype), np.floating) else MAX_INT_LAYER_DIFF
+                )
+
+                nodata_value = TIF_LAYER_NODATA_VALUES[layer]
+
+                if np.issubdtype(np.dtype(layer_dtype), np.floating):
+                    nodata_mask_self = np.isnan(data_self) if np.isnan(nodata_value) else data_self == nodata_value
+                    nodata_mask_other = np.isnan(data_other) if np.isnan(nodata_value) else data_other == nodata_value
+                else:
+                    nodata_mask_self = data_self == nodata_value
+                    nodata_mask_other = data_other == nodata_value
+
+                nodata_masks_consistent = np.array_equal(nodata_mask_self, nodata_mask_other)
+                if not nodata_masks_consistent:
+                    warn(f'Layer {layer}: nodata masks are inconsistent between compared products', UserWarning)
+
+                valid_mask_self = ~nodata_mask_self
+                valid_mask_other = ~nodata_mask_other
+                both_valid = valid_mask_self & valid_mask_other
+
+                diff = np.zeros_like(data_self, dtype=np.float64)
+
+                diff[both_valid] = np.abs(data_self[both_valid] - data_other[both_valid])
+
+                one_nodata_self = nodata_mask_self & valid_mask_other
+                one_nodata_other = nodata_mask_other & valid_mask_self
+
+                diff[one_nodata_self] = np.abs(data_other[one_nodata_self])
+                diff[one_nodata_other] = np.abs(data_self[one_nodata_other])
+
+                max_diff = np.max(diff) if diff.size > 0 else 0.0
+
+                arrays_close = max_diff <= tolerance
+
+                total_pixels = data_self.size
+                mismatched_valid_pixels = np.sum(diff[both_valid] > tolerance) if np.any(both_valid) else 0
+                nodata_mismatch_pixels = np.sum(one_nodata_self | one_nodata_other)
+
+                percent_mismatch = (mismatched_valid_pixels / total_pixels) * 100 if total_pixels > 0 else 0.0
+                percent_nodata_mismatch = (nodata_mismatch_pixels / total_pixels) * 100 if total_pixels > 0 else 0.0
+
+                tags_self = src_self.tags()
+                tags_other = src_other.tags()
+                metadata_matches = all(tags_self.get(key) == tags_other.get(key) for key in PRODUCT_TAGS_FOR_EQUALITY)
+
+                layer_equal = arrays_close and metadata_matches and nodata_masks_consistent
+
+                layer_results[layer] = LayerComparisonResult(
+                    layer_name=layer,
+                    is_equal=layer_equal,
+                    max_difference=max_diff,
+                    tolerance_used=tolerance,
+                    arrays_close=arrays_close,
+                    metadata_matches=metadata_matches,
+                    percent_mismatch=percent_mismatch,
+                    percent_nodata_mismatch=percent_nodata_mismatch,
+                    error_message='' if layer_equal else f'Max diff {max_diff:.6e} > tolerance {tolerance:.6e}',
+                )
+
+        # Overall equality
+        overall_equal = mgrs_matches and datetime_matches and all(r.is_equal for r in layer_results.values())
+
+        return ProductComparisonResult(
+            is_equal=overall_equal,
+            mgrs_matches=mgrs_matches,
+            datetime_matches=datetime_matches,
+            layer_results=layer_results,
+        )
+
+    def __eq__(self, other: 'DistS1ProductDirectory') -> bool:
+        """Compare two ProductDirectoryData instances for equality.
+
+        Checks that:
+        1. The MGRS tile IDs match
+        2. The acquisition datetimes match
+        3. All TIF layers have numerically close data using layer-specific tolerances
+        4. Nodata masks are consistent between layers
+
+        Parameters
+        ----------
+        other : ProductDirectoryData
+            The other instance to compare against
 
         Returns
         -------
         bool
             True if the instances are considered equal, False otherwise
         """
-        import numpy as np
+        result = self.compare_products(other)
 
-        # Parse product names to get MGRS tile ID and acquisition datetime
-        tokens_self = self.product_name.split('_')
-        tokens_other = other.product_name.split('_')
+        if not result.mgrs_matches:
+            warn(f'MGRS tile IDs do not match: {self.mgrs_tile_id} != {other.mgrs_tile_id}', UserWarning)
+        if not result.datetime_matches:
+            warn(f'Acquisition datetimes do not match: {self.acq_datetime} != {other.acq_datetime}', UserWarning)
+        for layer_result in result.layer_results.values():
+            if not layer_result.is_equal:
+                warn(
+                    f'Layer {layer_result.layer_name}: {layer_result.error_message} with max diff'
+                    f' {layer_result.max_difference:.6e}, {layer_result.percent_mismatch:.2f}% pixels mismatched,'
+                    f' {layer_result.percent_nodata_mismatch:.2f}% nodata mismatched',
+                    UserWarning,
+                )
 
-        equality = True
-
-        # Compare MGRS tile IDs
-        mgrs_self = tokens_self[3][1:]  # Remove 'T' prefix
-        mgrs_other = tokens_other[3][1:]
-        if mgrs_self != mgrs_other:
-            warn(f'MGRS tile IDs do not match: {mgrs_self} != {mgrs_other}', UserWarning)
-            equality = False
-
-        # Compare acquisition datetimes
-        acq_dt_self = datetime.strptime(tokens_self[4], '%Y%m%dT%H%M%SZ')
-        acq_dt_other = datetime.strptime(tokens_other[4], '%Y%m%dT%H%M%SZ')
-        if acq_dt_self != acq_dt_other:
-            warn(f'Acquisition datetimes do not match: {acq_dt_self} != {acq_dt_other}', UserWarning)
-            equality = False
-
-        # Compare TIF layer data
-        unequal_layers = []
-        for layer in self.layers:
-            path_self = self.layer_path_dict[layer]
-            path_other = other.layer_path_dict[layer]
-
-            with rasterio.open(path_self) as src_self, rasterio.open(path_other) as src_other:
-                data_self = src_self.read()
-                data_other = src_other.read()
-                if not np.allclose(data_self, data_other, rtol=rtol, atol=atol, equal_nan=equal_nan):
-                    warn(f'Layer {layer} arrays do not match', UserWarning)
-                    unequal_layers.append(layer)
-                    equality = False
-
-                tags_self = src_self.tags()
-                tags_other = src_other.tags()
-                keys_self = tags_self.keys()
-                keys_other = tags_other.keys()
-                missing_tag_keys_self = [key for key in REQUIRED_PRODUCT_TAGS if key not in keys_self]
-                if missing_tag_keys_self:
-                    warn(
-                        f'Layer {layer} is missing required tags in left product: {",".join(missing_tag_keys_self)}',
-                        UserWarning,
-                    )
-                    equality = False
-                missing_tag_keys_other = [key for key in REQUIRED_PRODUCT_TAGS if key not in keys_other]
-                if missing_tag_keys_other:
-                    warn(
-                        f'Layer {layer} is missing required tags in right product: {",".join(missing_tag_keys_other)}',
-                        UserWarning,
-                    )
-                    equality = False
-                for key in PRODUCT_TAGS_FOR_EQUALITY:
-                    if tags_self[key] != tags_other[key]:
-                        warn(f'Layer {layer} metadata value for key {key} do not match', UserWarning)
-                        equality = False
-
-        return equality
+        return result.is_equal
 
     @classmethod
     def from_product_path(cls, product_dir_path: Path | str) -> 'DistS1ProductDirectory':
@@ -383,54 +475,42 @@ class DistS1ProductDirectory(BaseModel):
         ValueError
             If product name validation fails, water mask doesn't cover the MGRS tile, or water mask application fails
         """
-        # Create processing datetime (current time)
         processing_datetime = datetime.now()
 
-        # Create product name data
         product_name_data = ProductNameData(
             mgrs_tile_id=mgrs_tile_id, acq_date_time=acq_datetime, processing_date_time=processing_datetime
         )
 
-        # Create product directory data
         product_dir_data = cls(product_name=str(product_name_data), dst_dir=dst_dir)
 
-        # Validate water mask if provided
         if water_mask_path is not None:
             water_mask_path = Path(water_mask_path)
             if not water_mask_path.exists():
                 raise FileNotFoundError(f'Water mask file does not exist: {water_mask_path}')
 
-        # Create placeholder arrays for each layer
         for layer_name in TIF_LAYERS:
             layer_path = product_dir_data.layer_path_dict[layer_name]
 
-            # Skip if file exists and overwrite is False
             if layer_path.exists() and not overwrite:
                 continue
 
-            # Get dtype for this layer
             dtype_str = cls.tif_layer_dtypes[layer_name]
             dtype = np.dtype(dtype_str)
 
-            # Set nodata value based on dtype
             if np.issubdtype(dtype, np.floating):
                 nodata_value = np.nan
             else:
                 nodata_value = 255
 
-            # Get MGRS profile for the tile with correct dtype and nodata
             mgrs_profile = get_mgrs_profile(mgrs_tile_id, dtype=dtype, nodata=nodata_value)
 
-            # Create zero array with correct shape and dtype
             height = mgrs_profile['height']
             width = mgrs_profile['width']
             zero_array = np.zeros((height, width), dtype=dtype)
 
-            # Apply water mask if provided
             if water_mask_path is not None:
                 zero_array = apply_water_mask(zero_array, mgrs_profile, water_mask_path)
 
-            # Write the GeoTIFF file
             with rasterio.open(layer_path, 'w', **mgrs_profile) as dst:
                 dst.write(zero_array, 1)
 
