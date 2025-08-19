@@ -91,7 +91,7 @@ if [ ! -d "$TEST_PATH" ]; then
     exit 1
 fi
 
-echo "Running comparison: dist_s1 check_equality $GOLDEN_PATH $TEST_PATH"
+echo "Running comparison: dist-s1 check_equality $GOLDEN_PATH $TEST_PATH"
 
 # Run the equality check in Docker container and capture the exit code
 if docker run -ti --rm \
@@ -100,7 +100,7 @@ if docker run -ti --rm \
     -v "$(pwd)":"${CONTAINER_WORK_DIR}" \
     --entrypoint "/bin/bash" \
     "${DOCKER_IMAGE_NAME}" \
-    -l -c "source /opt/conda/etc/profile.d/conda.sh && conda activate dist-s1-env && cd ${CONTAINER_WORK_DIR} && dist_s1 check_equality \"$GOLDEN_PATH\" \"$TEST_PATH\""; then
+    -l -c "source /opt/conda/etc/profile.d/conda.sh && conda activate dist-s1-env && cd ${CONTAINER_WORK_DIR} && dist-s1 check_equality \"$GOLDEN_PATH\" \"$TEST_PATH\""; then
     echo "✓ SUCCESS: Datasets are equal!"
     echo "Regression test PASSED - datasets match perfectly"
 else
