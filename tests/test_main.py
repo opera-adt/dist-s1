@@ -66,6 +66,9 @@ def test_dist_s1_sas_main(
     runconfig_data.algo_config.device = 'cpu'
     runconfig_data.algo_config.n_workers_for_despeckling = 4
     runconfig_data.apply_water_mask = True
+    runconfig_data.algo_config.stride_for_norm_param_estimation = 16
+    runconfig_data.algo_config.low_confidence_alert_threshold = 3.5
+    runconfig_data.algo_config.high_confidence_alert_threshold = 5.5
 
     # We have a different product_dst_dir than the dst_dir called `tmp2`
     runconfig_data.product_dst_dir = str(product_dst_dir)
@@ -222,6 +225,8 @@ def test_dist_s1_main_interface_external_model(
             '3.5',
             '--high_confidence_alert_threshold',
             '5.5',
+            '--stride_for_norm_param_estimation',
+            '16',
             '--product_dst_dir',
             str(tmp_dir),
             '--device',

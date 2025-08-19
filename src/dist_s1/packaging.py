@@ -117,11 +117,11 @@ def generate_default_dist_arrs_from_metric_and_alert_status(
     )
 
     # GEN-DIST-LAST-DATE - last date of valid observation
-    X_last_date = np.full_like(X_status_arr, -1, dtype=np.int16)
-    X_last_date[X_status_arr != 255] = date_encoded
+    X_last_date = np.full_like(X_status_arr, TIF_LAYER_NODATA_VALUES['GEN-DIST-LAST-DATE'], dtype=np.int16)
+    X_last_date[X_status_arr != TIF_LAYER_NODATA_VALUES['GEN-DIST-STATUS']] = date_encoded
 
     # GEN-DIST-CONF
-    X_conf = np.full_like(X_metric, TIF_LAYER_NODATA_VALUES['GEN-DIST-CONF'], dtype=np.float32)
+    X_conf = np.full_like(X_metric, TIF_LAYER_NODATA_VALUES['GEN-DIST-CONF'], dtype=TIF_LAYER_DTYPES['GEN-DIST-CONF'])
     dist_labels = [DISTLABEL2VAL[key] for key in ['first_low_conf_disturbance', 'first_high_conf_disturbance']]
     new_disturbed_mask = np.isin(X_status_arr, dist_labels)
     X_conf[new_disturbed_mask] = X_metric[new_disturbed_mask]

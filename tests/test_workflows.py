@@ -80,7 +80,7 @@ def test_burst_disturbance_workflow(
     shutil.rmtree(tmp_dir)
 
 
-@pytest.mark.parametrize('current_or_prior', ['current', 'prior'])
+@pytest.mark.parametrize('current_or_prior', ['prior', 'current'])
 def test_dist_s1_sas_workflow_no_confirmation(
     test_dir: Path,
     change_local_dir: Callable,
@@ -104,6 +104,9 @@ def test_dist_s1_sas_workflow_no_confirmation(
     )
     config.apply_water_mask = True
     config.algo_config.device = 'cpu'
+    config.algo_config.stride_for_norm_param_estimation = 16
+    config.algo_config.low_confidence_alert_threshold = 3.5
+    config.algo_config.high_confidence_alert_threshold = 5.5
 
     run_dist_s1_sas_workflow(config)
 
@@ -111,6 +114,10 @@ def test_dist_s1_sas_workflow_no_confirmation(
     golden_dataset_path = test_opera_golden_cropped_dataset_dict[current_or_prior]
     product_data_golden = DistS1ProductDirectory.from_product_path(golden_dataset_path)
 
+    # a lot of the information can be inspected by `product_data.compare_products(product_data_golden)`
+    # if `comp = product_data.compare_products(product_data_golden)`, then
+    # `[(l_n, l_c) for (l_n, l_c) in comp.layer_results.items() if not l_c.is_equal]`
+    # will give you a list of layers that are not equal.
     assert product_data == product_data_golden
 
     if ERASE_WORKFLOW_OUTPUTS:
@@ -140,6 +147,9 @@ def test_dist_s1_sas_workflow_with_confirmation(
     config.apply_water_mask = True
     config.algo_config.device = 'cpu'
     config.prior_dist_s1_product = test_opera_golden_cropped_dataset_dict['prior']
+    config.algo_config.stride_for_norm_param_estimation = 16
+    config.algo_config.low_confidence_alert_threshold = 3.5
+    config.algo_config.high_confidence_alert_threshold = 5.5
 
     run_dist_s1_sas_workflow(config)
 

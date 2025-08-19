@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.4] - 2025-08-15
+
+### Changed
+* `dist-s1` has a command line interface for `check_equality` with successful exit code `0` if True and `1` if not.
+* Fixed `stride_for_norm_param_estimation`, `low/high_confidence_alert_threshold` in `test_main.py` and `test_workflows.py` so they can be adjusted without impacting the suite.
+
+### Fixed
+* The 2_delivery.py was not preserving relative paths for the creation of a golden dataset.
+* For the confidence layer (`DIST-GEN-CONF`), the nodata was set to -1 (incorrect) and is now np.nan. The layer not being initialized correctly (filled with -1).
+* Regression test correctly calls `dist-s1 check_equality`
+ 
+### Added
+* More comprehensive statistics provided for `__eq__` of `DistS1ProductDir`. Also ensures nodata masks are consistent across layers.
+* Equality for floats is now 2e-5 rather than 1e-5 (not sure what changed), but it will not impact the final product.
+
+## Changed
+* Changed defaults:
+  * Defaults of `low/high_confidence_alert_thresholds` lowered to `2.5`/`4.5` from `3.5`/`5.5`.
+  * Updated the confirmation threshold accordingly.
+  * Updated stride to 7 (from 16) for smoother resolution of disturbance and slightly offset from patch size.
+
+
 ## [2.0.3] - 2025-08-12
 
 ### Added
