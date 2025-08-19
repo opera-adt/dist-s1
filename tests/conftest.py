@@ -47,13 +47,13 @@ def test_opera_golden_cropped_dataset_dict() -> dict[str, Path]:
     golden_datasets_dir_unconfirmed = test_dir / 'test_data' / 'golden_datasets' / '10SGD'
     golden_datasets_dir_confirmed = test_dir / 'test_data' / 'golden_datasets' / '10SGD_confirmed'
     golden_dataset_current = (
-        golden_datasets_dir_unconfirmed / 'OPERA_L3_DIST-ALERT-S1_T10SGD_20250102T015857Z_20250806T145521Z_S1_30_v0.1'
+        golden_datasets_dir_unconfirmed / 'OPERA_L3_DIST-ALERT-S1_T10SGD_20250102T015857Z_20250819T132244Z_S1_30_v0.1'
     ).resolve()
     golden_dataset_prior = (
-        golden_datasets_dir_unconfirmed / 'OPERA_L3_DIST-ALERT-S1_T10SGD_20241221T015858Z_20250806T145536Z_S1_30_v0.1'
+        golden_datasets_dir_unconfirmed / 'OPERA_L3_DIST-ALERT-S1_T10SGD_20241221T015858Z_20250819T132320Z_S1_30_v0.1'
     ).resolve()
     golden_dataset_confirmed = (
-        golden_datasets_dir_confirmed / 'OPERA_L3_DIST-ALERT-S1_T10SGD_20250102T015857Z_20250806T154809Z_S1_30_v0.1'
+        golden_datasets_dir_confirmed / 'OPERA_L3_DIST-ALERT-S1_T10SGD_20250102T015857Z_20250819T132937Z_S1_30_v0.1'
     ).resolve()
     assert all([p.exists() for p in [golden_dataset_current, golden_dataset_prior, golden_dataset_confirmed]])
     return {'current': golden_dataset_current, 'prior': golden_dataset_prior, 'confirmed': golden_dataset_confirmed}

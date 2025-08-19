@@ -43,7 +43,7 @@ TIF_LAYER_NODATA_VALUES = {
     'GEN-DIST-STATUS-ACQ': 255,
     'GEN-METRIC': np.nan,
     'GEN-METRIC-MAX': np.nan,
-    'GEN-DIST-CONF': -1,
+    'GEN-DIST-CONF': np.nan,
     'GEN-DIST-DATE': -1,
     'GEN-DIST-COUNT': 255,
     'GEN-DIST-PERC': 255,
@@ -60,7 +60,7 @@ TIF_LAYER_DESCRIPTIONS = {
     'GEN-METRIC-MAX': 'Maximum metric value for the generic disturbance classification over all acquisition dates since'
     'first disturbance. Reset to 0 when a new disturbance is detected. Value is a non-negative real number.',
     'GEN-DIST-CONF': 'Confidence level for the generic disturbance classification. Value is a non-negative real number.'
-    ' Reset to 0 when a new disturbance is detected. -1 is nodata or no acquisition data available over previous '
+    ' Reset to 0 when a new disturbance is detected. Nan is nodata or no acquisition data available over previous '
     'dates.',
     'GEN-DIST-DATE': 'Date of the generic disturbance classification. Value is a non-negative integer and is the number'
     f' of days from {BASE_DATE_FOR_CONFIRMATION.strftime("%Y-%m-%d")}. -1 is nodata or no acquisition data available.'
