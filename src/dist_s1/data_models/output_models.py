@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import ClassVar
@@ -7,7 +8,14 @@ import numpy as np
 import rasterio
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from dist_s1.constants import EXPECTED_FORMAT_STRING, PRODUCT_VERSION, TIF_LAYERS, TIF_LAYER_DTYPES
+from dist_s1.constants import (
+    EXPECTED_FORMAT_STRING,
+    MAX_FLOAT_LAYER_DIFF,
+    MAX_INT_LAYER_DIFF,
+    PRODUCT_VERSION,
+    TIF_LAYERS,
+    TIF_LAYER_DTYPES,
+)
 from dist_s1.data_models.data_utils import get_acquisition_datetime
 from dist_s1.rio_tools import get_mgrs_profile
 from dist_s1.water_mask import apply_water_mask
@@ -21,6 +29,29 @@ PRODUCT_TAGS_FOR_EQUALITY = [
     'model_source',
 ]
 REQUIRED_PRODUCT_TAGS = PRODUCT_TAGS_FOR_EQUALITY + ['version']
+
+
+@dataclass
+class LayerComparisonResult:
+    layer_name: str
+    is_equal: bool
+    max_difference: float
+    tolerance_used: float
+    arrays_close: bool
+    metadata_matches: bool
+    error_message: str = ''
+
+
+@dataclass
+class ProductComparisonResult:
+    is_equal: bool
+    mgrs_matches: bool
+    datetime_matches: bool
+    layer_results: dict[str, LayerComparisonResult]
+
+    @property
+    def failed_layers(self) -> list[str]:
+        return [name for name, result in self.layer_results.items() if not result.is_equal]
 
 
 class ProductNameData(BaseModel):
@@ -222,6 +253,84 @@ class DistS1ProductDirectory(BaseModel):
                         failed_layers.append(layer)
         return len(failed_layers) == 0
 
+    def compare_products(
+        self, other: 'DistS1ProductDirectory', *, rtol: float = 1e-05, atol: float = 1e-05, equal_nan: bool = True
+    ) -> ProductComparisonResult:
+        """Compare two ProductDirectoryData instances with detailed results.
+
+        Parameters
+        ----------
+        other : ProductDirectoryData
+            The other instance to compare against
+        rtol : float, optional
+            Relative tolerance for numpy.allclose, by default 1e-05
+        atol : float, optional
+            Absolute tolerance for numpy.allclose, by default 1e-08
+        equal_nan : bool, optional
+            Whether to compare NaN's as equal, by default True
+
+        Returns
+        -------
+        ProductComparisonResult
+            Detailed comparison results
+        """
+        tokens_self = self.product_name.split('_')
+        tokens_other = other.product_name.split('_')
+
+        mgrs_self = tokens_self[3][1:]
+        mgrs_other = tokens_other[3][1:]
+        mgrs_matches = mgrs_self == mgrs_other
+
+        acq_dt_self = datetime.strptime(tokens_self[4], '%Y%m%dT%H%M%SZ')
+        acq_dt_other = datetime.strptime(tokens_other[4], '%Y%m%dT%H%M%SZ')
+        datetime_matches = acq_dt_self == acq_dt_other
+
+        layer_results = {}
+        for layer in self.layers:
+            path_self = self.layer_path_dict[layer]
+            path_other = other.layer_path_dict[layer]
+
+            with rasterio.open(path_self) as src_self, rasterio.open(path_other) as src_other:
+                data_self = src_self.read()
+                data_other = src_other.read()
+
+                diff = np.abs(data_self - data_other)
+                finite_diff = diff[np.isfinite(diff)]
+                max_diff = np.max(finite_diff) if finite_diff.size > 0 else 0.0
+
+                layer_dtype = self.tif_layer_dtypes[layer]
+                tolerance = (
+                    MAX_FLOAT_LAYER_DIFF if np.issubdtype(np.dtype(layer_dtype), np.floating) else MAX_INT_LAYER_DIFF
+                )
+
+                arrays_close = np.allclose(data_self, data_other, rtol=rtol, atol=atol, equal_nan=equal_nan)
+
+                tags_self = src_self.tags()
+                tags_other = src_other.tags()
+                metadata_matches = all(tags_self.get(key) == tags_other.get(key) for key in PRODUCT_TAGS_FOR_EQUALITY)
+
+                layer_equal = arrays_close and max_diff <= tolerance and metadata_matches
+
+                layer_results[layer] = LayerComparisonResult(
+                    layer_name=layer,
+                    is_equal=layer_equal,
+                    max_difference=max_diff,
+                    tolerance_used=tolerance,
+                    arrays_close=arrays_close,
+                    metadata_matches=metadata_matches,
+                    error_message='' if layer_equal else f'Max diff {max_diff:.6e} > tolerance {tolerance:.6e}',
+                )
+
+        # Overall equality
+        overall_equal = mgrs_matches and datetime_matches and all(r.is_equal for r in layer_results.values())
+
+        return ProductComparisonResult(
+            is_equal=overall_equal,
+            mgrs_matches=mgrs_matches,
+            datetime_matches=datetime_matches,
+            layer_results=layer_results,
+        )
+
     def __eq__(
         self, other: 'DistS1ProductDirectory', *, rtol: float = 1e-05, atol: float = 1e-05, equal_nan: bool = True
     ) -> bool:
@@ -230,7 +339,7 @@ class DistS1ProductDirectory(BaseModel):
         Checks that:
         1. The MGRS tile IDs match
         2. The acquisition datetimes match
-        3. All TIF layers have numerically close data using numpy.allclose
+        3. All TIF layers have numerically close data using layer-specific tolerances
 
         Parameters
         ----------
@@ -248,66 +357,21 @@ class DistS1ProductDirectory(BaseModel):
         bool
             True if the instances are considered equal, False otherwise
         """
-        import numpy as np
+        result = self.compare_products(other, rtol=rtol, atol=atol, equal_nan=equal_nan)
 
-        # Parse product names to get MGRS tile ID and acquisition datetime
-        tokens_self = self.product_name.split('_')
-        tokens_other = other.product_name.split('_')
+        if not result.mgrs_matches:
+            warn(f'MGRS tile IDs do not match: {self.mgrs_tile_id} != {other.mgrs_tile_id}', UserWarning)
+        if not result.datetime_matches:
+            warn(f'Acquisition datetimes do not match: {self.acq_datetime} != {other.acq_datetime}', UserWarning)
+        for layer_result in result.layer_results.values():
+            if not layer_result.is_equal:
+                warn(
+                    f'Layer {layer_result.layer_name}: {layer_result.error_message} with max diff'
+                    f' {layer_result.max_difference:.6e}',
+                    UserWarning,
+                )
 
-        equality = True
-
-        # Compare MGRS tile IDs
-        mgrs_self = tokens_self[3][1:]  # Remove 'T' prefix
-        mgrs_other = tokens_other[3][1:]
-        if mgrs_self != mgrs_other:
-            warn(f'MGRS tile IDs do not match: {mgrs_self} != {mgrs_other}', UserWarning)
-            equality = False
-
-        # Compare acquisition datetimes
-        acq_dt_self = datetime.strptime(tokens_self[4], '%Y%m%dT%H%M%SZ')
-        acq_dt_other = datetime.strptime(tokens_other[4], '%Y%m%dT%H%M%SZ')
-        if acq_dt_self != acq_dt_other:
-            warn(f'Acquisition datetimes do not match: {acq_dt_self} != {acq_dt_other}', UserWarning)
-            equality = False
-
-        # Compare TIF layer data
-        unequal_layers = []
-        for layer in self.layers:
-            path_self = self.layer_path_dict[layer]
-            path_other = other.layer_path_dict[layer]
-
-            with rasterio.open(path_self) as src_self, rasterio.open(path_other) as src_other:
-                data_self = src_self.read()
-                data_other = src_other.read()
-                if not np.allclose(data_self, data_other, rtol=rtol, atol=atol, equal_nan=equal_nan):
-                    warn(f'Layer {layer} arrays do not match', UserWarning)
-                    unequal_layers.append(layer)
-                    equality = False
-
-                tags_self = src_self.tags()
-                tags_other = src_other.tags()
-                keys_self = tags_self.keys()
-                keys_other = tags_other.keys()
-                missing_tag_keys_self = [key for key in REQUIRED_PRODUCT_TAGS if key not in keys_self]
-                if missing_tag_keys_self:
-                    warn(
-                        f'Layer {layer} is missing required tags in left product: {",".join(missing_tag_keys_self)}',
-                        UserWarning,
-                    )
-                    equality = False
-                missing_tag_keys_other = [key for key in REQUIRED_PRODUCT_TAGS if key not in keys_other]
-                if missing_tag_keys_other:
-                    warn(
-                        f'Layer {layer} is missing required tags in right product: {",".join(missing_tag_keys_other)}',
-                        UserWarning,
-                    )
-                    equality = False
-                for key in PRODUCT_TAGS_FOR_EQUALITY:
-                    if tags_self[key] != tags_other[key]:
-                        warn(f'Layer {layer} metadata value for key {key} do not match', UserWarning)
-                        equality = False
-
-        return equality
+        return result.is_equal
 
     @classmethod
     def from_product_path(cls, product_dir_path: Path | str) -> 'DistS1ProductDirectory':
