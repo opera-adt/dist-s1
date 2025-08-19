@@ -104,6 +104,9 @@ def test_dist_s1_sas_workflow_no_confirmation(
     )
     config.apply_water_mask = True
     config.algo_config.device = 'cpu'
+    config.algo_config.stride_for_norm_param_estimation = 16
+    config.algo_config.low_confidence_alert_threshold = 3.5
+    config.algo_config.high_confidence_alert_threshold = 5.5
 
     run_dist_s1_sas_workflow(config)
 
@@ -144,6 +147,9 @@ def test_dist_s1_sas_workflow_with_confirmation(
     config.apply_water_mask = True
     config.algo_config.device = 'cpu'
     config.prior_dist_s1_product = test_opera_golden_cropped_dataset_dict['prior']
+    config.algo_config.stride_for_norm_param_estimation = 16
+    config.algo_config.low_confidence_alert_threshold = 3.5
+    config.algo_config.high_confidence_alert_threshold = 5.5
 
     run_dist_s1_sas_workflow(config)
 
