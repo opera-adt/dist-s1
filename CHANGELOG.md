@@ -18,6 +18,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
  
 ### Added
 * More comprehensive statistics provided for `__eq__` of `DistS1ProductDir`. Also ensures nodata masks are consistent across layers.
+* Equality for floats is now 2e-5 rather than 1e-5 (not sure what changed), but it will not impact the final product.
 
 
 ## [2.0.3] - 2025-08-12

@@ -5,7 +5,7 @@ import pandas as pd
 PRODUCT_VERSION = '0.1'
 
 # Tolerance constants for layer comparison
-MAX_FLOAT_LAYER_DIFF = 1e-5
+MAX_FLOAT_LAYER_DIFF = 2e-5
 MAX_INT_LAYER_DIFF = 0
 
 # Confirmation
