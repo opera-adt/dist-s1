@@ -31,7 +31,7 @@ OPERA_L3_DIST-ALERT-S1_T10SGD_20250102T015857Z_20250806T145521Z_S1_30_v0.1
 | `{proc_datetime}` | Processing datetime in ISO format | `20250806T145521Z` |
 | `S1` | Sentinel-1 mission identifier | `S1` |
 | `30` | Fixed resolution identifier | `30` |
-| `v{version}` | Product version with 'v' prefix | `v0.1` |
+| `v{version}` | Product version with 'v' prefix | `v{{ get_constant_value_macro('PRODUCT_VERSION') }}` |
 
 
 
@@ -71,32 +71,10 @@ OPERA_L3_DIST-ALERT-S1_T10SGD_20250102T015857Z_20250806T145521Z_S1_30_v0.1/
 └── OPERA_L3_DIST-ALERT-S1_T10SGD_20250102T015857Z_20250806T145521Z_S1_30_v0.1_GEN-DIST-LAST-DATE.tif
 ```
 
-## DIST-S1 Product Layers
+{{ generate_constants_table(constants.TIF_LAYER_DTYPES, "DIST-S1 Product Layers", "Data Type") }}
 
-| Layer Name | dtype | nodata | description |
-|------------|-------|--------|-------------|
-| `GEN-DIST-STATUS` | `uint8` | `255` | Status of the generic disturbance classification (see the DISTLABEL2VAL table for more details on the status labels). |
-| `GEN-METRIC` | `float32` | `nan` | Metric value for the generic disturbance classification. Can be viewed as number of standard devations from the mean. Value is a non-negative real number. |
-| `GEN-DIST-STATUS-ACQ` | `uint8` | `255` | Status of the generic disturbance classification with respect to the latest acquisition date (see DISTLABEL2VAL table for more details on the status labels) |
-| `GEN-METRIC-MAX` | `float32` | `nan` | Maximum metric value for the generic disturbance classification over all acquisition dates sincefirst disturbance. Reset to 0 when a new disturbance is detected. Value is a non-negative real number. |
-| `GEN-DIST-CONF` | `float32` | `-1` | Confidence level for the generic disturbance classification. Value is a non-negative real number. Reset to 0 when a new disturbance is detected. -1 is nodata or no acquisition data available over previous dates. |
-| `GEN-DIST-DATE` | `int16` | `-1` | Date of the generic disturbance classification. Value is a non-negative integer and is the number of days from 2020-12-31. -1 is nodata or no acquisition data available.over previous dates. |
-| `GEN-DIST-COUNT` | `uint8` | `255` | The number of generic disturbances since first detection. Value is a non-negative integer. |
-| `GEN-DIST-PERC` | `uint8` | `255` | Percentage of the generic disturbance disturbance since first detection. |
-| `GEN-DIST-DUR` | `int16` | `-1` | Duration of the generic disturbance classification since first detection in days. |
-| `GEN-DIST-LAST-DATE` | `int16` | `-1` | Latest generic disturbance detection. |
+### Layer NoData Values
 
-## Disturbance Labels
+{{ generate_constants_table(constants.TIF_LAYER_NODATA_VALUES, "Layer NoData Values", "NoData Value") }}
 
-| Status Value | Description |
-|--------------|-------------|
-| `0` | no disturbance |
-| `1` | first low conf disturbance |
-| `2` | provisional low conf disturbance |
-| `3` | confirmed low conf disturbance |
-| `4` | first high conf disturbance |
-| `5` | provisional high conf disturbance |
-| `6` | confirmed high conf disturbance |
-| `7` | confirmed low conf disturbance finished |
-| `8` | confirmed high conf disturbance finished |
-| `255` | nodata |
+{{ generate_disturbance_labels_table() }}
