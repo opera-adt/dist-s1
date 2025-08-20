@@ -65,9 +65,9 @@ def define_env(env: Environment) -> None:
         # First check if field has a default value
         if field_info.default is not None and str(field_info.default) != 'PydanticUndefined':
             default_value = field_info.default
-            if isinstance(default_value, (str, int, float, bool)):
+            if isinstance(default_value, str | int | float | bool):
                 return str(default_value)
-            elif isinstance(default_value, (list, tuple)):
+            elif isinstance(default_value, list | tuple):
                 return str(default_value)
             elif isinstance(default_value, Path):
                 return f'`{default_value}`'
@@ -80,9 +80,9 @@ def define_env(env: Environment) -> None:
             default_value = getattr(defaults, default_var_name)
             if default_value is None:
                 return 'None'
-            elif isinstance(default_value, (str, int, float, bool)):
+            elif isinstance(default_value, str | int | float | bool):
                 return str(default_value)
-            elif isinstance(default_value, (list, tuple)):
+            elif isinstance(default_value, list | tuple):
                 return str(default_value)
             elif isinstance(default_value, Path):
                 return f'`{default_value}`'
@@ -185,7 +185,7 @@ def define_env(env: Environment) -> None:
             # Handle different value types
             if isinstance(value, str):
                 formatted_value = f'`"{value}"`'
-            elif isinstance(value, (int, float)):
+            elif isinstance(value, int | float):
                 formatted_value = f'`{value}`'
             elif value is None or (hasattr(value, '__name__') and value.__name__ == 'nan'):
                 formatted_value = '`NaN`'
@@ -221,7 +221,7 @@ def define_env(env: Environment) -> None:
         """Get a default value by variable name."""
         if hasattr(defaults, var_name):
             value = getattr(defaults, var_name)
-            if isinstance(value, (str, int, float, bool)):
+            if isinstance(value, str | int | float | bool):
                 return str(value)
             else:
                 return f'`{value}`'
@@ -232,7 +232,7 @@ def define_env(env: Environment) -> None:
         """Get a constant value by variable name."""
         if hasattr(constants, var_name):
             value = getattr(constants, var_name)
-            if isinstance(value, (str, int, float, bool)):
+            if isinstance(value, str | int | float | bool):
                 return str(value)
             else:
                 return f'`{value}`'
