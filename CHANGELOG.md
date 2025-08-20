@@ -8,6 +8,9 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [2.0.5] - 2025-08-15
 
+### Fixed
+* Dynamically serving docs and cleanup
+
 
 ## [2.0.4] - 2025-08-15
 
