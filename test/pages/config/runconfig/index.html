@@ -601,35 +601,35 @@
 <tbody>
 <tr>
 <td><code>pre_rtc_copol</code></td>
-<td><code>list[Path | str]</code></td>
+<td><code>list[pathlib.Path | str]</code></td>
 <td>No default</td>
 <td>Yes</td>
 <td>List of paths to pre-rtc copolarization data.</td>
 </tr>
 <tr>
 <td><code>pre_rtc_crosspol</code></td>
-<td><code>list[Path | str]</code></td>
+<td><code>list[pathlib.Path | str]</code></td>
 <td>No default</td>
 <td>Yes</td>
 <td>List of paths to pre-rtc crosspolarization data.</td>
 </tr>
 <tr>
 <td><code>post_rtc_copol</code></td>
-<td><code>list[Path | str]</code></td>
+<td><code>list[pathlib.Path | str]</code></td>
 <td>No default</td>
 <td>Yes</td>
 <td>List of paths to post-rtc copolarization data.</td>
 </tr>
 <tr>
 <td><code>post_rtc_crosspol</code></td>
-<td><code>list[Path | str]</code></td>
+<td><code>list[pathlib.Path | str]</code></td>
 <td>No default</td>
 <td>Yes</td>
 <td>List of paths to post-rtc crosspolarization data.</td>
 </tr>
 <tr>
 <td><code>prior_dist_s1_product</code></td>
-<td><code>DistS1ProductDirectory | None</code></td>
+<td><code>DistS1ProductDirectory | str | pathlib.Path | None</code></td>
 <td>None</td>
 <td>Yes</td>
 <td>Path to prior DIST-S1 product. Can accept str, Path, or DistS1ProductDirectory. If None, no prior product is used and confirmation is not performed.</td>
@@ -643,21 +643,21 @@
 </tr>
 <tr>
 <td><code>dst_dir</code></td>
-<td><code>Path | str</code></td>
+<td><code>pathlib.Path | str</code></td>
 <td><code>out</code></td>
 <td>No</td>
 <td>No description available</td>
 </tr>
 <tr>
 <td><code>input_data_dir</code></td>
-<td><code>Path | str | None</code></td>
+<td><code>pathlib.Path | str | None</code></td>
 <td>None</td>
 <td>Yes</td>
 <td>Input data directory. If None, defaults to dst_dir.</td>
 </tr>
 <tr>
 <td><code>water_mask_path</code></td>
-<td><code>Path | str | None</code></td>
+<td><code>pathlib.Path | str | None</code></td>
 <td>None</td>
 <td>Yes</td>
 <td>Path to water mask. If None, no water mask is used.</td>
@@ -678,7 +678,7 @@
 </tr>
 <tr>
 <td><code>product_dst_dir</code></td>
-<td><code>Path | str | None</code></td>
+<td><code>pathlib.Path | str | None</code></td>
 <td>None</td>
 <td>Yes</td>
 <td>Path to product directory. If None, defaults to dst_dir.</td>
@@ -706,7 +706,7 @@
 </tr>
 <tr>
 <td><code>algo_config_path</code></td>
-<td><code>Path | str | None</code></td>
+<td><code>pathlib.Path | str | None</code></td>
 <td>None</td>
 <td>Yes</td>
 <td>Path to external algorithm config file. If None, no external algorithm config is used.</td>

@@ -693,14 +693,14 @@
 <tr>
 <td><code>low_confidence_alert_threshold</code></td>
 <td><code>float</code></td>
-<td>3.5</td>
+<td>2.5</td>
 <td>No</td>
 <td>Low confidence alert threshold for detecting disturbance between baseline and post-image.</td>
 </tr>
 <tr>
 <td><code>high_confidence_alert_threshold</code></td>
 <td><code>float</code></td>
-<td>5.5</td>
+<td>4.5</td>
 <td>No</td>
 <td>High confidence alert threshold for detecting disturbance between baseline and post-image.</td>
 </tr>
@@ -749,7 +749,7 @@
 <tr>
 <td><code>confirmation_confidence_threshold</code></td>
 <td><code>float</code></td>
-<td>31.5</td>
+<td>22.5</td>
 <td>No</td>
 <td>This is the threshold for the confirmation process to determine if a disturbance is confirmed.</td>
 </tr>
@@ -769,14 +769,14 @@
 </tr>
 <tr>
 <td><code>model_cfg_path</code></td>
-<td><code>Path | str | None</code></td>
+<td><code>pathlib.Path | str | None</code></td>
 <td>None</td>
 <td>Yes</td>
 <td>Path to model config file. If <code>external</code>, use externally supplied path. Otherwise, use distmetrics.model_load.ALLOWED_MODELS for other models.</td>
 </tr>
 <tr>
 <td><code>model_wts_path</code></td>
-<td><code>Path | str | None</code></td>
+<td><code>pathlib.Path | str | None</code></td>
 <td>None</td>
 <td>Yes</td>
 <td>Path to model weights file. If <code>external</code>, use externally supplied path. Otherwise, use distmetrics.model_load.ALLOWED_MODELS for other models.</td>
