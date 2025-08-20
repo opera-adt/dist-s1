@@ -4,8 +4,11 @@ This module provides macros that generate documentation tables directly from
 the source code, ensuring the documentation always reflects current values.
 """
 
+import types
 from pathlib import Path
-from typing import Any
+
+from jinja2.environment import Environment
+from pydantic.fields import FieldInfo
 
 from dist_s1 import constants
 from dist_s1.data_models import defaults
@@ -14,18 +17,18 @@ from dist_s1.data_models.output_models import ProductNameData
 from dist_s1.data_models.runconfig_model import RunConfigData
 
 
-def define_env(env):
+def define_env(env: Environment) -> None:
     """Define the macro environment for MkDocs."""
     # Make modules available in templates
     env.variables['defaults'] = defaults
     env.variables['constants'] = constants
-    
+
     # Make model classes available in templates
     env.variables['RunConfigData'] = RunConfigData
     env.variables['AlgoConfigData'] = AlgoConfigData
     env.variables['ProductNameData'] = ProductNameData
 
-    def is_field_required(field_info: Any) -> bool:
+    def is_field_required(field_info: FieldInfo) -> bool:
         """Determine if a field is required based on its configuration."""
         # Check if field has a default value
         if field_info.default is not None and str(field_info.default) != 'PydanticUndefined':
@@ -39,7 +42,7 @@ def define_env(env):
         field_name = field_info.alias or (field_info.field_info.alias if hasattr(field_info, 'field_info') else None)
         if not field_name and hasattr(field_info, 'name'):
             field_name = field_info.name
-        
+
         if field_name:
             default_var_name = f'DEFAULT_{field_name.upper()}'
             if hasattr(defaults, default_var_name):
@@ -57,7 +60,7 @@ def define_env(env):
         # Default to required if no default is found
         return True
 
-    def get_default_value(field_name: str, field_info: Any) -> str:
+    def get_default_value(field_name: str, field_info: FieldInfo) -> str:
         """Get the default value for a field from defaults.py or field default."""
         # First check if field has a default value
         if field_info.default is not None and str(field_info.default) != 'PydanticUndefined':
@@ -85,10 +88,10 @@ def define_env(env):
                 return f'`{default_value}`'
             else:
                 return str(default_value)
-        
+
         return 'No default'
 
-    def format_type_hint(type_hint: Any) -> str:
+    def format_type_hint(type_hint: type | types.GenericAlias | None) -> str:
         """Format type hints for display in documentation."""
         if type_hint is None:
             return 'Any'
@@ -98,7 +101,9 @@ def define_env(env):
 
         # Clean up common type representations
         type_str = type_str.replace('pathlib._local.Path', 'Path')
-        type_str = type_str.replace('dist_s1.data_models.output_models.DistS1ProductDirectory', 'DistS1ProductDirectory')
+        type_str = type_str.replace(
+            'dist_s1.data_models.output_models.DistS1ProductDirectory', 'DistS1ProductDirectory'
+        )
         type_str = type_str.replace('dist_s1.data_models.algoconfig_model.AlgoConfigData', 'AlgoConfigData')
         type_str = type_str.replace("<class '", '').replace("'>", '')
 
@@ -135,13 +140,15 @@ def define_env(env):
             # Get required status
             required = is_field_required(field_info)
 
-            fields.append({
-                'name': field_name,
-                'type': field_type,
-                'default': default_value,
-                'description': description,
-                'required': required,
-            })
+            fields.append(
+                {
+                    'name': field_name,
+                    'type': field_type,
+                    'default': default_value,
+                    'description': description,
+                    'required': required,
+                }
+            )
 
         return fields
 
@@ -150,9 +157,9 @@ def define_env(env):
         """Generate a markdown table from a Pydantic model."""
         if title is None:
             title = model_class.__name__
-            
+
         fields = extract_field_info(model_class)
-        
+
         markdown = f'## {title}\n\n'
         markdown += '| Attribute | Type | Default | Required | Description |\n'
         markdown += '|-----------|------|---------|----------|-------------|\n'
@@ -168,7 +175,7 @@ def define_env(env):
         return markdown
 
     @env.macro
-    def generate_constants_table(constant_dict: dict, title: str, description_col: str = "Description") -> str:
+    def generate_constants_table(constant_dict: dict, title: str, description_col: str = 'Description') -> str:
         """Generate a markdown table from a dictionary of constants."""
         markdown = f'## {title}\n\n'
         markdown += f'| Key | Value | {description_col} |\n'
@@ -184,13 +191,13 @@ def define_env(env):
                 formatted_value = '`NaN`'
             else:
                 formatted_value = f'`{value}`'
-            
+
             # For layer tables, we might want descriptions from constants
             if hasattr(constants, 'TIF_LAYER_DESCRIPTIONS') and key in constants.TIF_LAYER_DESCRIPTIONS:
                 desc = constants.TIF_LAYER_DESCRIPTIONS[key].replace('|', '\\|')
             else:
                 desc = 'No description available'
-            
+
             markdown += f'| `{key}` | {formatted_value} | {desc} |\n'
 
         return markdown
