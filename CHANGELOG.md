@@ -11,6 +11,9 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Fixed
 * Dynamically serving docs and cleanup
 
+### Added
+* Tests to ensure that defaults and configured parameters are written to product tags correctly.
+
 
 ## [2.0.4] - 2025-08-15
 

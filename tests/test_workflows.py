@@ -5,10 +5,12 @@ from pathlib import Path
 
 import geopandas as gpd
 import pytest
+import rasterio
 from pytest import MonkeyPatch
 from pytest_mock import MockerFixture
 
 from dist_s1.data_models.output_models import DistS1ProductDirectory
+from dist_s1.data_models.defaults import DEFAULT_CONFIDENCE_UPPER_LIM
 from dist_s1.data_models.runconfig_model import RunConfigData
 from dist_s1.rio_tools import check_profiles_match, open_one_profile
 from dist_s1.workflows import (
@@ -113,6 +115,13 @@ def test_dist_s1_sas_workflow_no_confirmation(
     product_data = config.product_data_model
     golden_dataset_path = test_opera_golden_cropped_dataset_dict[current_or_prior]
     product_data_golden = DistS1ProductDirectory.from_product_path(golden_dataset_path)
+
+    layer_path = product_data.layer_path_dict['GEN-DIST-STATUS']
+    with rasterio.open(layer_path) as src:
+        tags = src.tags()
+        assert tags['low_confidence_alert_threshold'] == '3.5'
+        assert tags['high_confidence_alert_threshold'] == '5.5'
+        assert tags['confidence_upper_lim'] == str(DEFAULT_CONFIDENCE_UPPER_LIM)
 
     # a lot of the information can be inspected by `product_data.compare_products(product_data_golden)`
     # if `comp = product_data.compare_products(product_data_golden)`, then
