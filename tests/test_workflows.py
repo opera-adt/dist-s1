@@ -9,8 +9,8 @@ import rasterio
 from pytest import MonkeyPatch
 from pytest_mock import MockerFixture
 
-from dist_s1.data_models.output_models import DistS1ProductDirectory
 from dist_s1.data_models.defaults import DEFAULT_CONFIDENCE_UPPER_LIM
+from dist_s1.data_models.output_models import DistS1ProductDirectory
 from dist_s1.data_models.runconfig_model import RunConfigData
 from dist_s1.rio_tools import check_profiles_match, open_one_profile
 from dist_s1.workflows import (
