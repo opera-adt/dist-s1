@@ -53,7 +53,7 @@ from dist_s1.data_models.defaults import (
     DEFAULT_STRIDE_FOR_NORM_PARAM_ESTIMATION,
     DEFAULT_TQDM_ENABLED,
     DEFAULT_USE_DATE_ENCODING,
-    DEFAULT_WATER_MASK_PATH,
+    DEFAULT_SRC_WATER_MASK_PATH,
 )
 from dist_s1.data_models.output_models import DistS1ProductDirectory
 from dist_s1.data_models.runconfig_model import RunConfigData
@@ -427,7 +427,7 @@ def run_dist_s1_sas_prep_workflow(
     lookback_strategy: str = DEFAULT_LOOKBACK_STRATEGY,
     max_pre_imgs_per_burst_mw: tuple[int, ...] | None = DEFAULT_MAX_PRE_IMGS_PER_BURST_MW,
     delta_lookback_days_mw: tuple[int, ...] | None = DEFAULT_DELTA_LOOKBACK_DAYS_MW,
-    src_water_mask_path: str | Path | None = DEFAULT_WATER_MASK_PATH,
+    src_water_mask_path: str | Path | None = DEFAULT_SRC_WATER_MASK_PATH,
     product_dst_dir: str | Path | None = DEFAULT_PRODUCT_DST_DIR,
     bucket: str | None = None,
     bucket_prefix: str = '',
@@ -545,7 +545,7 @@ def run_dist_s1_workflow(
     memory_strategy: str = DEFAULT_MEMORY_STRATEGY,
     low_confidence_alert_threshold: float = DEFAULT_LOW_CONFIDENCE_ALERT_THRESHOLD,
     high_confidence_alert_threshold: float = DEFAULT_HIGH_CONFIDENCE_ALERT_THRESHOLD,
-    src_water_mask_path: str | Path | None = DEFAULT_WATER_MASK_PATH,
+    src_water_mask_path: str | Path | None = DEFAULT_SRC_WATER_MASK_PATH,
     tqdm_enabled: bool = DEFAULT_TQDM_ENABLED,
     apply_water_mask: bool = DEFAULT_APPLY_WATER_MASK,
     lookback_strategy: str = DEFAULT_LOOKBACK_STRATEGY,

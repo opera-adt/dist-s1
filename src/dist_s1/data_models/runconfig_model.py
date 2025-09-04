@@ -36,6 +36,7 @@ from dist_s1.data_models.defaults import (
     DEFAULT_INPUT_DATA_DIR,
     DEFAULT_MAX_PRE_IMGS_PER_BURST_MW,
     DEFAULT_POST_DATE_BUFFER_DAYS,
+    DEFAULT_SRC_WATER_MASK_PATH,
 )
 from dist_s1.data_models.output_models import DistS1ProductDirectory, ProductNameData
 from dist_s1.water_mask import water_mask_control_flow
@@ -58,7 +59,7 @@ class RunConfigData(BaseModel):
         description='Input data directory. If None, defaults to dst_dir.',
     )
     src_water_mask_path: Path | str | None = Field(
-        default=None,
+        default=DEFAULT_SRC_WATER_MASK_PATH,
         description='Path to water mask. If None, no water mask is used.',
     )
     apply_water_mask: bool = Field(
