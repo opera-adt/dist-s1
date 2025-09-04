@@ -50,10 +50,10 @@ from dist_s1.data_models.defaults import (
     DEFAULT_POST_DATE_BUFFER_DAYS,
     DEFAULT_PRIOR_DIST_S1_PRODUCT,
     DEFAULT_PRODUCT_DST_DIR,
+    DEFAULT_SRC_WATER_MASK_PATH,
     DEFAULT_STRIDE_FOR_NORM_PARAM_ESTIMATION,
     DEFAULT_TQDM_ENABLED,
     DEFAULT_USE_DATE_ENCODING,
-    DEFAULT_SRC_WATER_MASK_PATH,
 )
 from dist_s1.data_models.output_models import DistS1ProductDirectory
 from dist_s1.data_models.runconfig_model import RunConfigData
