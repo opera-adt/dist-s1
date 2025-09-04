@@ -67,7 +67,8 @@ class RunConfigData(BaseModel):
     apply_water_mask: bool = Field(
         default=DEFAULT_APPLY_WATER_MASK,
         description='Whether to apply water mask to the input data. If True, water mask is applied to the input data. '
-        'If no water mask path is provided, the tiles to generate the water mask are localized and formatted for use.',
+        'If no water mask path is provided, the tiles to generate the water mask over MGRS area are localized and '
+        'formatted for use.',
     )
     check_input_paths: bool = Field(
         default=DEFAULT_CHECK_INPUT_PATHS,
