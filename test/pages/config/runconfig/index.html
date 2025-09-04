@@ -660,14 +660,14 @@
 <td><code>pathlib.Path | str | None</code></td>
 <td>None</td>
 <td>Yes</td>
-<td>Path to water mask. If None, no water mask is used.</td>
+<td>Path to water mask. If None and apply_water_mask is False, no water mask is used. If None and apply_water_mask is True, the tiles to generate the water mask over MGRS area are localized and formatted for use.</td>
 </tr>
 <tr>
 <td><code>apply_water_mask</code></td>
 <td><code>bool</code></td>
 <td>True</td>
 <td>No</td>
-<td>Whether to apply water mask to the input data. If True, water mask is applied to the input data. If no water mask path is provided, the tiles to generate the water mask are localized and formatted for use.</td>
+<td>Whether to apply water mask to the input data. If True, water mask is applied to the input data. If no water mask path is provided, the tiles to generate the water mask over MGRS area are localized and formatted for use.</td>
 </tr>
 <tr>
 <td><code>check_input_paths</code></td>
