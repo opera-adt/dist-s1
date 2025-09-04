@@ -60,7 +60,9 @@ class RunConfigData(BaseModel):
     )
     src_water_mask_path: Path | str | None = Field(
         default=DEFAULT_SRC_WATER_MASK_PATH,
-        description='Path to water mask. If None, no water mask is used.',
+        description='Path to water mask. If None and apply_water_mask is False, '
+        'no water mask is used. If None and apply_water_mask is True, '
+        'the tiles to generate the water mask over MGRS area are localized and formatted for use.',
     )
     apply_water_mask: bool = Field(
         default=DEFAULT_APPLY_WATER_MASK,
