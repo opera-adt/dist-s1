@@ -489,6 +489,11 @@ class RunConfigData(BaseModel):
             self._algo_config_loaded = True
         return self
 
+    def __setattr__(self, name: str, value: object) -> None:
+        if name == 'src_water_mask_path':
+            super().__setattr__('_processed_water_mask_path', None)
+        super().__setattr__(name, value)
+
     @field_serializer('prior_dist_s1_product')
     def serialize_prior_dist_s1_product(self, prior_dist_s1_product: DistS1ProductDirectory | Path | str | None) -> str:
         if prior_dist_s1_product is None:
