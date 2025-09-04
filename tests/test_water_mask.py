@@ -16,7 +16,6 @@ def test_good_water_mask_path(test_dir: Path, good_water_mask_path_for_17SLR: Pa
     water_mask_path = water_mask_control_flow(
         water_mask_path=good_water_mask_path_for_17SLR,
         mgrs_tile_id='17SLR',
-        apply_water_mask=True,
         dst_dir=tmp_dir,
     )
     assert water_mask_path.exists()
@@ -47,7 +46,6 @@ def test_bad_water_mask_path(test_dir: Path, bad_water_mask_path_for_17SLR: Path
         water_mask_control_flow(
             water_mask_path=bad_water_mask_path_for_17SLR,
             mgrs_tile_id='17SLR',
-            apply_water_mask=True,
             dst_dir=tmp_dir,
         )
 
@@ -60,7 +58,6 @@ def test_bad_file_path(test_dir: Path) -> None:
         water_mask_control_flow(
             water_mask_path=tmp_dir / 'bad_file.tif',
             mgrs_tile_id='17SLR',
-            apply_water_mask=True,
             dst_dir=tmp_dir,
         )
 
@@ -73,7 +70,6 @@ def test_antimeridian_water_mask(test_dir: Path, antimeridian_water_mask_path_fo
     water_mask_path = water_mask_control_flow(
         water_mask_path=antimeridian_water_mask_path_for_01VCK,
         mgrs_tile_id='01VCK',
-        apply_water_mask=True,
         dst_dir=tmp_dir,
     )
     assert water_mask_path.exists()

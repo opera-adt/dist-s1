@@ -14,6 +14,7 @@ from pydantic import (
     Field,
     ValidationError,
     ValidationInfo,
+    computed_field,
     field_serializer,
     field_validator,
     model_validator,
@@ -56,7 +57,7 @@ class RunConfigData(BaseModel):
         default=DEFAULT_INPUT_DATA_DIR,
         description='Input data directory. If None, defaults to dst_dir.',
     )
-    water_mask_path: Path | str | None = Field(
+    src_water_mask_path: Path | str | None = Field(
         default=None,
         description='Path to water mask. If None, no water mask is used.',
     )
@@ -105,6 +106,7 @@ class RunConfigData(BaseModel):
     _min_acq_date: datetime | None = None
     _processing_datetime: datetime | None = None
     _algo_config_loaded: bool = False
+    _processed_water_mask_path: Path | str | None = None
     # Validate assignments to all fields
     model_config = ConfigDict(validate_assignment=True)
 
@@ -341,7 +343,7 @@ class RunConfigData(BaseModel):
             mgrs_tile_id=df_pre.mgrs_tile_id.iloc[0],
             dst_dir=dst_dir,
             apply_water_mask=apply_water_mask,
-            water_mask_path=water_mask_path,
+            src_water_mask_path=water_mask_path,
             prior_dist_s1_product=prior_dist_s1_product,
             algo_config=algo_config,
         )
@@ -446,18 +448,31 @@ class RunConfigData(BaseModel):
             self._df_inputs = df
         return self._df_inputs.copy()
 
-    @model_validator(mode='after')
-    def handle_water_mask_control_flow(self) -> 'RunConfigData':
-        """Trigger water mask control flow when apply_water_mask is True."""
-        if self.apply_water_mask and self.water_mask_path is None:
-            self.water_mask_path = water_mask_control_flow(
-                water_mask_path=self.water_mask_path,
-                mgrs_tile_id=self.mgrs_tile_id,
-                apply_water_mask=self.apply_water_mask,
-                dst_dir=self.dst_dir,
-                overwrite=True,
-            )
-        return self
+    @computed_field
+    @property
+    def water_mask_path(self) -> Path | None:
+        """Get the water mask path, processing if needed when apply_water_mask is True."""
+        if self.apply_water_mask:
+            return self.processed_water_mask_path
+        return self.src_water_mask_path
+
+    @property
+    def processed_water_mask_path(self) -> Path | None:
+        """Get the processed water mask path, generating it if needed."""
+        if not self.apply_water_mask:
+            return None
+
+        if self._processed_water_mask_path is not None:
+            return self._processed_water_mask_path
+
+        processed_path = water_mask_control_flow(
+            water_mask_path=self.src_water_mask_path,
+            mgrs_tile_id=self.mgrs_tile_id,
+            dst_dir=self.dst_dir,
+            overwrite=True,
+        )
+        self._processed_water_mask_path = processed_path
+        return processed_path
 
     @model_validator(mode='after')
     def handle_input_data_dir_default(self) -> 'RunConfigData':

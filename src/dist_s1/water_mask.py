@@ -62,7 +62,6 @@ def water_mask_control_flow(
     *,
     water_mask_path: Path | str | None,
     mgrs_tile_id: str,
-    apply_water_mask: bool,
     dst_dir: Path,
     overwrite: bool = True,
     buffer_size_pixel: int = 10,
@@ -100,14 +99,12 @@ def water_mask_control_flow(
     ValueError
         When water mask indicated by `water_mask_path` doesn't contain the MGRS tile.
     """
-    # This path will be used if we don't have a local water mask path or url
+    # This path will be used if we don't have a local water mask path or url is provided
     out_water_mask_path = dst_dir / f'{mgrs_tile_id}_water_mask.tif'
-    if not apply_water_mask:
-        out_water_mask_path = None
-    elif water_mask_path is None and apply_water_mask:
+    if water_mask_path is None:
         if overwrite or not Path(out_water_mask_path).exists():
             _ = get_water_mask(mgrs_tile_id, out_water_mask_path, overwrite=False)
-    elif isinstance(water_mask_path, str | Path) and apply_water_mask:
+    elif isinstance(water_mask_path, str | Path):
         if not str(water_mask_path).startswith('http') or not str(water_mask_path).startswith('s3'):
             if not Path(water_mask_path).exists():
                 raise FileNotFoundError(f'Water mask file does not exist: {water_mask_path}')
