@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.5] - 2025-08-15
+
+### Fixed
+* Dynamically serving docs and cleanup
+* Updated the RunConfigModel so that `src_water_mask_path` is now the input water mask path (not necessarily with proper CRS) and we compute/process the water mask as a property in the data to ensure proper handling. Avoids annoying recursion errors.
+  - Also updated `DEFAULT_WATER_MASK_PATH` to `DEFAULT_SRC_WATER_MASK_PATH`.
+
+### Added
+* Tests to ensure that defaults and configured parameters are written to product tags correctly.
+
+### Changed
+* `water_mask_control_flow` no longer accepts `apply_water_mask` - we assume this is only applied when water masks are required.
+
+
 ## [2.0.4] - 2025-08-15
 
 ### Changed

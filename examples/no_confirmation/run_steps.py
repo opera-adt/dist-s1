@@ -26,7 +26,7 @@ def main() -> None:
         input_data_dir=dst_dir,
     )
     run_config.apply_water_mask = True
-    run_config.water_mask_path = dst_dir / 'water_mask.tif'
+    run_config.src_water_mask_path = dst_dir / 'water_mask.tif'
     run_config.algo_config.memory_strategy = memory_strategy
     run_config.algo_config.low_confidence_alert_threshold = low_confidence_alert_threshold
     run_config.algo_config.high_confidence_alert_threshold = high_confidence_alert_threshold

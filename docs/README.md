@@ -2,42 +2,43 @@
 
 This directory contains the documentation for the DIST-S1 project.
 
-## API Documentation
+## Dynamic Documentation System
 
-The API documentation is dynamically generated from the Pydantic models in the codebase and includes:
+The documentation uses **MkDocs with macros** to automatically generate tables from the source code. All configuration tables, product specifications, and constants are dynamically pulled from:
+
+- `src/dist_s1/data_models/defaults.py` - Default configuration values
+- `src/dist_s1/constants.py` - Product constants and specifications
+- Pydantic model definitions - Field descriptions and types
+
+### Documentation Includes:
 
 - **RunConfigData** - Configuration for running DIST-S1 processing
-- **AlgoConfigData** - Algorithm-specific configuration parameters
-
-### Regenerating Documentation
-
-```bash
-# Use the convenience script
-./docs/update_config_docs.sh
-./docs/update_product_docs.sh
-
-# Or run manually
-conda activate dist-s1-env
-python docs/generate_api_tables.py
-python docs/generate_product_tables.py
-```
+- **AlgoConfigData** - Algorithm-specific configuration parameters  
+- **ProductNameData** - Product naming and validation
+- **Product Layers** - TIF layer specifications and NoData values
+- **Disturbance Labels** - Classification labels and values
 
 ### Building the Documentation
 
 ```bash
-conda activate dist-s1-env
+# Install dependencies (if not already installed)
+pip install mkdocs-macros-plugin
+
+# Serve locally
 mkdocs serve
 ```
 
 This starts a local server (usually at http://127.0.0.1:8000) where you can view the documentation.
 
-### CI/CD Integration
+### File Structure
 
-The documentation generation is integrated into the CI/CD pipeline:
-- **Automatic Testing**: Ensures documentation generation works correctly
-- **Automatic Deployment**: Generates fresh documentation before deploying to GitHub Pages
-- **Manual Updates**: Can be triggered via GitHub Actions to update documentation files
-
-For manual updates, go to GitHub Actions → "Update API Documentation" workflow → "Run workflow".
+```
+docs/
+├── macros.py              # MkDocs macro functions for dynamic table generation
+├── pages/                 # Documentation pages using macros
+│   ├── config/           # Configuration documentation  
+│   └── product_documentation/  # Product specification docs
+└── README.md             # This file
+```
 
 
