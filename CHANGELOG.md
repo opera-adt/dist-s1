@@ -15,6 +15,9 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 * Tests to ensure that defaults and configured parameters are written to product tags correctly.
 
+### Changed
+* `water_mask_control_flow` no longer accepts `apply_water_mask` - we assume this is only applied when water masks are required.
+
 
 ## [2.0.4] - 2025-08-15
 
