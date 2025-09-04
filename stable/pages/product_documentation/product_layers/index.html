@@ -16,7 +16,7 @@
       
       
       <link rel="icon" href="../../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.17">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.18">
     
     
       
@@ -471,6 +471,39 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#layer-data-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      Layer Data Types
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Layer Data Types">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#layer-nodata-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      Layer NoData Values
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#layer-nodata-values_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Layer NoData Values
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -566,6 +599,39 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#layer-data-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      Layer Data Types
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Layer Data Types">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#layer-nodata-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      Layer NoData Values
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#layer-nodata-values_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Layer NoData Values
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -588,73 +654,126 @@
   <h1>Product Layers</h1>
 
 <h2 id="dist-s1-product-layers">DIST-S1 Product Layers</h2>
+<h2 id="layer-data-types">Layer Data Types</h2>
 <table>
 <thead>
 <tr>
-<th>Layer Name</th>
-<th>dtype</th>
-<th>nodata</th>
-<th>description</th>
+<th>Key</th>
+<th>Value</th>
+<th>Data Type</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>GEN-DIST-STATUS</code></td>
-<td><code>uint8</code></td>
-<td><code>255</code></td>
-<td>Status of the generic disturbance classification (see the DISTLABEL2VAL table for more details on the status labels).</td>
+<td><code>"uint8"</code></td>
+<td>Status of the generic disturbance classification (see the disturbance labels table for more details on the status labels).</td>
 </tr>
 <tr>
 <td><code>GEN-METRIC</code></td>
-<td><code>float32</code></td>
-<td><code>nan</code></td>
+<td><code>"float32"</code></td>
 <td>Metric value for the generic disturbance classification. Can be viewed as number of standard devations from the mean. Value is a non-negative real number.</td>
 </tr>
 <tr>
 <td><code>GEN-DIST-STATUS-ACQ</code></td>
-<td><code>uint8</code></td>
-<td><code>255</code></td>
-<td>Status of the generic disturbance classification with respect to the latest acquisition date (see DISTLABEL2VAL table for more details on the status labels)</td>
+<td><code>"uint8"</code></td>
+<td>Status of the generic disturbance classification with respect to the latest acquisition date (see disturbance labels table for more details on the status labels)</td>
 </tr>
 <tr>
 <td><code>GEN-METRIC-MAX</code></td>
-<td><code>float32</code></td>
+<td><code>"float32"</code></td>
+<td>Maximum metric value for the generic disturbance classification over all acquisition dates sincefirst disturbance. Reset to 0 when a new disturbance is detected. Value is a non-negative real number.</td>
+</tr>
+<tr>
+<td><code>GEN-DIST-CONF</code></td>
+<td><code>"float32"</code></td>
+<td>Confidence level for the generic disturbance classification. Value is a non-negative real number. Reset to 0 when a new disturbance is detected. Nan is nodata or no acquisition data available over previous dates.</td>
+</tr>
+<tr>
+<td><code>GEN-DIST-DATE</code></td>
+<td><code>"int16"</code></td>
+<td>Date of the generic disturbance classification. Value is a non-negative integer and is the number of days from 2020-12-31. -1 is nodata or no acquisition data available.over previous dates.</td>
+</tr>
+<tr>
+<td><code>GEN-DIST-COUNT</code></td>
+<td><code>"uint8"</code></td>
+<td>The number of generic disturbances since first detection. Value is a non-negative integer.</td>
+</tr>
+<tr>
+<td><code>GEN-DIST-PERC</code></td>
+<td><code>"uint8"</code></td>
+<td>Percentage of the generic disturbance disturbance since first detection.</td>
+</tr>
+<tr>
+<td><code>GEN-DIST-DUR</code></td>
+<td><code>"int16"</code></td>
+<td>Duration of the generic disturbance classification since first detection in days.</td>
+</tr>
+<tr>
+<td><code>GEN-DIST-LAST-DATE</code></td>
+<td><code>"int16"</code></td>
+<td>Latest generic disturbance detection.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="layer-nodata-values">Layer NoData Values</h3>
+<h2 id="layer-nodata-values_1">Layer NoData Values</h2>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Value</th>
+<th>NoData Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GEN-DIST-STATUS</code></td>
+<td><code>255</code></td>
+<td>Status of the generic disturbance classification (see the disturbance labels table for more details on the status labels).</td>
+</tr>
+<tr>
+<td><code>GEN-DIST-STATUS-ACQ</code></td>
+<td><code>255</code></td>
+<td>Status of the generic disturbance classification with respect to the latest acquisition date (see disturbance labels table for more details on the status labels)</td>
+</tr>
+<tr>
+<td><code>GEN-METRIC</code></td>
+<td><code>nan</code></td>
+<td>Metric value for the generic disturbance classification. Can be viewed as number of standard devations from the mean. Value is a non-negative real number.</td>
+</tr>
+<tr>
+<td><code>GEN-METRIC-MAX</code></td>
 <td><code>nan</code></td>
 <td>Maximum metric value for the generic disturbance classification over all acquisition dates sincefirst disturbance. Reset to 0 when a new disturbance is detected. Value is a non-negative real number.</td>
 </tr>
 <tr>
 <td><code>GEN-DIST-CONF</code></td>
-<td><code>float32</code></td>
-<td><code>-1</code></td>
-<td>Confidence level for the generic disturbance classification. Value is a non-negative real number. Reset to 0 when a new disturbance is detected. -1 is nodata or no acquisition data available over previous dates.</td>
+<td><code>nan</code></td>
+<td>Confidence level for the generic disturbance classification. Value is a non-negative real number. Reset to 0 when a new disturbance is detected. Nan is nodata or no acquisition data available over previous dates.</td>
 </tr>
 <tr>
 <td><code>GEN-DIST-DATE</code></td>
-<td><code>int16</code></td>
 <td><code>-1</code></td>
 <td>Date of the generic disturbance classification. Value is a non-negative integer and is the number of days from 2020-12-31. -1 is nodata or no acquisition data available.over previous dates.</td>
 </tr>
 <tr>
 <td><code>GEN-DIST-COUNT</code></td>
-<td><code>uint8</code></td>
 <td><code>255</code></td>
 <td>The number of generic disturbances since first detection. Value is a non-negative integer.</td>
 </tr>
 <tr>
 <td><code>GEN-DIST-PERC</code></td>
-<td><code>uint8</code></td>
 <td><code>255</code></td>
 <td>Percentage of the generic disturbance disturbance since first detection.</td>
 </tr>
 <tr>
 <td><code>GEN-DIST-DUR</code></td>
-<td><code>int16</code></td>
 <td><code>-1</code></td>
 <td>Duration of the generic disturbance classification since first detection in days.</td>
 </tr>
 <tr>
 <td><code>GEN-DIST-LAST-DATE</code></td>
-<td><code>int16</code></td>
 <td><code>-1</code></td>
 <td>Latest generic disturbance detection.</td>
 </tr>
