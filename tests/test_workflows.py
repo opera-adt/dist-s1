@@ -82,6 +82,7 @@ def test_burst_disturbance_workflow(
     shutil.rmtree(tmp_dir)
 
 
+@pytest.mark.parametrize('src_water_mask_path_key', ['None', 'large'])
 @pytest.mark.parametrize('current_or_prior', ['prior', 'current'])
 def test_dist_s1_sas_workflow_no_confirmation(
     test_dir: Path,
@@ -89,8 +90,15 @@ def test_dist_s1_sas_workflow_no_confirmation(
     current_or_prior: str,
     test_opera_golden_cropped_dataset_dict: dict[str, Path],
     test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path],
+    src_water_mask_path_key: str,
 ) -> None:
     """Tests the dist-s1-sas workflow against a golden dataset."""
+    water_mask_path_src_dict = {
+        'None': None,
+        'large': test_dir / 'test_data' / 'water_mask_samples' / 'water_mask_10SGD_large.tif',
+    }
+    src_water_mask_path = water_mask_path_src_dict[src_water_mask_path_key]
+
     # Ensure that validation is relative to the test directory
     change_local_dir(test_dir)
     tmp_dir = test_dir / 'tmp'
@@ -105,6 +113,7 @@ def test_dist_s1_sas_workflow_no_confirmation(
         dst_dir=tmp_dir,
     )
     config.apply_water_mask = True
+    config.src_water_mask_path = src_water_mask_path
     config.algo_config.device = 'cpu'
     config.algo_config.stride_for_norm_param_estimation = 16
     config.algo_config.low_confidence_alert_threshold = 3.5

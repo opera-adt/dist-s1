@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.6] - 2025-09-08
+
+### Added
+* Test to use .5 degree buffered water mask around sas workflow to illustrate it's working
+* Better compression for localized water mask
+
+### Fixed
+* Regression test instructions
+* For s3 upload, include a zip of the data alongside the directory.
+
 ## [2.0.5] - 2025-08-15
 
 ### Fixed
