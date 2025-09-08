@@ -531,12 +531,12 @@ def run_dist_s1_sas_workflow(run_config: RunConfigData) -> Path:
 
     if run_config.bucket is not None:
         upload_product_to_s3(run_config.product_directory, run_config.bucket, run_config.bucket_prefix)
-        
-        product_zip_path = f"{run_config.product_directory}.zip"
+
+        product_zip_path = f'{run_config.product_directory}.zip'
         shutil.make_archive(run_config.product_directory, 'zip', run_config.product_directory)
-        
+
         upload_product_to_s3(product_zip_path, run_config.bucket, run_config.bucket_prefix)
-        
+
         Path(product_zip_path).unlink()
     return run_config
 
