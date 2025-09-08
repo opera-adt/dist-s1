@@ -10,7 +10,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 * Test to use .5 degree buffered water mask around sas workflow to illustrate it's working
-* Better compression for localized water mask
+* Better compression for localized water mask using tiled metadata.
 
 ### Fixed
 * Regression test instructions
