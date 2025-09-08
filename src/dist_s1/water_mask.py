@@ -52,7 +52,13 @@ def get_water_mask(mgrs_tile_id: str, out_path: Path, overwrite: bool = False) -
     X_om_r, p_om_r = reproject_arr_to_match_profile(X_om, p_dist, profile_mgrs, resampling='nearest')
     X_om_r = X_om_r[0, ...]
 
-    with rasterio.open(out_path, 'w', **p_om_r) as dst:
+    p_new = p_om_r.copy()
+    # Better compression for localized water mask
+    p_new['blockxsize'] = 512
+    p_new['blockysize'] = 512
+    p_new['tiled'] = True
+
+    with rasterio.open(out_path, 'w', **p_new) as dst:
         dst.write(X_om_r, 1)
 
     return out_path
