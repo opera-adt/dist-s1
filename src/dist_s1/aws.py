@@ -1,4 +1,5 @@
 import logging
+import shutil
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from mimetypes import guess_type
 from pathlib import Path
@@ -106,7 +107,10 @@ def upload_files_to_s3_threaded(
 def upload_product_to_s3(
     product_directory: Path, bucket: str, prefix: str = '', profile_name: str | None = None
 ) -> None:
-    for file in product_directory.glob('*.tif'):
-        upload_file_to_s3(file, bucket, prefix, profile_name)
     for file in product_directory.glob('*.png'):
         upload_file_to_s3(file, bucket, prefix, profile_name)
+
+    product_zip_path = f'{product_directory}.zip'
+    shutil.make_archive(product_directory, 'zip', product_directory)
+    upload_file_to_s3(product_zip_path, bucket, prefix)
+    Path(product_zip_path).unlink()

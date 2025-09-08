@@ -14,7 +14,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 * Regression test instructions
-* For s3 upload, include a zip of the data alongside the directory.
+* For s3 upload, upload zip file and png only (no TIF files).
 
 ## [2.0.5] - 2025-08-15
 
