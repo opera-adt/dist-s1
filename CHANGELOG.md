@@ -9,7 +9,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [2.0.6] - 2025-09-08
 
 ### Changed
-* Changed defaults of n_workers from 8 to 4 for `DEFAULT_N_WORKERS_FOR_DESPECKLING` and `DEFAULT_N_WORKERS_FOR_NORM_PARAM_ESTIMATION`.
+* Changed defaults of n_workers from 8 to 4 for `DEFAULT_N_WORKERS_FOR_NORM_PARAM_ESTIMATION`.
 
 ### Added
 * Test to use .5 degree buffered water mask around sas workflow to illustrate it's working
