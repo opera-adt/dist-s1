@@ -9,7 +9,7 @@ dependencies:
  - click
  - compilers
  - dem_stitcher
- - dist_s1_enumerator>=1.0.0
+ - dist_s1_enumerator>=1.0.2
  - distmetrics>=1.0.2
  - flake8
  - flake8-blind-except
