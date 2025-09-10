@@ -5,7 +5,6 @@ dependencies:
  - python>=3.12
  - pip
  - asf_search
- - backoff
  - click
  - cudatoolkit=11.8
  - dem_stitcher
