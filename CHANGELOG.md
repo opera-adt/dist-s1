@@ -16,6 +16,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * Test to use .5 degree buffered water mask around sas workflow to illustrate it's working
 * Better compression for localized water mask using tiled metadata.
 * Updated upload to s3 to accept strings and posix paths (issues uploading files).
+* Use latest tile-mate that allows for wrapping around the dateline/anti-meridian.
 
 ### Fixed
 * Regression test instructions

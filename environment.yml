@@ -32,7 +32,7 @@ dependencies:
  - setuptools
  - setuptools_scm
  - shapely
- - tile_mate>=0.0.14 
+ - tile_mate>=0.0.15 
  - tqdm
  # Docs
  - mkdocs
