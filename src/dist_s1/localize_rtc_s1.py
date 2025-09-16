@@ -93,8 +93,8 @@ def localize_rtc_s1(
     )
     if df_product.empty:
         raise ValueError(
-            f'The {mgrs_tile_id=}, {track_number=}, and {post_date=} yeild an empty dataframe; '
-            'Please check there is RTC-S1 data available.'
+            f'The {mgrs_tile_id=}, {track_number=}, and {post_date=} do not yield any RTC-S1 target and baseline data; '
+            'Please check there is RTC-S1 data available suitable for localization.'
         )
     ensure_earthdata_credentials()
 
