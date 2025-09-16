@@ -91,6 +91,11 @@ def localize_rtc_s1(
         max_pre_imgs_per_burst=max_pre_imgs_per_burst_mw,
         delta_lookback_days=delta_lookback_days_mw,
     )
+    if df_product.empty:
+        raise ValueError(
+            f'The {mgrs_tile_id=}, {track_number=}, and {post_date=} yeild an empty dataframe; '
+            'Please check there is RTC-S1 data available.'
+        )
     ensure_earthdata_credentials()
 
     if input_data_dir is None:
