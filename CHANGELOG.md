@@ -6,11 +6,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.7] - 2025-09-24
-
-### Fixed
-* CLI run_sas_prep error due to missing parameter entry for prior_dist_s1_product
-
 ## [2.0.6] - 2025-09-08
 
 ### Changed
@@ -27,6 +22,8 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * Regression test instructions
 * For s3 upload, upload zip file and png only (no TIF files).
 * Better error handling of empty dataframes.
+* Fix the CLI entrypoint error in `run_sas_prep` due to missing parameter option for `prior_dist_s1_product` (see Issue #152: https://github.com/opera-adt/dist-s1/issues/152)
+
 
 ## [2.0.5] - 2025-08-15
 
