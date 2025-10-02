@@ -129,7 +129,7 @@ class RunConfigData(BaseModel):
             config.algo_config = AlgoConfigData.from_yaml(run_params['algo_config_path'])
         return config
 
-    @field_validator('pre_rtc_copol', 'pre_rtc_crosspol', 'post_rtc_copol', 'post_rtc_crosspol', mode='before')
+    @field_validator('pre_rtc_copol', 'pre_rtc_crosspol', 'post_rtc_copol', 'post_rtc_crosspol', mode='after')
     def convert_to_paths(cls, values: list[Path | str], info: ValidationInfo) -> list[Path]:
         """Convert all values to Path objects."""
         paths = [Path(value) if isinstance(value, str) else value for value in values]
@@ -558,9 +558,23 @@ class RunConfigData(BaseModel):
                 'The following jpl burst IDs are in post-set but not in pre-set: '
                 + ', '.join(post_jpl_burst_ids_not_in_pre)
             )
+        if (
+            self.df_copol_data[self.df_copol_data.input_category == 'pre'].shape[0]
+            != self.df_crosspol_data[self.df_crosspol_data.input_category == 'pre'].shape[0]
+        ):
+            raise ValueError('The number of baseline/pre-image set of copol and crosspol data is not the same')
+        if (
+            self.df_copol_data[self.df_copol_data.input_category == 'post'].shape[0]
+            != self.df_crosspol_data[self.df_crosspol_data.input_category == 'post'].shape[0]
+        ):
+            raise ValueError(
+                'The number of recent acquisition/post-image set of copol and crosspol data is not the same'
+            )
+
         # The dataframes should be sorted by jpl_burst_id and acq_dt
         copol_dates = self.df_copol_data.acq_dt.dt.date
         crosspol_dates = self.df_crosspol_data.acq_dt.dt.date
+        # The length of these two dataframes must be the same for this comparison to make sense
         if (copol_dates != crosspol_dates).any():
             copol_ids_without_crosspol = self.df_copol_data[copol_dates != crosspol_dates].opera_id.tolist()
             crosspol_ids_without_copol = self.df_crosspol_data[copol_dates != crosspol_dates].opera_id.tolist()
