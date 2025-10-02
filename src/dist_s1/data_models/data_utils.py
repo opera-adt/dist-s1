@@ -114,3 +114,23 @@ def check_dist_product_filename_format(filename: str) -> None:
     if not any(filename.endswith(suffix) for suffix in valid_suffixes):
         raise ValueError(f"Filename '{filename}' must be a valid DIST-ALERT-S1 product: {valid_suffixes}")
     return True
+
+
+def extract_rtc_metadata_from_path(path: str | Path) -> dict:
+    file_path = Path(path)
+    stem = file_path.stem
+    return {
+        'opera_id': '_'.join(stem.split('_')[:-1]),
+        'polarization': stem.split('_')[-1],
+        'path': str(path),
+        'jpl_burst_id': get_burst_id(stem),
+        'acq_dt': get_acquisition_datetime(stem),
+    }
+
+
+def get_polarization_from_row(row: pd.Series) -> str:
+    loc_path_copol = row.loc_path_copol
+    loc_path_crosspol = row.loc_path_crosspol
+    copol = Path(loc_path_copol).stem.split('_')[-1]
+    crosspol = Path(loc_path_crosspol).stem.split('_')[-1]
+    return f'{copol}+{crosspol}'

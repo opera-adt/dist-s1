@@ -23,9 +23,11 @@ from pydantic import (
 from dist_s1.data_models.algoconfig_model import AlgoConfigData
 from dist_s1.data_models.data_utils import (
     check_filename_format,
+    extract_rtc_metadata_from_path,
     get_acquisition_datetime,
     get_burst_id,
     get_opera_id,
+    get_polarization_from_row,
     get_track_number,
 )
 from dist_s1.data_models.defaults import (
@@ -43,6 +45,11 @@ from dist_s1.water_mask import water_mask_control_flow
 
 
 class RunConfigData(BaseModel):
+    check_input_paths: bool = Field(
+        default=DEFAULT_CHECK_INPUT_PATHS,
+        description='Whether to check if the input paths exist. If True, the input paths are checked. '
+        'Used during testing.',
+    )
     pre_rtc_copol: list[Path | str] = Field(..., description='List of paths to pre-rtc copolarization data.')
     pre_rtc_crosspol: list[Path | str] = Field(..., description='List of paths to pre-rtc crosspolarization data.')
     post_rtc_copol: list[Path | str] = Field(..., description='List of paths to post-rtc copolarization data.')
@@ -70,11 +77,6 @@ class RunConfigData(BaseModel):
         'If no water mask path is provided, the tiles to generate the water mask over MGRS area are localized and '
         'formatted for use.',
     )
-    check_input_paths: bool = Field(
-        default=DEFAULT_CHECK_INPUT_PATHS,
-        description='Whether to check if the input paths exist. If True, the input paths are checked. '
-        'Used during testing.',
-    )
     product_dst_dir: Path | str | None = Field(
         default=None,
         description='Path to product directory. If None, defaults to dst_dir.',
@@ -100,6 +102,8 @@ class RunConfigData(BaseModel):
 
     # Private attributes that are associated to properties
     _burst_ids: list[str] | None = None
+    _df_copol_data: pd.DataFrame | None = None
+    _df_crosspol_data: pd.DataFrame | None = None
     _df_inputs: pd.DataFrame | None = None
     _df_prior_dist_products: pd.DataFrame | None = None
     _df_burst_distmetrics: pd.DataFrame | None = None
@@ -126,7 +130,7 @@ class RunConfigData(BaseModel):
             config.algo_config = AlgoConfigData.from_yaml(run_params['algo_config_path'])
         return config
 
-    @field_validator('pre_rtc_copol', 'pre_rtc_crosspol', 'post_rtc_copol', 'post_rtc_crosspol', mode='before')
+    @field_validator('pre_rtc_copol', 'pre_rtc_crosspol', 'post_rtc_copol', 'post_rtc_crosspol', mode='after')
     def convert_to_paths(cls, values: list[Path | str], info: ValidationInfo) -> list[Path]:
         """Convert all values to Path objects."""
         paths = [Path(value) if isinstance(value, str) else value for value in values]
@@ -259,6 +263,43 @@ class RunConfigData(BaseModel):
                 product_name=product_name,
             )
         return self._product_data_model
+
+    @property
+    def df_copol_data(self) -> pd.DataFrame:
+        if self._df_copol_data is None:
+            data_pre = [
+                {**extract_rtc_metadata_from_path(path_copol), 'input_category': 'pre'}
+                for path_copol in self.pre_rtc_copol
+            ]
+            data_post = [
+                {**extract_rtc_metadata_from_path(path_copol), 'input_category': 'post'}
+                for path_copol in self.post_rtc_copol
+            ]
+            data = data_pre + data_post
+            df = pd.DataFrame(data)
+            df.rename(columns={'path': 'loc_path_copol'}, inplace=True)
+            df = df.sort_values(by=['jpl_burst_id', 'acq_dt'], ascending=True)
+            self._df_copol_data = df
+        return self._df_copol_data
+
+    @property
+    def df_crosspol_data(self) -> pd.DataFrame:
+        if self._df_crosspol_data is None:
+            data_pre = [
+                {**extract_rtc_metadata_from_path(path_crosspol), 'input_category': 'pre'}
+                for path_crosspol in self.pre_rtc_crosspol
+            ]
+            data_post = [
+                {**extract_rtc_metadata_from_path(path_crosspol), 'input_category': 'post'}
+                for path_crosspol in self.post_rtc_crosspol
+            ]
+            data = data_pre + data_post
+            df = pd.DataFrame(data)
+            df.rename(columns={'path': 'loc_path_crosspol'}, inplace=True)
+            df = df.sort_values(by=['jpl_burst_id', 'acq_dt'], ascending=True)
+            self._df_crosspol_data = df
+
+        return self._df_crosspol_data
 
     @property
     def product_data_model_no_confirmation(self) -> DistS1ProductDirectory:
@@ -418,20 +459,18 @@ class RunConfigData(BaseModel):
     @property
     def df_inputs(self) -> pd.DataFrame:
         if self._df_inputs is None:
-            data_pre = [
-                {'input_category': 'pre', 'loc_path_copol': path_copol, 'loc_path_crosspol': path_crosspol}
-                for path_copol, path_crosspol in zip(self.pre_rtc_copol, self.pre_rtc_crosspol)
-            ]
-            data_post = [
-                {'input_category': 'post', 'loc_path_copol': path_copol, 'loc_path_crosspol': path_crosspol}
-                for path_copol, path_crosspol in zip(self.post_rtc_copol, self.post_rtc_crosspol)
-            ]
-            data = data_pre + data_post
-            df = pd.DataFrame(data)
+            df = pd.merge(
+                self.df_copol_data[['opera_id', 'loc_path_copol', 'input_category']],
+                self.df_crosspol_data[['opera_id', 'loc_path_crosspol', 'input_category']],
+                on=['opera_id', 'input_category'],
+                how='inner',
+            )
+            df = df[['opera_id', 'loc_path_copol', 'loc_path_crosspol', 'input_category']]
             df['opera_id'] = df.loc_path_copol.apply(get_opera_id)
             df['jpl_burst_id'] = df.loc_path_copol.apply(get_burst_id).astype(str)
             df['track_number'] = df.loc_path_copol.apply(get_track_number)
             df['acq_dt'] = df.loc_path_copol.apply(get_acquisition_datetime)
+            df['polarizations'] = df.apply(get_polarization_from_row, axis=1)
             df['pass_id'] = df.acq_dt.apply(extract_pass_id)
             df = append_pass_data(df, [self.mgrs_tile_id])
             df['dst_dir'] = self.dst_dir
@@ -483,6 +522,82 @@ class RunConfigData(BaseModel):
         """Set input_data_dir to dst_dir if None."""
         if self.input_data_dir is None:
             self.input_data_dir = Path(self.dst_dir)
+        return self
+
+    @model_validator(mode='after')
+    def validate_burst_ids_in_mgrs_tile(self) -> 'RunConfigData':
+        """Validate that the jpl_burst_ids are in the specified MGRS tile."""
+        df_mgrs_burst = get_lut_by_mgrs_tile_ids(self.mgrs_tile_id)
+        if df_mgrs_burst.empty:
+            raise ValueError('The MGRS tile specified is not processed by DIST-S1')
+        provided_jpl_burst_ids = set(self.df_inputs.jpl_burst_id.unique())
+        allowed_jpl_burst_ids = set(df_mgrs_burst.jpl_burst_id.unique())
+        supplied_jpl_burst_ids_not_in_mgrs_tile = provided_jpl_burst_ids - allowed_jpl_burst_ids
+        if len(supplied_jpl_burst_ids_not_in_mgrs_tile) > 0:
+            raise ValueError(
+                'The following jpl burst IDs are not in the specified MGRS tile: '
+                f'{supplied_jpl_burst_ids_not_in_mgrs_tile}'
+            )
+        return self
+
+    @model_validator(mode='after')
+    def ensure_consistent_polarizations_per_burst(self) -> 'RunConfigData':
+        """Ensure that each burst has consistent polarizations across all acquisitions."""
+        df = self.df_inputs
+        df_burst_grouped = df.groupby('jpl_burst_id')['polarizations'].nunique()
+        inconsistent_bursts = df_burst_grouped[df_burst_grouped > 1]
+        if len(inconsistent_bursts) > 0:
+            raise ValueError(
+                f'The following bursts have inconsistent polarizations across acquisitions: '
+                f'{inconsistent_bursts.index.tolist()}'
+            )
+        return self
+
+    @model_validator(mode='after')
+    def validate_input_data(self) -> 'RunConfigData':
+        """Validate the input data across pre-/post-acquisition sets and across polarizations."""
+        if self.df_inputs.empty:
+            raise ValueError('The input data DataFrame is empty')
+        pre_jpl_burst_ids = self.df_inputs[self.df_inputs.input_category == 'pre'].jpl_burst_id.unique().tolist()
+        post_jpl_burst_ids = self.df_inputs[self.df_inputs.input_category == 'post'].jpl_burst_id.unique().tolist()
+
+        pre_jpl_burst_ids_not_in_post = set(pre_jpl_burst_ids) - set(post_jpl_burst_ids)
+        post_jpl_burst_ids_not_in_pre = set(post_jpl_burst_ids) - set(pre_jpl_burst_ids)
+        if len(pre_jpl_burst_ids_not_in_post) > 0:
+            raise ValueError(
+                'The following jpl burst IDs are in pre-set not but not in post-set: '
+                + ', '.join(pre_jpl_burst_ids_not_in_post)
+            )
+        if len(post_jpl_burst_ids_not_in_pre) > 0:
+            raise ValueError(
+                'The following jpl burst IDs are in post-set but not in pre-set: '
+                + ', '.join(post_jpl_burst_ids_not_in_pre)
+            )
+        if (
+            self.df_copol_data[self.df_copol_data.input_category == 'pre'].shape[0]
+            != self.df_crosspol_data[self.df_crosspol_data.input_category == 'pre'].shape[0]
+        ):
+            raise ValueError('The number of baseline/pre-image set of copol and crosspol data is not the same')
+        if (
+            self.df_copol_data[self.df_copol_data.input_category == 'post'].shape[0]
+            != self.df_crosspol_data[self.df_crosspol_data.input_category == 'post'].shape[0]
+        ):
+            raise ValueError(
+                'The number of recent acquisition/post-image set of copol and crosspol data is not the same'
+            )
+
+        # The dataframes should be sorted by jpl_burst_id and acq_dt
+        copol_dates = self.df_copol_data.acq_dt.dt.date
+        crosspol_dates = self.df_crosspol_data.acq_dt.dt.date
+        # The length of these two dataframes must be the same for this comparison to make sense
+        if (copol_dates != crosspol_dates).any():
+            copol_ids_without_crosspol = self.df_copol_data[copol_dates != crosspol_dates].opera_id.tolist()
+            crosspol_ids_without_copol = self.df_crosspol_data[copol_dates != crosspol_dates].opera_id.tolist()
+            msg_copol = f'The following copol products do not have crosspol dates: {copol_ids_without_crosspol}.'
+            msg_crosspol = f'The following crosspol products do not have copol dates: {crosspol_ids_without_copol}.'
+            raise ValueError(
+                'There are discrepancies between copol and crosspol data:\n' + msg_copol + '\n' + msg_crosspol
+            )
         return self
 
     @model_validator(mode='after')
