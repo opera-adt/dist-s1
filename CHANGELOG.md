@@ -6,18 +6,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.7] - 2025-10-02
-
-### Added
-- More descriptive validation errors for RunConfigData model including:
-  - consistent jpl burst ids in baseline/pre-image set with post-image/recent acq set.
-  - consistent dates between copol and crosspol data
-  - ensures provided JPL burst ids occur in correct MGRS tile id.
-  - consistent polarizations across jpl-burst-ids.
-- Updated to `dist-s1-enumerator` to v1.0.4 which allows for bursts to construct baselines independently within an MGRS tile
-
-
-
 ## [2.0.6] - 2025-09-08
 
 ### Changed
@@ -29,6 +17,12 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * Better compression for localized water mask using tiled metadata.
 * Updated upload to s3 to accept strings and posix paths (issues uploading files).
 * Use latest tile-mate that allows for wrapping around the dateline/anti-meridian.
+* More descriptive validation errors for RunConfigData model including:
+  - consistent jpl burst ids in baseline/pre-image set with post-image/recent acq set.
+  - consistent dates between copol and crosspol data
+  - ensures provided JPL burst ids occur in correct MGRS tile id.
+  - consistent polarizations across jpl-burst-ids.
+* Updated to `dist-s1-enumerator` to v1.0.4 which allows for bursts to construct baselines independently within an MGRS tile
 
 ### Fixed
 * Regression test instructions
