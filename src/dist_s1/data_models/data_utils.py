@@ -126,3 +126,11 @@ def extract_rtc_metadata_from_path(path: str | Path) -> dict:
         'jpl_burst_id': get_burst_id(stem),
         'acq_dt': get_acquisition_datetime(stem),
     }
+
+
+def get_polarization_from_row(row: pd.Series) -> str:
+    loc_path_copol = row.loc_path_copol
+    loc_path_crosspol = row.loc_path_crosspol
+    copol = Path(loc_path_copol).stem.split('_')[-1]
+    crosspol = Path(loc_path_crosspol).stem.split('_')[-1]
+    return f'{copol}+{crosspol}'

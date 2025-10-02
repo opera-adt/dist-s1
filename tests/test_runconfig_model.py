@@ -703,9 +703,7 @@ def test_copol_crosspol_length_matching_validation(
     if len(pre_crosspol) > 1:
         pre_crosspol_shorter = pre_crosspol[:-1]  # Remove last element
 
-        with pytest.raises(
-            ValidationError, match=r"'pre_rtc_copol' and 'pre_rtc_crosspol' must have the same length"
-        ):
+        with pytest.raises(ValidationError, match=r"'pre_rtc_copol' and 'pre_rtc_crosspol' must have the same length"):
             RunConfigData(
                 pre_rtc_copol=pre_copol,
                 pre_rtc_crosspol=pre_crosspol_shorter,
@@ -725,9 +723,7 @@ def test_copol_crosspol_length_matching_validation(
         post_crosspol_shorter = post_crosspol[:-1]
 
         # Note: The error message has a bug - it always says 'pre_rtc' even for post fields
-        with pytest.raises(
-            ValidationError, match=r"'pre_rtc_copol' and 'pre_rtc_crosspol' must have the same length"
-        ):
+        with pytest.raises(ValidationError, match=r"'pre_rtc_copol' and 'pre_rtc_crosspol' must have the same length"):
             RunConfigData(
                 pre_rtc_copol=pre_copol,
                 pre_rtc_crosspol=pre_crosspol,
@@ -881,9 +877,7 @@ def test_copol_crosspol_count_validation(
         # Remove one crosspol image to create mismatch
         pre_crosspol_shorter = pre_crosspol[:-1]
 
-        with pytest.raises(
-            ValidationError, match=r"'pre_rtc_copol' and 'pre_rtc_crosspol' must have the same length"
-        ):
+        with pytest.raises(ValidationError, match=r"'pre_rtc_copol' and 'pre_rtc_crosspol' must have the same length"):
             RunConfigData(
                 pre_rtc_copol=pre_copol,
                 pre_rtc_crosspol=pre_crosspol_shorter,
@@ -904,9 +898,7 @@ def test_copol_crosspol_count_validation(
         post_crosspol_shorter = post_crosspol[:-1]
 
         # Note: Due to validator order, this error message refers to 'pre_rtc' even for post fields
-        with pytest.raises(
-            ValidationError, match=r"'pre_rtc_copol' and 'pre_rtc_crosspol' must have the same length"
-        ):
+        with pytest.raises(ValidationError, match=r"'pre_rtc_copol' and 'pre_rtc_crosspol' must have the same length"):
             RunConfigData(
                 pre_rtc_copol=pre_copol,
                 pre_rtc_crosspol=pre_crosspol,
@@ -934,5 +926,71 @@ def test_copol_crosspol_count_validation(
     assert config is not None
     assert len(config.pre_rtc_copol) == len(config.pre_rtc_crosspol)
     assert len(config.post_rtc_copol) == len(config.post_rtc_crosspol)
+
+    shutil.rmtree(tmp_dir)
+
+
+def test_consistent_polarizations_per_burst_validation(
+    test_dir: Path, change_local_dir: Callable, test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path]
+) -> None:
+    """Test that validation ensures each burst has consistent polarizations across all acquisitions."""
+    change_local_dir(test_dir)
+
+    tmp_dir = test_dir / 'tmp'
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    parquet_path = test_10SGD_dist_s1_inputs_parquet_dict['current']
+    df_product = gpd.read_parquet(parquet_path)
+
+    df_pre = df_product[df_product.input_category == 'pre']
+    df_post = df_product[df_product.input_category == 'post']
+
+    # Test 1: Valid case - all bursts have consistent polarizations (VV+VH)
+    config = RunConfigData(
+        pre_rtc_copol=df_pre.loc_path_copol.tolist(),
+        pre_rtc_crosspol=df_pre.loc_path_crosspol.tolist(),
+        post_rtc_copol=df_post.loc_path_copol.tolist(),
+        post_rtc_crosspol=df_post.loc_path_crosspol.tolist(),
+        mgrs_tile_id='10SGD',
+        dst_dir=tmp_dir,
+        apply_water_mask=False,
+        check_input_paths=False,
+    )
+
+    # Verify all bursts have consistent polarizations
+    df_inputs = config.df_inputs
+    for burst_id in df_inputs.jpl_burst_id.unique():
+        burst_pols = df_inputs[df_inputs.jpl_burst_id == burst_id].polarizations.unique()
+        assert len(burst_pols) == 1, f'Burst {burst_id} should have exactly one polarization value'
+
+    # Test 2: Invalid case - create mixed polarizations for a single burst
+    # Modify paths to have different polarizations for the same burst
+    pre_copol = df_pre.loc_path_copol.tolist()
+    pre_crosspol = df_pre.loc_path_crosspol.tolist()
+    post_copol = df_post.loc_path_copol.tolist()
+    post_crosspol = df_post.loc_path_crosspol.tolist()
+
+    # Replace VV with HH and VH with HV in one of the pre paths to create inconsistency
+    if len(pre_copol) > 0:
+        # Modify the first pre path to have different polarization (HH+HV instead of VV+VH)
+        pre_copol_modified = pre_copol.copy()
+        pre_crosspol_modified = pre_crosspol.copy()
+
+        # Replace VV with HH in copol path
+        pre_copol_modified[0] = str(pre_copol[0]).replace('_VV.tif', '_HH.tif')
+        # Replace VH with HV in crosspol path
+        pre_crosspol_modified[0] = str(pre_crosspol[0]).replace('_VH.tif', '_HV.tif')
+
+        with pytest.raises(ValidationError, match=r'inconsistent polarizations across acquisitions'):
+            RunConfigData(
+                check_input_paths=False,
+                pre_rtc_copol=pre_copol_modified,
+                pre_rtc_crosspol=pre_crosspol_modified,
+                post_rtc_copol=post_copol,
+                post_rtc_crosspol=post_crosspol,
+                mgrs_tile_id='10SGD',
+                dst_dir=tmp_dir,
+                apply_water_mask=False,
+            )
 
     shutil.rmtree(tmp_dir)

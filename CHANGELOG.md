@@ -13,6 +13,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   - consistent jpl burst ids in baseline/pre-image set with post-image/recent acq set.
   - consistent dates between copol and crosspol data
   - ensures provided JPL burst ids occur in correct MGRS tile id.
+  - consistent polarizations across jpl-burst-ids.
 - Updated to `dist-s1-enumerator` to v1.0.4 which allows for bursts to construct baselines independently within an MGRS tile
 
 

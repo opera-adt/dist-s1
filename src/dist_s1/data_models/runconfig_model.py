@@ -27,6 +27,7 @@ from dist_s1.data_models.data_utils import (
     get_acquisition_datetime,
     get_burst_id,
     get_opera_id,
+    get_polarization_from_row,
     get_track_number,
 )
 from dist_s1.data_models.defaults import (
@@ -44,6 +45,11 @@ from dist_s1.water_mask import water_mask_control_flow
 
 
 class RunConfigData(BaseModel):
+    check_input_paths: bool = Field(
+        default=DEFAULT_CHECK_INPUT_PATHS,
+        description='Whether to check if the input paths exist. If True, the input paths are checked. '
+        'Used during testing.',
+    )
     pre_rtc_copol: list[Path | str] = Field(..., description='List of paths to pre-rtc copolarization data.')
     pre_rtc_crosspol: list[Path | str] = Field(..., description='List of paths to pre-rtc crosspolarization data.')
     post_rtc_copol: list[Path | str] = Field(..., description='List of paths to post-rtc copolarization data.')
@@ -70,11 +76,6 @@ class RunConfigData(BaseModel):
         description='Whether to apply water mask to the input data. If True, water mask is applied to the input data. '
         'If no water mask path is provided, the tiles to generate the water mask over MGRS area are localized and '
         'formatted for use.',
-    )
-    check_input_paths: bool = Field(
-        default=DEFAULT_CHECK_INPUT_PATHS,
-        description='Whether to check if the input paths exist. If True, the input paths are checked. '
-        'Used during testing.',
     )
     product_dst_dir: Path | str | None = Field(
         default=None,
@@ -469,6 +470,7 @@ class RunConfigData(BaseModel):
             df['jpl_burst_id'] = df.loc_path_copol.apply(get_burst_id).astype(str)
             df['track_number'] = df.loc_path_copol.apply(get_track_number)
             df['acq_dt'] = df.loc_path_copol.apply(get_acquisition_datetime)
+            df['polarizations'] = df.apply(get_polarization_from_row, axis=1)
             df['pass_id'] = df.acq_dt.apply(extract_pass_id)
             df = append_pass_data(df, [self.mgrs_tile_id])
             df['dst_dir'] = self.dst_dir
@@ -535,6 +537,19 @@ class RunConfigData(BaseModel):
             raise ValueError(
                 'The following jpl burst IDs are not in the specified MGRS tile: '
                 f'{supplied_jpl_burst_ids_not_in_mgrs_tile}'
+            )
+        return self
+
+    @model_validator(mode='after')
+    def ensure_consistent_polarizations_per_burst(self) -> 'RunConfigData':
+        """Ensure that each burst has consistent polarizations across all acquisitions."""
+        df = self.df_inputs
+        df_burst_grouped = df.groupby('jpl_burst_id')['polarizations'].nunique()
+        inconsistent_bursts = df_burst_grouped[df_burst_grouped > 1]
+        if len(inconsistent_bursts) > 0:
+            raise ValueError(
+                f'The following bursts have inconsistent polarizations across acquisitions: '
+                f'{inconsistent_bursts.index.tolist()}'
             )
         return self
 
