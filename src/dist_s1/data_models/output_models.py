@@ -17,7 +17,7 @@ from dist_s1.constants import (
     TIF_LAYER_DTYPES,
     TIF_LAYER_NODATA_VALUES,
 )
-from dist_s1.data_models.data_utils import get_acquisition_datetime
+from dist_s1.data_models.data_utils import compare_dist_s1_product_tag, get_acquisition_datetime
 from dist_s1.rio_tools import get_mgrs_profile
 from dist_s1.water_mask import apply_water_mask
 
@@ -28,6 +28,8 @@ PRODUCT_TAGS_FOR_EQUALITY = [
     'low_confidence_alert_threshold',
     'high_confidence_alert_threshold',
     'model_source',
+    'prior_dist_s1_product',
+    'sensor',
 ]
 REQUIRED_PRODUCT_TAGS = PRODUCT_TAGS_FOR_EQUALITY + ['version']
 
@@ -61,6 +63,7 @@ class ProductNameData(BaseModel):
     mgrs_tile_id: str = Field(description='MGRS (Military Grid Reference System) tile identifier')
     acq_date_time: datetime = Field(description='Acquisition datetime of the Sentinel-1 data')
     processing_date_time: datetime = Field(description='Processing datetime when the product was generated')
+    sensor: str = Field(description='Sensor identifier', pattern=r'^S1[ABC]$')
 
     def __str__(self) -> str:
         tokens = [
@@ -70,7 +73,7 @@ class ProductNameData(BaseModel):
             f'T{self.mgrs_tile_id}',
             self.acq_date_time.strftime('%Y%m%dT%H%M%SZ'),
             self.processing_date_time.strftime('%Y%m%dT%H%M%SZ'),
-            'S1',
+            self.sensor,
             '30',
             f'v{PRODUCT_VERSION}',
         ]
@@ -98,7 +101,7 @@ class ProductNameData(BaseModel):
             tokens[1] != 'L3',
             tokens[2] != 'DIST-ALERT-S1',
             not tokens[3].startswith('T'),  # MGRS tile ID
-            tokens[6] != 'S1',
+            tokens[6] not in ['S1A', 'S1B', 'S1C'],
             tokens[7] != '30',
             not tokens[8].startswith('v'),  # Version
         ]
@@ -175,8 +178,8 @@ class ProductFileData(BaseModel):
             tags_other = src_other.tags()
             mismatched_tags = {
                 key: (tags_self[key], tags_other[key])
-                for key in tags_self.keys() & tags_other.keys()
-                if tags_self[key] != tags_other[key]
+                for key in [key for key in tags_self.keys() if key in PRODUCT_TAGS_FOR_EQUALITY]
+                if not compare_dist_s1_product_tag(key, tags_self[key], tags_other[key])
             }
 
             if mismatched_tags:
@@ -339,7 +342,10 @@ class DistS1ProductDirectory(BaseModel):
 
                 tags_self = src_self.tags()
                 tags_other = src_other.tags()
-                metadata_matches = all(tags_self.get(key) == tags_other.get(key) for key in PRODUCT_TAGS_FOR_EQUALITY)
+                metadata_matches = all(
+                    compare_dist_s1_product_tag(key, tags_self[key], tags_other[key])
+                    for key in PRODUCT_TAGS_FOR_EQUALITY
+                )
 
                 layer_equal = arrays_close and metadata_matches and nodata_masks_consistent
 
@@ -443,6 +449,7 @@ class DistS1ProductDirectory(BaseModel):
         cls,
         mgrs_tile_id: str,
         acq_datetime: datetime,
+        sensor: str,
         dst_dir: Path | str,
         water_mask_path: Path | str | None = None,
         overwrite: bool = False,
@@ -478,7 +485,10 @@ class DistS1ProductDirectory(BaseModel):
         processing_datetime = datetime.now()
 
         product_name_data = ProductNameData(
-            mgrs_tile_id=mgrs_tile_id, acq_date_time=acq_datetime, processing_date_time=processing_datetime
+            mgrs_tile_id=mgrs_tile_id,
+            acq_date_time=acq_datetime,
+            processing_date_time=processing_datetime,
+            sensor=sensor,
         )
 
         product_dir_data = cls(product_name=str(product_name_data), dst_dir=dst_dir)

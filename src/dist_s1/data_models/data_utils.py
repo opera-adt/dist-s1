@@ -31,11 +31,44 @@ def get_burst_id(opera_rtc_s1_path: Path | str) -> str:
     return tokens[3]
 
 
+def get_sensor(opera_rtc_s1_path: Path | str) -> str:
+    opera_rtc_s1_path = Path(opera_rtc_s1_path)
+    tokens = opera_rtc_s1_path.name.split('_')
+    return tokens[6]
+
+
 def get_track_number(opera_rtc_s1_path: Path | str) -> str:
     burst_id = get_burst_id(opera_rtc_s1_path)
     track_number_str = burst_id.split('-')[0]
     track_number = int(track_number_str[1:])
     return track_number
+
+
+def get_opera_id_without_proccessing_time(opera_rtc_s1_path: Path | str) -> str:
+    if opera_rtc_s1_path is None:
+        return None
+    opera_rtc_s1_path = Path(opera_rtc_s1_path)
+    tokens = opera_rtc_s1_path.name.split('_')
+    return '_'.join(tokens[:5])
+
+
+def compare_dist_s1_product_tag(src_key: str, src_val: str | None, other_tag_value: str | None) -> bool:
+    if src_key in ['prior_dist_s1_product']:
+        if (src_val is None) and (other_tag_value is None):
+            return True
+        elif src_val is None:
+            return False
+        else:
+            return get_opera_id_without_proccessing_time(src_val) == get_opera_id_without_proccessing_time(
+                other_tag_value
+            )
+    if src_key in ['pre_rtc_opera_ids', 'post_rtc_opera_ids']:
+        ids = sorted(src_val.split(','))
+        other_ids = sorted(other_tag_value.split(','))
+        ids = list(map(get_opera_id_without_proccessing_time, ids))
+        other_ids = list(map(get_opera_id_without_proccessing_time, other_ids))
+        return ids == other_ids
+    return src_val == other_tag_value
 
 
 def get_acquisition_datetime(opera_rtc_s1_path: Path | str) -> datetime:

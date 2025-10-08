@@ -28,6 +28,7 @@ from dist_s1.data_models.data_utils import (
     get_burst_id,
     get_opera_id,
     get_polarization_from_row,
+    get_sensor,
     get_track_number,
 )
 from dist_s1.data_models.defaults import (
@@ -244,12 +245,17 @@ class RunConfigData(BaseModel):
         return self._min_acq_date
 
     @property
+    def sensor(self) -> str:
+        return get_sensor(self.post_rtc_copol[0])
+
+    @property
     def product_name(self) -> ProductNameData:
         if self._product_name is None:
             self._product_name = ProductNameData(
                 mgrs_tile_id=self.mgrs_tile_id,
                 acq_date_time=self.min_acq_date,
                 processing_date_time=self.processing_datetime,
+                sensor=self.sensor,
             )
         return self._product_name.name()
 
@@ -316,6 +322,7 @@ class RunConfigData(BaseModel):
         config_dict = {k: v for k, v in self.model_dump().items() if not k.startswith('_')}
         config_dict.pop('check_input_paths', None)
         config_dict.pop('algo_config', None)
+        config_dict['sensor'] = self.sensor
         if include_algo_config_params:
             config_dict.update(self.algo_config.model_dump())
         return config_dict
@@ -616,5 +623,5 @@ class RunConfigData(BaseModel):
     @field_serializer('prior_dist_s1_product')
     def serialize_prior_dist_s1_product(self, prior_dist_s1_product: DistS1ProductDirectory | Path | str | None) -> str:
         if prior_dist_s1_product is None:
-            return ''
+            return prior_dist_s1_product
         return str(prior_dist_s1_product)
