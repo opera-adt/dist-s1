@@ -795,7 +795,7 @@
 <p>DIST-S1 products follow a standardized naming convention that encodes key metadata about the product. The <code>ProductNameData</code> model manages this naming scheme and provides validation capabilities.</p>
 <h3 id="product-name-format">Product Name Format</h3>
 <p>Products follow this format:</p>
-<pre><code>OPERA_L3_DIST-ALERT-S1_T{mgrs_tile_id}_{acq_datetime}_{proc_datetime}_S1_30_v{version}
+<pre><code>OPERA_L3_DIST-ALERT-S1_T{mgrs_tile_id}_{acq_datetime}_{proc_datetime}_{sensor}_30_v{version}
 </code></pre>
 <h3 id="example-product-name">Example Product Name</h3>
 <pre><code>OPERA_L3_DIST-ALERT-S1_T10SGD_20250102T015857Z_20250806T145521Z_S1_30_v0.1
@@ -841,9 +841,9 @@
 <td><code>20250806T145521Z</code></td>
 </tr>
 <tr>
-<td><code>S1</code></td>
+<td><code>{sensor}</code></td>
 <td>Sentinel-1 mission identifier</td>
-<td><code>S1</code></td>
+<td><code>S1A</code>,<code>S1B</code> or <code>S1C</code></td>
 </tr>
 <tr>
 <td><code>30</code></td>
