@@ -78,6 +78,7 @@ def test_generate_product_path_with_placeholders(test_dir: Path) -> None:
     product_data = DistS1ProductDirectory.generate_product_path_with_placeholders(
         mgrs_tile_id=mgrs_tile_id,
         acq_datetime=acq_datetime,
+        sensor='S1A',
         dst_dir=tmp_dir,
         water_mask_path=None,  # No water mask for this test
         overwrite=True,
@@ -116,6 +117,7 @@ def test_generate_product_path_with_placeholders(test_dir: Path) -> None:
         DistS1ProductDirectory.generate_product_path_with_placeholders(
             mgrs_tile_id=mgrs_tile_id,
             acq_datetime=acq_datetime,
+            sensor='S1A',
             dst_dir=tmp_dir,
             water_mask_path=invalid_water_mask,
             overwrite=True,

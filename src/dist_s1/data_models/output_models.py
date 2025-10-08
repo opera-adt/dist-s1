@@ -449,6 +449,7 @@ class DistS1ProductDirectory(BaseModel):
         cls,
         mgrs_tile_id: str,
         acq_datetime: datetime,
+        sensor: str,
         dst_dir: Path | str,
         water_mask_path: Path | str | None = None,
         overwrite: bool = False,
@@ -484,7 +485,10 @@ class DistS1ProductDirectory(BaseModel):
         processing_datetime = datetime.now()
 
         product_name_data = ProductNameData(
-            mgrs_tile_id=mgrs_tile_id, acq_date_time=acq_datetime, processing_date_time=processing_datetime
+            mgrs_tile_id=mgrs_tile_id,
+            acq_date_time=acq_datetime,
+            processing_date_time=processing_datetime,
+            sensor=sensor,
         )
 
         product_dir_data = cls(product_name=str(product_name_data), dst_dir=dst_dir)
