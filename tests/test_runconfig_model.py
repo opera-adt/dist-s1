@@ -1069,9 +1069,7 @@ def test_validate_dates_across_inputs(
             modified_path = original_path.replace('20221114', '20221115')
             pre_crosspol_modified[0] = modified_path
 
-            with pytest.raises(
-                ValidationError, match=r'There are discrepancies between copol and crosspol data'
-            ):
+            with pytest.raises(ValidationError, match=r'There are discrepancies between copol and crosspol data'):
                 RunConfigData(
                     check_input_paths=False,
                     pre_rtc_copol=pre_copol,
