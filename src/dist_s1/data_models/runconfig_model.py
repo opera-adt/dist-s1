@@ -592,11 +592,16 @@ class RunConfigData(BaseModel):
             raise ValueError(
                 'The number of recent acquisition/post-image set of copol and crosspol data is not the same'
             )
+        return self
 
+    @model_validator(mode='after')
+    def validate_dates_across_inputs(self) -> 'RunConfigData':
         # The dataframes should be sorted by jpl_burst_id and acq_dt
         copol_dates = self.df_copol_data.acq_dt.dt.date
         crosspol_dates = self.df_crosspol_data.acq_dt.dt.date
         # The length of these two dataframes must be the same for this comparison to make sense
+        if len(copol_dates) != len(crosspol_dates):
+            raise ValueError('The number of copol and crosspol data is not the same')
         if (copol_dates != crosspol_dates).any():
             copol_ids_without_crosspol = self.df_copol_data[copol_dates != crosspol_dates].opera_id.tolist()
             crosspol_ids_without_copol = self.df_crosspol_data[copol_dates != crosspol_dates].opera_id.tolist()
@@ -604,6 +609,18 @@ class RunConfigData(BaseModel):
             msg_crosspol = f'The following crosspol products do not have copol dates: {crosspol_ids_without_copol}.'
             raise ValueError(
                 'There are discrepancies between copol and crosspol data:\n' + msg_copol + '\n' + msg_crosspol
+            )
+        return self
+
+    @model_validator(mode='after')
+    def validate_single_pass_for_post_data(self) -> 'RunConfigData':
+        df_post = self.df_inputs[self.df_inputs.input_category == 'post'].reset_index(drop=True)
+        min_acq_date = df_post.acq_dt.min()
+        max_acq_date = df_post.acq_dt.max()
+        if (min_acq_date - max_acq_date).total_seconds() > (60 * 20):  # more than 20 minutes difference
+            raise ValueError(
+                'The minimum acquisition date is more than 20 minutes greaterthan the maximum acquisition date:'
+                f'{min_acq_date} - {max_acq_date}'
             )
         return self
 

@@ -994,3 +994,91 @@ def test_consistent_polarizations_per_burst_validation(
             )
 
     shutil.rmtree(tmp_dir)
+
+
+def test_validate_single_pass_for_post_data(
+    test_dir: Path, change_local_dir: Callable, test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path]
+) -> None:
+    """Test that validation fails when post data has acquisitions spanning more than 20 minutes."""
+    change_local_dir(test_dir)
+
+    tmp_dir = test_dir / 'tmp'
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    parquet_path = test_10SGD_dist_s1_inputs_parquet_dict['current']
+    df_product = gpd.read_parquet(parquet_path)
+
+    df_pre = df_product[df_product.input_category == 'pre']
+    df_post = df_product[df_product.input_category == 'post']
+
+    post_copol = df_post.loc_path_copol.tolist()
+    post_crosspol = df_post.loc_path_crosspol.tolist()
+
+    if len(post_copol) > 0:
+        post_copol_modified = post_copol.copy()
+        post_crosspol_modified = post_crosspol.copy()
+
+        original_path = str(post_copol[0])
+        if 'T015901Z' in original_path:
+            modified_path = original_path.replace('T015901Z', 'T020401Z')
+            post_copol_modified.append(modified_path)
+
+            modified_crosspol = str(post_crosspol[0]).replace('T015901Z', 'T020401Z')
+            post_crosspol_modified.append(modified_crosspol)
+
+            with pytest.raises(
+                ValidationError, match=r'minimum acquisition date is more than 20 minutes greaterthan the maximum'
+            ):
+                RunConfigData(
+                    check_input_paths=False,
+                    pre_rtc_copol=df_pre.loc_path_copol.tolist(),
+                    pre_rtc_crosspol=df_pre.loc_path_crosspol.tolist(),
+                    post_rtc_copol=post_copol_modified,
+                    post_rtc_crosspol=post_crosspol_modified,
+                    mgrs_tile_id='10SGD',
+                    dst_dir=tmp_dir,
+                    apply_water_mask=False,
+                )
+
+    shutil.rmtree(tmp_dir)
+
+
+def test_validate_dates_across_inputs(
+    test_dir: Path, change_local_dir: Callable, test_10SGD_dist_s1_inputs_parquet_dict: dict[str, Path]
+) -> None:
+    """Test that validation fails when copol and crosspol have mismatched acquisition dates."""
+    change_local_dir(test_dir)
+
+    tmp_dir = test_dir / 'tmp'
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    parquet_path = test_10SGD_dist_s1_inputs_parquet_dict['current']
+    df_product = gpd.read_parquet(parquet_path)
+
+    df_pre = df_product[df_product.input_category == 'pre']
+    df_post = df_product[df_product.input_category == 'post']
+
+    pre_copol = df_pre.loc_path_copol.tolist()
+    pre_crosspol = df_pre.loc_path_crosspol.tolist()
+
+    if len(pre_crosspol) > 0:
+        pre_crosspol_modified = pre_crosspol.copy()
+
+        original_path = str(pre_crosspol[0])
+        if '20221114' in original_path:
+            modified_path = original_path.replace('20221114', '20221115')
+            pre_crosspol_modified[0] = modified_path
+
+            with pytest.raises(ValidationError, match=r'There are discrepancies between copol and crosspol data'):
+                RunConfigData(
+                    check_input_paths=False,
+                    pre_rtc_copol=pre_copol,
+                    pre_rtc_crosspol=pre_crosspol_modified,
+                    post_rtc_copol=df_post.loc_path_copol.tolist(),
+                    post_rtc_crosspol=df_post.loc_path_crosspol.tolist(),
+                    mgrs_tile_id='10SGD',
+                    dst_dir=tmp_dir,
+                    apply_water_mask=False,
+                )
+
+    shutil.rmtree(tmp_dir)
