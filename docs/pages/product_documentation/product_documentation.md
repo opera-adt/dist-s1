@@ -10,7 +10,7 @@ DIST-S1 products follow a standardized naming convention that encodes key metada
 
 Products follow this format:
 ```
-OPERA_L3_DIST-ALERT-S1_T{mgrs_tile_id}_{acq_datetime}_{proc_datetime}_S1_30_v{version}
+OPERA_L3_DIST-ALERT-S1_T{mgrs_tile_id}_{acq_datetime}_{proc_datetime}_{sensor}_30_v{version}
 ```
 
 ### Example Product Name
@@ -29,7 +29,7 @@ OPERA_L3_DIST-ALERT-S1_T10SGD_20250102T015857Z_20250806T145521Z_S1_30_v0.1
 | `T{mgrs_tile_id}` | MGRS tile identifier with 'T' prefix | `T10SGD` |
 | `{acq_datetime}` | Acquisition datetime in ISO format | `20250102T015857Z` |
 | `{proc_datetime}` | Processing datetime in ISO format | `20250806T145521Z` |
-| `S1` | Sentinel-1 mission identifier | `S1` |
+| `{sensor}` | Sentinel-1 mission identifier | `S1A`,`S1B` or `S1C` |
 | `30` | Fixed resolution identifier | `30` |
 | `v{version}` | Product version with 'v' prefix | `v{{ get_constant_value_macro('PRODUCT_VERSION') }}` |
 

@@ -12,7 +12,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * Changed defaults of n_workers from 8 to 4 for `DEFAULT_N_WORKERS_FOR_NORM_PARAM_ESTIMATION`.
 * Floor for dist-s1-enumerator (`>=1.0.2`) so that we use sessions and `tenacity` library for retries.
 * Floor for dist-s1-enumerator (`>=1.0.5`) sot that urls in CMR that have not been updated are correctly resolved see: https://github.com/opera-adt/dist-s1/issues/158
-* Token OPERA_L3_DIST-ALERT-S1_T{mgrs_tile_id}_{acq_datetime}_{proc_datetime}_S1_30_v{version} needs to have S1A|B|C in sensor
+* Token OPERA_L3_DIST-ALERT-S1_T{mgrs_tile_id}_{acq_datetime}_{proc_datetime}_{sensor}_{version} needs to have S1A|B|C in sensor token. Golden datasets were updated accordingingly.
 
 ### Added
 * Test to use .5 degree buffered water mask around sas workflow to illustrate it's working
