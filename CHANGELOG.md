@@ -14,6 +14,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * Floor for dist-s1-enumerator (`>=1.0.5`) sot that urls in CMR that have not been updated are correctly resolved see: https://github.com/opera-adt/dist-s1/issues/158
 * Token OPERA_L3_DIST-ALERT-S1_T{mgrs_tile_id}_{acq_datetime}_{proc_datetime}_{sensor}_{version} needs to have S1A|B|C in sensor token. Golden datasets were updated accordingingly.
 * Made the validation for all copol/crosspol data being consistent into it's own validation.
+* Updated compression and other georeferencing parameters for COGs to improve the file-size.
 
 ### Added
 * Test to use .5 degree buffered water mask around sas workflow to illustrate it's working
@@ -34,6 +35,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * For s3 upload, upload zip file and png only (no TIF files).
 * Better error handling of empty dataframes.
 * Fix the CLI entrypoint error in `run_sas_prep` due to missing parameter option for `prior_dist_s1_product` (see Issue #152: https://github.com/opera-adt/dist-s1/issues/152)
+* Allow for dateline processing - both when water mask is provided and when localizing from tiles.
 
 
 ## [2.0.5] - 2025-08-15
