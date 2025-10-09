@@ -35,6 +35,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * For s3 upload, upload zip file and png only (no TIF files).
 * Better error handling of empty dataframes.
 * Fix the CLI entrypoint error in `run_sas_prep` due to missing parameter option for `prior_dist_s1_product` (see Issue #152: https://github.com/opera-adt/dist-s1/issues/152)
+* Allow for dateline processing - both when water mask is provided and when localizing from tiles.
 
 
 ## [2.0.5] - 2025-08-15
