@@ -132,10 +132,10 @@ def water_mask_control_flow(
                 translate(mgrs_geo, xoff=360),
                 translate(mgrs_geo, xoff=-360),
             ]
-            intersections = [wm_geo.intersects(geo) for geo in mgrs_geos]
-            if not any(intersections):
-                raise ValueError('Water mask does not contain the mgrs tile')
-            mgrs_geo = mgrs_geos[intersections.index(True)]
+            containments = [wm_geo.contains(geo) for geo in mgrs_geos]
+            if not any(containments):
+                raise ValueError('Water mask does not contain the mgrs tile (including +/- 360 degrees translations)')
+            mgrs_geo = mgrs_geos[containments.index(True)]
             mgrs_bounds = mgrs_geo.bounds
             mgrs_crs = CRS.from_epsg(4326)
         # Wrapping is likely not necessary though epsg:3857 may be a problem

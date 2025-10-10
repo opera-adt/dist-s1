@@ -42,6 +42,7 @@ def test_good_water_mask_path(test_dir: Path, good_water_mask_path_for_17SLR: Pa
 def test_bad_water_mask_path(test_dir: Path, bad_water_mask_path_for_17SLR: Path) -> None:
     """Apply the water mask control flow to a water mask that is eroded by -.25 degrees around the MGRS tile."""
     tmp_dir = test_dir / 'tmp'
+    tmp_dir.mkdir(parents=True, exist_ok=True)
 
     with pytest.raises(ValueError):
         water_mask_control_flow(
