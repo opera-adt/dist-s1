@@ -5,10 +5,17 @@ import rasterio
 from dem_stitcher.rio_tools import reproject_arr_to_match_profile
 from dem_stitcher.rio_window import read_raster_from_window
 from rasterio.crs import CRS
+from shapely.affinity import translate
 from shapely.geometry import box
 from tile_mate import get_raster_from_tiles
 
-from dist_s1.rio_tools import get_mgrs_bounds_in_4326, get_mgrs_bounds_in_utm, get_mgrs_profile, open_one_ds
+from dist_s1.rio_tools import (
+    get_mgrs_bounds_in_4326,
+    get_mgrs_bounds_in_utm,
+    get_mgrs_profile,
+    get_mgrs_utm_epsg,
+    open_one_ds,
+)
 
 
 def apply_water_mask(band_src: np.ndarray, profile_src: dict, water_mask_path: Path | str | None = None) -> np.ndarray:
@@ -112,18 +119,37 @@ def water_mask_control_flow(
             wm_profile = src.profile
             wm_geo = box(*src.bounds)
 
+        # If Water Mask CRS is 4326, we make sure wrapping around antimeridian is accounted for
         if wm_profile['crs'] == CRS.from_epsg(4326):
-            mgrs_bounds = get_mgrs_bounds_in_4326(mgrs_tile_id)
-            mgrs_geo = box(*mgrs_bounds)
+            # The bounds here will be in Western hemisphere (xmin < 0)
+            mgrs_bounds_init = get_mgrs_bounds_in_4326(mgrs_tile_id)
+            mgrs_geo = box(*mgrs_bounds_init)
+            # Even if the MGRS tile is not on antimeridian,
+            # The water mask may be provided +/- 360 degrees longitudefrom the MGRS tile
+            # In our database
+            mgrs_geos = [
+                mgrs_geo,
+                translate(mgrs_geo, xoff=360),
+                translate(mgrs_geo, xoff=-360),
+            ]
+            containments = [wm_geo.contains(geo) for geo in mgrs_geos]
+            if not any(containments):
+                raise ValueError('Water mask does not contain the mgrs tile (including +/- 360 degrees translations)')
+            mgrs_geo = mgrs_geos[containments.index(True)]
+            mgrs_bounds = mgrs_geo.bounds
+            mgrs_crs = CRS.from_epsg(4326)
+        # Wrapping is likely not necessary though epsg:3857 may be a problem
         else:
             mgrs_bounds = get_mgrs_bounds_in_utm(mgrs_tile_id)
             mgrs_geo = box(*mgrs_bounds)
-        if not wm_geo.contains(mgrs_geo):
-            raise ValueError('Water mask does not contain the mgrs tile')
+            if not wm_geo.intersects(mgrs_geo):
+                raise ValueError('Water mask does not contain the mgrs tile')
+            mgrs_crs = get_mgrs_utm_epsg(mgrs_tile_id)
+
         X_wm_window, p_wm_window = read_raster_from_window(
             water_mask_path,
             mgrs_bounds,
-            window_crs=wm_profile['crs'],
+            window_crs=mgrs_crs,
             res_buffer=buffer_size_pixel,
         )
         X_wm_window = X_wm_window[0, ...]
