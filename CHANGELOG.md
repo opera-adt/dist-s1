@@ -14,11 +14,11 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * Floor for dist-s1-enumerator (`>=1.0.5`) sot that urls in CMR that have not been updated are correctly resolved see: https://github.com/opera-adt/dist-s1/issues/158
 * Token OPERA_L3_DIST-ALERT-S1_T{mgrs_tile_id}_{acq_datetime}_{proc_datetime}_{sensor}_{version} needs to have S1A|B|C in sensor token. Golden datasets were updated accordingingly.
 * Made the validation for all copol/crosspol data being consistent into it's own validation.
-* Updated compression and other georeferencing parameters for COGs to improve the file-size.
+* Updated compression and other georeferencing parameters for COGs to improve the file-size in `serialize_one_2d_ds`.
+* Updated compression and other georefencing parameters for general GeoTiff file size in `get_mgrs_profile`. Currently, this only impacts serialization of the water mask.
 
 ### Added
-* Test to use .5 degree buffered water mask around sas workflow to illustrate it's working
-* Better compression for localized water mask using tiled metadata.
+* Test to use .5 degree buffered water mask around sas workflow to illustrate larger water mask is correctly cropped/reprojected during end-to-end run.
 * Updated upload to s3 to accept strings and posix paths (issues uploading files).
 * Use latest tile-mate that allows for wrapping around the dateline/anti-meridian.
 * More descriptive validation errors for RunConfigData model including:
@@ -29,13 +29,16 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * Updated to `dist-s1-enumerator` to v1.0.4 which allows for bursts to construct baselines independently within an MGRS tile
 * More tokens for product equality including `sensor`, `prior_dist_s1_product`
 * Validation and tests to ensure a post data all occurs within 20 minutes of each other.
+* For 4326, check +/- 360 longitudes of MGRS tile geometries to ensure water mask is correctly found - the SDS PCM can provide water masks across the globe.
+* Added tests for eastern hemisphere antimeridian.
 
 ### Fixed
-* Regression test instructions
+* Regression test instructions were updated for SDS release.
 * For s3 upload, upload zip file and png only (no TIF files).
 * Better error handling of empty dataframes.
 * Fix the CLI entrypoint error in `run_sas_prep` due to missing parameter option for `prior_dist_s1_product` (see Issue #152: https://github.com/opera-adt/dist-s1/issues/152)
 * Allow for dateline processing - both when water mask is provided and when localizing from tiles.
+  * Ensure windowed reading for water mask is correct across dateline and with larger areas.
 
 
 ## [2.0.5] - 2025-08-15

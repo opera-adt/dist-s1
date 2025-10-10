@@ -116,7 +116,13 @@ def get_mgrs_utm_epsg(mgrs_tile_id: str) -> tuple[float]:
     return utm_crs
 
 
-def get_mgrs_profile(mgrs_tile_id: str, count: int = 1, dtype: np.dtype = np.float32, nodata: float = np.nan) -> dict:
+def get_mgrs_profile(
+    mgrs_tile_id: str,
+    count: int = 1,
+    dtype: np.dtype = np.float32,
+    nodata: float = np.nan,
+    better_compression: bool = True,
+) -> dict:
     profile = default_gtiff_profile.copy()
 
     xmin, ymin, xmax, ymax = get_mgrs_bounds_in_utm(mgrs_tile_id)
@@ -130,6 +136,15 @@ def get_mgrs_profile(mgrs_tile_id: str, count: int = 1, dtype: np.dtype = np.flo
     profile['nodata'] = nodata
     profile['width'] = 3660
     profile['height'] = 3660
+    # Better default compression
+    if better_compression:
+        profile['blockxsize'] = 512
+        profile['blockysize'] = 512
+        profile['BIGTIFF'] = 'IF_SAFER'
+        profile['tiled'] = True
+        profile['zlevel'] = 9
+        profile['interleave'] = 'band'
+        profile['compress'] = 'zstd'
 
     dims = [(xmax - xmin) / 30.0, (ymax - ymin) / 30.0]
     if all([3660.0 != diff for diff in dims]):
