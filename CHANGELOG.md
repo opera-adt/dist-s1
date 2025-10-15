@@ -16,6 +16,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * Made the validation for all copol/crosspol data being consistent into it's own validation.
 * Updated compression and other georeferencing parameters for COGs to improve the file-size in `serialize_one_2d_ds`.
 * Updated compression and other georefencing parameters for general GeoTiff file size in `get_mgrs_profile`. Currently, this only impacts serialization of the water mask.
+* Have gitignore properly ignore all temporary files in test suite (even if tests do not run to completion).
 
 ### Added
 * Test to use .5 degree buffered water mask around sas workflow to illustrate larger water mask is correctly cropped/reprojected during end-to-end run.
