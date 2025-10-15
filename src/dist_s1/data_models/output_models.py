@@ -256,12 +256,23 @@ class DistS1ProductDirectory(BaseModel):
                 continue
             if path.suffix == '.tif':
                 with rasterio.open(path) as src:
-                    if src.dtypes[0] != TIF_LAYER_DTYPES[layer]:
-                        warn(
-                            f'Layer {layer} has incorrect dtype: {src.dtypes[0]}; should be: {TIF_LAYER_DTYPES[layer]}',
-                            UserWarning,
-                        )
-                        failed_layers.append(layer)
+                    # If the layer is a floating point layer
+                    if np.issubdtype(src.dtypes[0], np.floating):
+                        if TIF_LAYER_DTYPES[layer] not in ['float16', 'float32']:
+                            warn(
+                                f'Layer {layer} has incorrect dtype: {src.dtypes[0]}; should be: float16 or float32',
+                                UserWarning,
+                            )
+                            failed_layers.append(layer)
+                    # If layer is not floating point
+                    else:
+                        if src.dtypes[0] != TIF_LAYER_DTYPES[layer]:
+                            warn(
+                                f'Layer {layer} has incorrect dtype: {src.dtypes[0]}; '
+                                f'should be: {TIF_LAYER_DTYPES[layer]}',
+                                UserWarning,
+                            )
+                            failed_layers.append(layer)
         return len(failed_layers) == 0
 
     def compare_products(self, other: 'DistS1ProductDirectory') -> ProductComparisonResult:
