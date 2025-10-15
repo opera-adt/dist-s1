@@ -14,8 +14,10 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * Floor for dist-s1-enumerator (`>=1.0.5`) sot that urls in CMR that have not been updated are correctly resolved see: https://github.com/opera-adt/dist-s1/issues/158
 * Token OPERA_L3_DIST-ALERT-S1_T{mgrs_tile_id}_{acq_datetime}_{proc_datetime}_{sensor}_{version} needs to have S1A|B|C in sensor token. Golden datasets were updated accordingingly.
 * Made the validation for all copol/crosspol data being consistent into it's own validation.
+* Updated compression and other georeferencing parameters for COGs to improve the file-size.
 * Updated compression and other georeferencing parameters for COGs to improve the file-size in `serialize_one_2d_ds`.
 * Updated compression and other georefencing parameters for general GeoTiff file size in `get_mgrs_profile`. Currently, this only impacts serialization of the water mask.
+* Float values are now float16 rather than float32. Allows products (via validation of existing products) to be either, but newer products are correctly cast.
 
 ### Added
 * Test to use .5 degree buffered water mask around sas workflow to illustrate larger water mask is correctly cropped/reprojected during end-to-end run.
