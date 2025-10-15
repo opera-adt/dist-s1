@@ -146,8 +146,6 @@ regression_test_2/
 # Claude
 claude.md
 
-# Issue 156
-examples/no_confirmation/issue-156/
-examples/no_confirmation/e2e-156.py
-examples/no_confirmation/_algo_config_156.yml
-examples/no_confirmation/_run_config_156.yml
+# Tests not tracked
+_tests_not_tracked/
+tests/tmp*/
