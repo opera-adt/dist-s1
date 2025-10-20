@@ -7,7 +7,8 @@ from rasterio.crs import CRS
 from rasterio.enums import Resampling
 from rasterio.profiles import default_gtiff_profile
 from rasterio.transform import from_origin
-from shapely import from_wkt
+from shapely import LineString, MultiPolygon, from_wkt, union_all
+from shapely.affinity import translate
 
 
 def check_profiles_match(prof_0: dict, prof_1: dict) -> None:
@@ -51,12 +52,14 @@ def serialize_one_2d_ds(
         p_out.pop('interleave', None)
         p_out.pop('blockxsize', None)
         p_out.pop('blockysize', None)
+        predictor = 3 if np.issubdtype(p_out['dtype'], np.floating) else 2
         p_out.update(
             {
                 'driver': 'COG',
-                'compress': 'DEFLATE',
-                'predictor': 2,
-                'blocksize': 512,  # valid for COG
+                'compress': 'ZSTD',
+                'zlevel': 9,
+                'predictor': predictor,
+                'blocksize': 512,
                 'resampling': Resampling.average,
                 'BIGTIFF': 'IF_SAFER',
             }
@@ -70,11 +73,40 @@ def serialize_one_2d_ds(
     return out_path
 
 
-def get_mgrs_bounds(mgrs_tile_id: str) -> tuple[float]:
+def get_mgrs_antimeridian_crossing(mgrs_tile_id: str) -> bool:
     df_mgrs = get_mgrs_tile_table_by_ids([mgrs_tile_id])
+    if df_mgrs.shape[0] != 1:
+        raise ValueError(f'The MGRS tile {mgrs_tile_id} has multiple entries in the MGRS tile table')
+    antimeridian_crossing = isinstance(df_mgrs.geometry.iloc[0], MultiPolygon)
+    return antimeridian_crossing
+
+
+def get_mgrs_bounds_in_utm(mgrs_tile_id: str) -> tuple[float]:
+    df_mgrs = get_mgrs_tile_table_by_ids([mgrs_tile_id])
+    if df_mgrs.shape[0] != 1:
+        raise ValueError(f'The MGRS tile {mgrs_tile_id} has multiple entries in the MGRS tile table')
     utm_wkt = df_mgrs['utm_wkt'].tolist()[0]
     utm_geo = from_wkt(utm_wkt)
     return utm_geo.bounds
+
+
+def get_mgrs_bounds_in_4326(mgrs_tile_id: str) -> tuple[float]:
+    """Get the bounds of the MGRS tile in 4326.
+
+    If the MGRS tile crosses the antimeridian, the bounds are adjusted as Polygon within -181, -179.
+    """
+    df_mgrs = get_mgrs_tile_table_by_ids([mgrs_tile_id])
+    if df_mgrs.shape[0] != 1:
+        raise ValueError(f'The MGRS tile {mgrs_tile_id} has multiple entries in the MGRS tile table')
+    mgrs_geo = df_mgrs.geometry.iloc[0]
+    antimeridian_crossing = isinstance(mgrs_geo, MultiPolygon)
+    if antimeridian_crossing:
+        antimeridian = LineString(coordinates=((-180, 90), (-180, -90))).buffer(0.01)
+        mgrs_geos_neg = [geo if geo.intersects(antimeridian) else translate(geo, xoff=-360) for geo in mgrs_geo.geoms]
+        mgrs_poly = union_all(mgrs_geos_neg)
+    else:
+        mgrs_poly = mgrs_geo
+    return mgrs_poly.bounds
 
 
 def get_mgrs_utm_epsg(mgrs_tile_id: str) -> tuple[float]:
@@ -84,10 +116,16 @@ def get_mgrs_utm_epsg(mgrs_tile_id: str) -> tuple[float]:
     return utm_crs
 
 
-def get_mgrs_profile(mgrs_tile_id: str, count: int = 1, dtype: np.dtype = np.float32, nodata: float = np.nan) -> dict:
+def get_mgrs_profile(
+    mgrs_tile_id: str,
+    count: int = 1,
+    dtype: np.dtype = np.float32,
+    nodata: float = np.nan,
+    better_compression: bool = True,
+) -> dict:
     profile = default_gtiff_profile.copy()
 
-    xmin, ymin, xmax, ymax = get_mgrs_bounds(mgrs_tile_id)
+    xmin, ymin, xmax, ymax = get_mgrs_bounds_in_utm(mgrs_tile_id)
     transform = from_origin(xmin, ymax, 30, 30)
     utm_crs = get_mgrs_utm_epsg(mgrs_tile_id)
 
@@ -98,6 +136,15 @@ def get_mgrs_profile(mgrs_tile_id: str, count: int = 1, dtype: np.dtype = np.flo
     profile['nodata'] = nodata
     profile['width'] = 3660
     profile['height'] = 3660
+    # Better default compression
+    if better_compression:
+        profile['blockxsize'] = 512
+        profile['blockysize'] = 512
+        profile['BIGTIFF'] = 'IF_SAFER'
+        profile['tiled'] = True
+        profile['zlevel'] = 9
+        profile['interleave'] = 'band'
+        profile['compress'] = 'zstd'
 
     dims = [(xmax - xmin) / 30.0, (ymax - ymin) / 30.0]
     if all([3660.0 != diff for diff in dims]):

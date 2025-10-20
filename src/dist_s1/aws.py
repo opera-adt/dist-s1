@@ -1,4 +1,5 @@
 import logging
+import shutil
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from mimetypes import guess_type
 from pathlib import Path
@@ -32,14 +33,16 @@ def get_content_type(file_location: Path | str) -> str:
     return content_type
 
 
-def upload_file_to_s3(path_to_file: Path, bucket: str, prefix: str = '', profile_name: str | None = None) -> None:
+def upload_file_to_s3(path_to_file: Path | str, bucket: str, prefix: str = '', profile_name: str | None = None) -> None:
+    file_posix_path = Path(path_to_file)
+
     s3_client = get_s3_client(profile_name)
-    key = str(Path(prefix) / path_to_file.name)
+    key = str(Path(prefix) / file_posix_path.name)
     extra_args = {'ContentType': get_content_type(key)}
 
-    s3_client.upload_file(str(path_to_file), bucket, key, extra_args)
+    s3_client.upload_file(str(file_posix_path), bucket, key, extra_args)
 
-    tag_set = get_tag_set(path_to_file.name)
+    tag_set = get_tag_set(file_posix_path.name)
 
     s3_client.put_object_tagging(Bucket=bucket, Key=key, Tagging=tag_set)
 
@@ -104,9 +107,14 @@ def upload_files_to_s3_threaded(
 
 
 def upload_product_to_s3(
-    product_directory: Path, bucket: str, prefix: str = '', profile_name: str | None = None
+    product_directory: Path | str, bucket: str, prefix: str = '', profile_name: str | None = None
 ) -> None:
-    for file in product_directory.glob('*.tif'):
+    product_posix_path = Path(product_directory)
+
+    for file in product_posix_path.glob('*.png'):
         upload_file_to_s3(file, bucket, prefix, profile_name)
-    for file in product_directory.glob('*.png'):
-        upload_file_to_s3(file, bucket, prefix, profile_name)
+
+    product_zip_path = f'{product_posix_path}.zip'
+    shutil.make_archive(str(product_posix_path), 'zip', product_posix_path)
+    upload_file_to_s3(product_zip_path, bucket, prefix)
+    Path(product_zip_path).unlink()

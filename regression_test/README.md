@@ -13,15 +13,21 @@ For 1. and 2., you will need to install the `awscli` and `boto3` via `mamba`.
 
 ## Publishing a Golden Dataset.
 
-Ensure you can write to the relevant s3 bucket and Run
+Ensure you can write to the relevant s3 bucket. Make sure you reinstall the latest version of `dist-s1` i.e.:
 
+```
+pip install -e .
+```
+And you should see the latest release (Probably should get the latest release programatically, but this is how it's done right now).
+
+Navigate to this directory `regression_test`.
 ```bash
-python 0_generate_golden_dataset.py
-python 1_update_config_and_check.py
-python 2_delivery.py
+zsh 0_generate_golden_dataset_docker.sh  # this is a generation by latest released docker image
+python 1_update_config.py
+python 2_delivery.py  # make sure to have proper access to s3 bucket!!!
 ```
 
-The delivery script is fundamentally `aws s3 sync` to `s3://dist-s1-golden-datasets/<DIST_S1_VERSION>` using a few key files.
+The delivery script is fundamentally `aws s3 sync` to `s3://dist-s1-golden-datasets/<DIST_S1_VERSION>` focusing on a few key files.
 
 ## Regression testing
 

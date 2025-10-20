@@ -529,7 +529,6 @@ def run_dist_s1_sas_workflow(run_config: RunConfigData) -> Path:
         dst = run_config.product_data_model.product_dir_path
         shutil.copytree(src, dst, dirs_exist_ok=True)
 
-    # Upload to S3 if bucket is provided
     if run_config.bucket is not None:
         upload_product_to_s3(run_config.product_directory, run_config.bucket, run_config.bucket_prefix)
     return run_config

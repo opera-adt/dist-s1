@@ -5,11 +5,10 @@ dependencies:
  - python>=3.12
  - pip
  - asf_search
- - backoff
  - click
  - compilers
  - dem_stitcher
- - dist_s1_enumerator>=1.0.0
+ - dist_s1_enumerator>=1.0.5
  - distmetrics>=1.0.2
  - flake8
  - flake8-blind-except
@@ -33,7 +32,7 @@ dependencies:
  - setuptools
  - setuptools_scm
  - shapely
- - tile_mate>=0.0.14 
+ - tile_mate>=0.0.15 
  - tqdm
  # Docs
  - mkdocs

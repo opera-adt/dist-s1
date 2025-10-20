@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 import rasterio
+from dem_stitcher.rio_tools import translate_profile
 
 from dist_s1.rio_tools import get_mgrs_profile
 from dist_s1.water_mask import water_mask_control_flow
@@ -41,6 +42,7 @@ def test_good_water_mask_path(test_dir: Path, good_water_mask_path_for_17SLR: Pa
 def test_bad_water_mask_path(test_dir: Path, bad_water_mask_path_for_17SLR: Path) -> None:
     """Apply the water mask control flow to a water mask that is eroded by -.25 degrees around the MGRS tile."""
     tmp_dir = test_dir / 'tmp'
+    tmp_dir.mkdir(parents=True, exist_ok=True)
 
     with pytest.raises(ValueError):
         water_mask_control_flow(
@@ -72,7 +74,26 @@ def test_antimeridian_water_mask(test_dir: Path, antimeridian_water_mask_path_fo
         mgrs_tile_id='01VCK',
         dst_dir=tmp_dir,
     )
+
+    with rasterio.open(antimeridian_water_mask_path_for_01VCK) as src:
+        water_mask_profile = src.profile
+        water_mask = src.read(1)
+
+    resolution = water_mask_profile['transform'].a
+    water_mask_profile_t = translate_profile(water_mask_profile, 360 / resolution, 0)
+    water_mask_path_t = tmp_dir / '01VCK_water_mask_t.tif'
+    with rasterio.open(water_mask_path_t, 'w', **water_mask_profile_t) as dst:
+        dst.write(water_mask, 1)
+
+    water_mask_path = water_mask_control_flow(
+        water_mask_path=water_mask_path_t,
+        mgrs_tile_id='01VCK',
+        dst_dir=tmp_dir,
+    )
+
     assert water_mask_path.exists()
     assert water_mask_path.is_file()
     assert water_mask_path.suffix == '.tif'
     assert water_mask_path.name == '01VCK_water_mask.tif'
+
+    shutil.rmtree(tmp_dir)

@@ -5,12 +5,17 @@ import rasterio
 from dem_stitcher.rio_tools import reproject_arr_to_match_profile
 from dem_stitcher.rio_window import read_raster_from_window
 from rasterio.crs import CRS
-from rasterio.transform import array_bounds as get_array_bounds
-from rasterio.warp import transform_bounds as transform_bounds_into_crs
+from shapely.affinity import translate
 from shapely.geometry import box
 from tile_mate import get_raster_from_tiles
 
-from dist_s1.rio_tools import get_mgrs_profile, open_one_ds
+from dist_s1.rio_tools import (
+    get_mgrs_bounds_in_4326,
+    get_mgrs_bounds_in_utm,
+    get_mgrs_profile,
+    get_mgrs_utm_epsg,
+    open_one_ds,
+)
 
 
 def apply_water_mask(band_src: np.ndarray, profile_src: dict, water_mask_path: Path | str | None = None) -> np.ndarray:
@@ -35,12 +40,7 @@ def check_water_mask_profile(water_mask_profile: dict, ref_profile: dict) -> Non
 def get_water_mask(mgrs_tile_id: str, out_path: Path, overwrite: bool = False) -> Path:
     if Path(out_path).exists() and not overwrite:
         return out_path
-    profile_mgrs = get_mgrs_profile(mgrs_tile_id)
-    height = profile_mgrs['height']
-    width = profile_mgrs['width']
-    transform = profile_mgrs['transform']
-    mgrs_bounds_utm = get_array_bounds(height, width, transform)
-    mgrs_bounds_4326 = transform_bounds_into_crs(profile_mgrs['crs'], CRS.from_epsg(4326), *mgrs_bounds_utm)
+    mgrs_bounds_4326 = get_mgrs_bounds_in_4326(mgrs_tile_id)
 
     # The ocean mask is distance to land in km
     X_dist_to_land, p_dist = get_raster_from_tiles(mgrs_bounds_4326, tile_shortname='umd_ocean_mask')
@@ -49,10 +49,17 @@ def get_water_mask(mgrs_tile_id: str, out_path: Path, overwrite: bool = False) -
     water_labels = [2, 3, 4]  # These are pixels that are more than 1 km from land
     X_om = np.isin(X_dist_to_land[0, ...], water_labels).astype(np.uint8)
 
+    profile_mgrs = get_mgrs_profile(mgrs_tile_id)
     X_om_r, p_om_r = reproject_arr_to_match_profile(X_om, p_dist, profile_mgrs, resampling='nearest')
     X_om_r = X_om_r[0, ...]
 
-    with rasterio.open(out_path, 'w', **p_om_r) as dst:
+    p_new = p_om_r.copy()
+    # Better compression for localized water mask
+    p_new['blockxsize'] = 512
+    p_new['blockysize'] = 512
+    p_new['tiled'] = True
+
+    with rasterio.open(out_path, 'w', **p_new) as dst:
         dst.write(X_om_r, 1)
 
     return out_path
@@ -64,7 +71,7 @@ def water_mask_control_flow(
     mgrs_tile_id: str,
     dst_dir: Path,
     overwrite: bool = True,
-    buffer_size_pixel: int = 10,
+    buffer_size_pixel: int = 5,
 ) -> Path | None:
     """Read and resample water mask for serialization to disk, outputing its path on filesystem.
 
@@ -84,7 +91,7 @@ def water_mask_control_flow(
         If True, will overwrite the water mask if it already exists. If False, will not overwrite the water mask if it
         already exists.
     buffer_size_pixel : int, optional
-        How many additional pixels to buffer around the MGRS tile, by default 5
+        How many additional pixels to read around the water mask, size determined in pixels of water mask, by default 5
 
     Returns
     -------
@@ -110,29 +117,44 @@ def water_mask_control_flow(
                 raise FileNotFoundError(f'Water mask file does not exist: {water_mask_path}')
         with rasterio.open(water_mask_path) as src:
             wm_profile = src.profile
-        bounds_wm = get_array_bounds(wm_profile['height'], wm_profile['width'], wm_profile['transform'])
+            wm_geo = box(*src.bounds)
 
-        p_mgrs = get_mgrs_profile(mgrs_tile_id)
+        # If Water Mask CRS is 4326, we make sure wrapping around antimeridian is accounted for
+        if wm_profile['crs'] == CRS.from_epsg(4326):
+            # The bounds here will be in Western hemisphere (xmin < 0)
+            mgrs_bounds_init = get_mgrs_bounds_in_4326(mgrs_tile_id)
+            mgrs_geo = box(*mgrs_bounds_init)
+            # Even if the MGRS tile is not on antimeridian,
+            # The water mask may be provided +/- 360 degrees longitudefrom the MGRS tile
+            # In our database
+            mgrs_geos = [
+                mgrs_geo,
+                translate(mgrs_geo, xoff=360),
+                translate(mgrs_geo, xoff=-360),
+            ]
+            containments = [wm_geo.contains(geo) for geo in mgrs_geos]
+            if not any(containments):
+                raise ValueError('Water mask does not contain the mgrs tile (including +/- 360 degrees translations)')
+            mgrs_geo = mgrs_geos[containments.index(True)]
+            mgrs_bounds = mgrs_geo.bounds
+            mgrs_crs = CRS.from_epsg(4326)
+        # Wrapping is likely not necessary though epsg:3857 may be a problem
+        else:
+            mgrs_bounds = get_mgrs_bounds_in_utm(mgrs_tile_id)
+            mgrs_geo = box(*mgrs_bounds)
+            if not wm_geo.intersects(mgrs_geo):
+                raise ValueError('Water mask does not contain the mgrs tile')
+            mgrs_crs = get_mgrs_utm_epsg(mgrs_tile_id)
 
-        mgrs_tile_bounds_utm = get_array_bounds(p_mgrs['height'], p_mgrs['width'], p_mgrs['transform'])
-        bounds_wm_utm = transform_bounds_into_crs(wm_profile['crs'], p_mgrs['crs'], *bounds_wm)
-        wm_geo_utm = box(*bounds_wm_utm)
-
-        buffer_res = buffer_size_pixel * p_mgrs['transform'][0]
-        mgrs_tile_geo_utm = box(*mgrs_tile_bounds_utm)
-
-        if not wm_geo_utm.contains(mgrs_tile_geo_utm):
-            raise ValueError('Water mask does not contain the mgrs tile')
-
-        mgrs_tile_bounds_utm_buffered = mgrs_tile_geo_utm.buffer(buffer_res).bounds
         X_wm_window, p_wm_window = read_raster_from_window(
             water_mask_path,
-            mgrs_tile_bounds_utm_buffered,
-            window_crs=p_mgrs['crs'],
-            res_buffer=0,
+            mgrs_bounds,
+            window_crs=mgrs_crs,
+            res_buffer=buffer_size_pixel,
         )
         X_wm_window = X_wm_window[0, ...]
 
+        p_mgrs = get_mgrs_profile(mgrs_tile_id)
         X_wm_mgrs, p_wm_mgrs = reproject_arr_to_match_profile(X_wm_window, p_wm_window, p_mgrs)
         X_wm_mgrs = X_wm_mgrs[0, ...]
 
