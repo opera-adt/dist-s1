@@ -27,6 +27,7 @@ from dist_s1.data_models.data_utils import (
     get_acquisition_datetime,
     get_burst_id,
     get_opera_id,
+    get_opera_id_without_proccessing_time,
     get_polarization_from_row,
     get_sensor,
     get_track_number,
@@ -38,6 +39,7 @@ from dist_s1.data_models.defaults import (
     DEFAULT_DST_DIR,
     DEFAULT_INPUT_DATA_DIR,
     DEFAULT_MAX_PRE_IMGS_PER_BURST_MW,
+    DEFAULT_MODEL_CONTEXT_LENGTH_MAXIMUM,
     DEFAULT_POST_DATE_BUFFER_DAYS,
     DEFAULT_SRC_WATER_MASK_PATH,
 )
@@ -610,6 +612,33 @@ class RunConfigData(BaseModel):
             raise ValueError(
                 'There are discrepancies between copol and crosspol data:\n' + msg_copol + '\n' + msg_crosspol
             )
+        return self
+
+    @model_validator(mode='after')
+    def validate_model_context_length(self) -> 'RunConfigData':
+        if self.algo_config.model_context_length > DEFAULT_MODEL_CONTEXT_LENGTH_MAXIMUM:
+            raise ValueError(f'The model context length is greater than {DEFAULT_MODEL_CONTEXT_LENGTH_MAXIMUM}')
+        df_inputs = self.df_inputs
+        df_pre = df_inputs[df_inputs.input_category == 'pre'].reset_index(drop=True)
+        df_pre_by_burst = df_pre.groupby('jpl_burst_id')[['acq_dt']].nunique().reset_index(drop=False)
+        bad_bursts = df_pre_by_burst[df_pre_by_burst.acq_dt > self.algo_config.model_context_length][
+            'jpl_burst_id'
+        ].tolist()
+        if len(bad_bursts) > 0:
+            raise ValueError(
+                f'The following bursts have more than {self.algo_config.model_context_length} pre-images: '
+                f'{", ".join(bad_bursts)}'
+            )
+        return self
+
+    @model_validator(mode='after')
+    def validate_unique_inputs(self) -> 'RunConfigData':
+        df_inputs = self.df_inputs.copy()
+        df_inputs['dedup_id'] = df_inputs.opera_id.map(get_opera_id_without_proccessing_time)
+        duplicated_ind = df_inputs[['dedup_id']].duplicated()
+        if duplicated_ind.any():
+            duplicated_opera_ids = df_inputs[duplicated_ind].opera_id.tolist()
+            raise ValueError(f'The following products are duplicated: {", ".join(duplicated_opera_ids)}')
         return self
 
     @model_validator(mode='after')
