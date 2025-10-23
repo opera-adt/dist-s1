@@ -24,7 +24,7 @@ def test_input_data_model_from_cropped_dataset(
     parquet_path = test_10SGD_dist_s1_inputs_parquet_dict['current']
     df_product = gpd.read_parquet(parquet_path)
 
-    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir)
+    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, model_source='transformer_optimized')
 
     # Set configuration parameters via assignment
     config.apply_water_mask = False
@@ -162,6 +162,7 @@ def test_confirmation_property_behavior(
     config = RunConfigData.from_product_df(
         df_product,
         dst_dir=tmp_dir,
+        model_source='transformer_optimized',
     )
     config.check_input_paths = False  # Bypass file path validation
     config.apply_water_mask = False
@@ -174,6 +175,7 @@ def test_confirmation_property_behavior(
         df_product,
         dst_dir=tmp_dir,
         prior_dist_s1_product=product_dir,
+        model_source='transformer_optimized',
     )
     config.check_input_paths = False  # Bypass file path validation
     config.apply_water_mask = False
@@ -185,6 +187,7 @@ def test_confirmation_property_behavior(
     config = RunConfigData.from_product_df(
         df_product,
         dst_dir=tmp_dir,
+        model_source='transformer_optimized',
     )
     config.check_input_paths = False
     config.apply_water_mask = False
@@ -222,6 +225,7 @@ def test_lookback_strategy_validation(
             df_product,
             dst_dir=tmp_dir,
             lookback_strategy=strategy,
+            model_source='transformer_optimized',
         )
         config.apply_water_mask = False
         config.prior_dist_s1_product = None
@@ -235,6 +239,7 @@ def test_lookback_strategy_validation(
                 df_product,
                 dst_dir=tmp_dir,
                 lookback_strategy=strategy,
+                model_source='transformer_optimized',
             )
 
     # Test 3: Default value should be 'multi_window'
@@ -1097,7 +1102,11 @@ def test_validate_max_context_length(test_dir: Path, change_local_dir: Callable,
 
     runconfig_path = test_data_dir / 'runconfig_exceeding_context_length' / 'runconfig.yml'
 
-    with pytest.raises(ValidationError, match=r'The following bursts have more than 10 pre-images: T137-292325-IW1'):
+    with pytest.raises(
+        ValidationError,
+        match=r'The following bursts have more than model \(transformer_optimized\) context length of \(10\) '
+        'pre-images: T137-292325-IW1',
+    ):
         RunConfigData.from_yaml(runconfig_path)
 
     shutil.rmtree(tmp_dir)
@@ -1114,9 +1123,9 @@ def test_duplicated_baseline_inputs(test_dir: Path, change_local_dir: Callable, 
     # In the runconfig, the tmp dir is set to this directory.
     tmp_dir = test_dir / 'tmp'
 
-    runconfig_path = test_data_dir / 'runconfig_exceeding_context_length' / 'runconfig.yml'
+    runconfig_path = test_data_dir / 'runconfig_duplicated' / 'runconfig.yml'
 
-    with pytest.raises(ValidationError, match=r'The following bursts have more than 10 pre-images: T137-292325-IW1'):
+    with pytest.raises(ValidationError, match=r'The following products are duplicated:'):
         RunConfigData.from_yaml(runconfig_path)
 
     shutil.rmtree(tmp_dir)

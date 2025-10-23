@@ -34,7 +34,7 @@ def test_despeckle_workflow(test_dir: Path, test_data_dir: Path, change_local_di
     df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2025-01-02_dist_s1_inputs.parquet')
     assert tmp_dir.exists() and tmp_dir.is_dir()
 
-    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir)
+    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, model_source='transformer_optimized')
     config.apply_water_mask = False
 
     run_despeckle_workflow(config)
@@ -73,7 +73,7 @@ def test_burst_disturbance_workflow(
 
     parquet_path = test_10SGD_dist_s1_inputs_parquet_dict['current']
     df_product = gpd.read_parquet(parquet_path)
-    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir)
+    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, model_source='transformer_optimized')
     config.apply_water_mask = False
     config.algo_config.device = 'cpu'
 
@@ -111,6 +111,7 @@ def test_dist_s1_sas_workflow_no_confirmation(
     config = RunConfigData.from_product_df(
         df_product,
         dst_dir=tmp_dir,
+        model_source='transformer_optimized',
     )
     config.apply_water_mask = True
     config.src_water_mask_path = src_water_mask_path
@@ -161,6 +162,7 @@ def test_dist_s1_sas_workflow_with_confirmation(
     config = RunConfigData.from_product_df(
         df_product,
         dst_dir=tmp_dir,
+        model_source='transformer_optimized',
     )
     config.apply_water_mask = True
     config.algo_config.device = 'cpu'
@@ -200,7 +202,7 @@ def test_dist_s1_workflow_interface(
 
     parquet_path = test_10SGD_dist_s1_inputs_parquet_dict['current']
     df_product = gpd.read_parquet(parquet_path)
-    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir)
+    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, model_source='transformer_optimized')
     config.apply_water_mask = False
 
     # We don't need credentials because we mock the data.
@@ -242,7 +244,7 @@ def test_dist_s1_workflow_interface_external_model(
     model_wts_path = tmp_dir / 'model_weights.pth'
 
     # Create dummy config file (JSON format)
-    model_cfg_content = {'model_type': 'transformer', 'n_heads': 8, 'd_model': 256, 'num_layers': 6, 'max_seq_len': 4}
+    model_cfg_content = {'model_type': 'transformer', 'n_heads': 8, 'd_model': 256, 'num_layers': 6, 'max_seq_len': 10}
     with model_cfg_path.open('w') as f:
         json.dump(model_cfg_content, f)
 
@@ -251,7 +253,9 @@ def test_dist_s1_workflow_interface_external_model(
 
     parquet_path = test_10SGD_dist_s1_inputs_parquet_dict['current']
     df_product = gpd.read_parquet(parquet_path)
-    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir)
+    config = RunConfigData.from_product_df(
+        df_product, dst_dir=tmp_dir, model_source='external', model_cfg_path=model_cfg_path
+    )
     config.apply_water_mask = False
 
     # We don't need credentials because we mock the data.

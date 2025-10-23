@@ -11,28 +11,29 @@ algo_config:
     post_date_buffer_days: 1
     model_compilation: false
     max_pre_imgs_per_burst_mw:
-    - 3
-    - 3
-    - 4
+    - 6
+    - 6
+    - 8
     delta_lookback_days_mw:
     - 1095
     - 730
     - 365
-    low_confidence_alert_threshold: 3.5
-    high_confidence_alert_threshold: 5.5
+    low_confidence_alert_threshold: 2.5
+    high_confidence_alert_threshold: 4.5
     no_day_limit: 30
-    exclude_consecutive_no_dist: true
+    exclude_consecutive_no_dist: 1
     percent_reset_thresh: 10
     no_count_reset_thresh: 7
     max_obs_num_year: 253
     confidence_upper_lim: 32000
-    confirmation_confidence_threshold: 31.5
+    confirmation_confidence_threshold: 22.5
     metric_value_upper_lim: 100.0
-    model_source: transformer_optimized_fine
+    model_source: transformer_v1_32
     model_cfg_path:
     model_wts_path:
     apply_despeckling: true
-    interpolation_method: none
+    interpolation_method: bilinear
     model_dtype: float32
     use_date_encoding: false
     n_anniversaries_for_mw: 3
+    model_context_length: 20

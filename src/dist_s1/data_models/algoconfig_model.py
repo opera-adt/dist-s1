@@ -5,6 +5,7 @@ import torch
 import torch.multiprocessing as mp
 import yaml
 from distmetrics import get_device
+from distmetrics.model_load import ALLOWED_MODELS
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_serializer, field_validator, model_validator
 
 from dist_s1.data_models.data_utils import get_max_context_length_from_model_source, get_max_pre_imgs_per_burst_mw
@@ -27,6 +28,7 @@ from dist_s1.data_models.defaults import (
     DEFAULT_METRIC_VALUE_UPPER_LIM,
     DEFAULT_MODEL_CFG_PATH,
     DEFAULT_MODEL_COMPILATION,
+    DEFAULT_MODEL_CONTEXT_LENGTH_MAXIMUM,
     DEFAULT_MODEL_DTYPE,
     DEFAULT_MODEL_SOURCE,
     DEFAULT_MODEL_WTS_PATH,
@@ -176,10 +178,10 @@ class AlgoConfigData(BaseModel):
     metric_value_upper_lim: float = Field(
         default=DEFAULT_METRIC_VALUE_UPPER_LIM, description='Metric upper limit set during confirmation'
     )
-    model_source: str = Field(
+    model_source: str | None = Field(
         default=DEFAULT_MODEL_SOURCE,
         description='Model source. If `external`, use externally supplied paths for weights and config. '
-        'Otherwise, use distmetrics.model_load.ALLOWED_MODELS for other models.',
+        'Otherwise, use distmetrics.model_load.ALLOWED_MODELS for other models. If `None`, use default model source.',
     )
     model_cfg_path: Path | str | None = Field(
         default=DEFAULT_MODEL_CFG_PATH,
@@ -210,10 +212,13 @@ class AlgoConfigData(BaseModel):
         default=DEFAULT_USE_DATE_ENCODING,
         description='Whether to use acquisition date encoding in model application (currently not supported)',
     )
-    _model_context_length: int | None = None
     n_anniversaries_for_mw: int = Field(
         default=DEFAULT_N_ANNIVERSARIES_FOR_MW,
         description='Number of anniversaries to use for multi-window',
+    )
+    model_context_length: int | None = Field(
+        default=None,
+        description='Maximum context length for the model. Auto-calculated from model_source if not provided.',
     )
 
     # Validate assignments to all fields
@@ -291,6 +296,15 @@ class AlgoConfigData(BaseModel):
             )
         return low_confidence_alert_threshold
 
+    @field_validator('model_source')
+    def validate_model_source(cls, model_source: str) -> str:
+        """Validate that model_source is a supported model source."""
+        if model_source is None:
+            model_source = DEFAULT_MODEL_SOURCE
+        if model_source not in ALLOWED_MODELS + ['external']:
+            raise ValueError(f"model_source '{model_source}' must be one of: {ALLOWED_MODELS} or 'external'")
+        return model_source
+
     @field_validator('model_dtype')
     def validate_model_dtype(cls, model_dtype: str) -> str:
         """Validate that model_dtype is a supported data type."""
@@ -343,13 +357,28 @@ class AlgoConfigData(BaseModel):
             )
         return self
 
-    @property
-    def model_context_length(self) -> int:
-        if self._model_context_length is None:
-            self._model_context_length = get_max_context_length_from_model_source(
-                self.model_source, self.model_cfg_path
+    @model_validator(mode='after')
+    def set_model_context_length(self) -> 'AlgoConfigData':
+        """Set model_context_length if not provided."""
+        n_ctx_calculated = get_max_context_length_from_model_source(self.model_source, self.model_cfg_path)
+        if self.model_context_length is None:
+            self.model_context_length = n_ctx_calculated
+        if self.model_context_length > n_ctx_calculated:
+            raise ValueError(
+                f'The assigned model_context_length ({self.model_context_length}) is greater than the maximum allowed '
+                f'model ({self.model_source}) permissable context length ({n_ctx_calculated}).'
             )
-        return self._model_context_length
+        if self.model_context_length < 1:
+            raise ValueError(
+                f'The assigned model_context_length ({self.model_context_length}) is less than 1. '
+                'model_context_length must be at least 1.'
+            )
+        if self.model_context_length > DEFAULT_MODEL_CONTEXT_LENGTH_MAXIMUM:
+            raise ValueError(
+                f'The assigned model_context_length ({self.model_context_length}) is greater than the maximum allowed '
+                f'({DEFAULT_MODEL_CONTEXT_LENGTH_MAXIMUM}).'
+            )
+        return self
 
     @model_validator(mode='after')
     def handle_device_specific_validations(self) -> 'AlgoConfigData':

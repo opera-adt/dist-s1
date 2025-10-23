@@ -134,6 +134,8 @@ def run_dist_s1_localization_workflow(
     input_data_dir: str | Path | None = DEFAULT_INPUT_DATA_DIR,
     n_anniversaries_for_mw: int = DEFAULT_N_ANNIVERSARIES_FOR_MW,
     model_context_length: int | None = None,
+    model_source: str = DEFAULT_MODEL_SOURCE,
+    model_cfg_path: Path | str | None = None,
 ) -> RunConfigData:
     """Run the DIST-S1 localization workflow.
 
@@ -152,6 +154,8 @@ def run_dist_s1_localization_workflow(
         input_data_dir=input_data_dir,
         n_anniversaries_for_mw=n_anniversaries_for_mw,
         model_context_length=model_context_length,
+        model_source=model_source,
+        model_cfg_path=model_cfg_path,
     )
 
     return run_config
@@ -477,6 +481,8 @@ def run_dist_s1_sas_prep_workflow(
         input_data_dir=input_data_dir,
         n_anniversaries_for_mw=n_anniversaries_for_mw,
         model_context_length=model_context_length,
+        model_source=model_source,
+        model_cfg_path=model_cfg_path,
     )
     run_config.algo_config.memory_strategy = memory_strategy
     run_config.algo_config.tqdm_enabled = tqdm_enabled
@@ -491,8 +497,6 @@ def run_dist_s1_sas_prep_workflow(
     run_config.algo_config.n_workers_for_despeckling = n_workers_for_despeckling
     run_config.algo_config.n_workers_for_norm_param_estimation = n_workers_for_norm_param_estimation
     run_config.algo_config.device = device
-    run_config.algo_config.model_source = model_source
-    run_config.algo_config.model_cfg_path = model_cfg_path
     run_config.algo_config.model_wts_path = model_wts_path
     run_config.algo_config.stride_for_norm_param_estimation = stride_for_norm_param_estimation
     run_config.algo_config.batch_size_for_norm_param_estimation = batch_size_for_norm_param_estimation

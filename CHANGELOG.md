@@ -11,6 +11,10 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 * Validation in RunConfigData to ensure that the maximum expected context length is not exceeded.
 * Validation in RunConfigData to ensure there are not duplicate products in the baseline/preimagery passed via yml.
+* Parameters to localization and prep workflows to ensure model source's maximum sequence length and is permissible with one passed.
+
+### Fixed
+* Issues with changing `model_source` in runconfig or other entry point and the software dynamically selecting the correctly baseline strategy.
 
 
 ## [2.0.6] - 2025-09-08
