@@ -10,7 +10,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 * Validation in RunConfigData to ensure that the maximum expected context length is not exceeded.
-* Validation in RunConfigData to ensure there are not duplicate products passed.
+* Validation in RunConfigData to ensure there are not duplicate products in the baseline/preimagery passed via yml.
 
 
 ## [2.0.6] - 2025-09-08
