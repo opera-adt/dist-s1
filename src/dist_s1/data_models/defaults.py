@@ -76,3 +76,6 @@ DEFAULT_BUCKET_PREFIX = None
 
 # Prior product settings for confirmation
 DEFAULT_PRIOR_DIST_S1_PRODUCT = None
+
+# Model maximum context length limit
+DEFAULT_MODEL_CONTEXT_LENGTH_MAXIMUM = 20

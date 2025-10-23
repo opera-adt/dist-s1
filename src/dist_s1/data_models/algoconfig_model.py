@@ -28,6 +28,7 @@ from dist_s1.data_models.defaults import (
     DEFAULT_METRIC_VALUE_UPPER_LIM,
     DEFAULT_MODEL_CFG_PATH,
     DEFAULT_MODEL_COMPILATION,
+    DEFAULT_MODEL_CONTEXT_LENGTH_MAXIMUM,
     DEFAULT_MODEL_DTYPE,
     DEFAULT_MODEL_SOURCE,
     DEFAULT_MODEL_WTS_PATH,
@@ -347,7 +348,10 @@ class AlgoConfigData(BaseModel):
     @property
     def model_context_length(self) -> int:
         if self._model_context_length is None:
-            self._model_context_length = get_model_context_length(self.model_source, self.model_cfg_path)
+            max_seq_length = get_model_context_length(self.model_source, self.model_cfg_path)
+            # This is hardcoded because we do not want to support baselines
+            # Longer than 20 distinct dates
+            self._model_context_length = min(max_seq_length, DEFAULT_MODEL_CONTEXT_LENGTH_MAXIMUM)
         return self._model_context_length
 
     @model_validator(mode='after')
