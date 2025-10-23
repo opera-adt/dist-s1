@@ -1082,3 +1082,41 @@ def test_validate_dates_across_inputs(
                 )
 
     shutil.rmtree(tmp_dir)
+
+
+def test_validate_max_context_length(test_dir: Path, change_local_dir: Callable, test_data_dir: Path) -> None:
+    """Ensure an error is passed if too many pre-images are provided for a burst.
+
+    I took the sample runconfig in `test_data/cropped` and added a single pre-image for one of the bursts,
+    a dummy one of course.
+    """
+    change_local_dir(test_dir)
+
+    # In the runconfig, the tmp dir is set to this directory.
+    tmp_dir = test_dir / 'tmp'
+
+    runconfig_path = test_data_dir / 'runconfig_exceeding_context_length' / 'runconfig.yml'
+
+    with pytest.raises(ValidationError, match=r'The following bursts have more than 10 pre-images: T137-292325-IW1'):
+        RunConfigData.from_yaml(runconfig_path)
+
+    shutil.rmtree(tmp_dir)
+
+
+def test_duplicated_baseline_inputs(test_dir: Path, change_local_dir: Callable, test_data_dir: Path) -> None:
+    """Ensure an error is passed if too many pre-images are provided for a burst.
+
+    I took the sample runconfig in `test_data/cropped` and added a single pre-image for one of the bursts,
+    a dummy one of course.
+    """
+    change_local_dir(test_dir)
+
+    # In the runconfig, the tmp dir is set to this directory.
+    tmp_dir = test_dir / 'tmp'
+
+    runconfig_path = test_data_dir / 'runconfig_exceeding_context_length' / 'runconfig.yml'
+
+    with pytest.raises(ValidationError, match=r'The following bursts have more than 10 pre-images: T137-292325-IW1'):
+        RunConfigData.from_yaml(runconfig_path)
+
+    shutil.rmtree(tmp_dir)
