@@ -5,10 +5,9 @@ import torch
 import torch.multiprocessing as mp
 import yaml
 from distmetrics import get_device
-from distmetrics.model_load import get_model_context_length
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_serializer, field_validator, model_validator
 
-from dist_s1.data_models.data_utils import get_max_pre_imgs_per_burst_mw
+from dist_s1.data_models.data_utils import get_max_context_length_from_model_source, get_max_pre_imgs_per_burst_mw
 from dist_s1.data_models.defaults import (
     DEFAULT_APPLY_DESPECKLING,
     DEFAULT_APPLY_LOGIT_TO_INPUTS,
@@ -28,7 +27,6 @@ from dist_s1.data_models.defaults import (
     DEFAULT_METRIC_VALUE_UPPER_LIM,
     DEFAULT_MODEL_CFG_PATH,
     DEFAULT_MODEL_COMPILATION,
-    DEFAULT_MODEL_CONTEXT_LENGTH_MAXIMUM,
     DEFAULT_MODEL_DTYPE,
     DEFAULT_MODEL_SOURCE,
     DEFAULT_MODEL_WTS_PATH,
@@ -348,10 +346,9 @@ class AlgoConfigData(BaseModel):
     @property
     def model_context_length(self) -> int:
         if self._model_context_length is None:
-            max_seq_length = get_model_context_length(self.model_source, self.model_cfg_path)
-            # This is hardcoded because we do not want to support baselines
-            # Longer than 20 distinct dates
-            self._model_context_length = min(max_seq_length, DEFAULT_MODEL_CONTEXT_LENGTH_MAXIMUM)
+            self._model_context_length = get_max_context_length_from_model_source(
+                self.model_source, self.model_cfg_path
+            )
         return self._model_context_length
 
     @model_validator(mode='after')

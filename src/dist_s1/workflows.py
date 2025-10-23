@@ -4,7 +4,6 @@ from datetime import datetime
 from pathlib import Path
 
 import torch.multiprocessing as torch_mp
-from distmetrics.model_load import get_model_context_length
 from tqdm.auto import tqdm
 
 
@@ -15,7 +14,7 @@ except RuntimeError:
 
 from dist_s1.aws import upload_product_to_s3
 from dist_s1.confirmation import confirm_disturbance_with_prior_product_and_serialize
-from dist_s1.data_models.data_utils import get_max_pre_imgs_per_burst_mw
+from dist_s1.data_models.data_utils import get_max_context_length_from_model_source, get_max_pre_imgs_per_burst_mw
 from dist_s1.data_models.defaults import (
     DEFAULT_APPLY_DESPECKLING,
     DEFAULT_APPLY_LOGIT_TO_INPUTS,
@@ -134,7 +133,7 @@ def run_dist_s1_localization_workflow(
     dst_dir: str | Path = DEFAULT_DST_DIR,
     input_data_dir: str | Path | None = DEFAULT_INPUT_DATA_DIR,
     n_anniversaries_for_mw: int = DEFAULT_N_ANNIVERSARIES_FOR_MW,
-    model_context_length: int = 10,
+    model_context_length: int | None = None,
 ) -> RunConfigData:
     """Run the DIST-S1 localization workflow.
 
@@ -458,7 +457,7 @@ def run_dist_s1_sas_prep_workflow(
     confirmation_confidence_threshold: float = DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
     metric_value_upper_lim: float = DEFAULT_METRIC_VALUE_UPPER_LIM,
 ) -> RunConfigData:
-    model_context_length = get_model_context_length(model_source, model_cfg_path)
+    model_context_length = get_max_context_length_from_model_source(model_source, model_cfg_path)
     if max_pre_imgs_per_burst_mw is None:
         max_pre_imgs_per_burst_mw = get_max_pre_imgs_per_burst_mw(model_context_length, n_anniversaries_for_mw)
     if delta_lookback_days_mw is None:

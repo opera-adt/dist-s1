@@ -3,7 +3,10 @@ from pathlib import Path, PosixPath
 
 import pandas as pd
 import yaml
+from distmetrics.model_load import get_model_context_length
 from yaml import Dumper
+
+from dist_s1.data_models.defaults import DEFAULT_MODEL_CONTEXT_LENGTH_MAXIMUM
 
 
 def posix_path_encoder(dumper: Dumper, data: PosixPath) -> yaml.Node:
@@ -167,3 +170,7 @@ def get_polarization_from_row(row: pd.Series) -> str:
     copol = Path(loc_path_copol).stem.split('_')[-1]
     crosspol = Path(loc_path_crosspol).stem.split('_')[-1]
     return f'{copol}+{crosspol}'
+
+
+def get_max_context_length_from_model_source(model_source: str, model_cfg_path: str | Path | None = None) -> int:
+    return min(get_model_context_length(model_source, model_cfg_path), DEFAULT_MODEL_CONTEXT_LENGTH_MAXIMUM)
