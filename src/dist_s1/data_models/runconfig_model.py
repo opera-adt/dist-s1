@@ -27,6 +27,7 @@ from dist_s1.data_models.data_utils import (
     get_acquisition_datetime,
     get_burst_id,
     get_opera_id,
+    get_opera_id_without_proccessing_time,
     get_polarization_from_row,
     get_sensor,
     get_track_number,
@@ -34,10 +35,11 @@ from dist_s1.data_models.data_utils import (
 from dist_s1.data_models.defaults import (
     DEFAULT_APPLY_WATER_MASK,
     DEFAULT_CHECK_INPUT_PATHS,
-    DEFAULT_DELTA_LOOKBACK_DAYS_MW,
     DEFAULT_DST_DIR,
     DEFAULT_INPUT_DATA_DIR,
-    DEFAULT_MAX_PRE_IMGS_PER_BURST_MW,
+    DEFAULT_MODEL_CONTEXT_LENGTH_MAXIMUM,
+    DEFAULT_MODEL_SOURCE,
+    DEFAULT_N_ANNIVERSARIES_FOR_MW,
     DEFAULT_POST_DATE_BUFFER_DAYS,
     DEFAULT_SRC_WATER_MASK_PATH,
 )
@@ -364,9 +366,13 @@ class RunConfigData(BaseModel):
         apply_water_mask: bool = DEFAULT_APPLY_WATER_MASK,
         water_mask_path: Path | str | None = None,
         max_pre_imgs_per_burst_mw: list[int] | None = None,
-        delta_lookback_days_mw: list[int] | None = None,
-        lookback_strategy: str = 'multi_window',
         prior_dist_s1_product: DistS1ProductDirectory | None = None,
+        model_source: str = DEFAULT_MODEL_SOURCE,
+        model_cfg_path: Path | str | None = None,
+        lookback_strategy: str = 'multi_window',
+        model_context_length: int | None = None,
+        delta_lookback_days_mw: list[int] | None = None,
+        n_anniversaries_for_mw: int = DEFAULT_N_ANNIVERSARIES_FOR_MW,
     ) -> 'RunConfigData':
         """Transform input table from dist-s1-enumerator into RunConfigData object.
 
@@ -374,10 +380,6 @@ class RunConfigData(BaseModel):
         """
         df_pre = product_df[product_df.input_category == 'pre'].reset_index(drop=True)
         df_post = product_df[product_df.input_category == 'post'].reset_index(drop=True)
-        if max_pre_imgs_per_burst_mw is None:
-            max_pre_imgs_per_burst_mw = DEFAULT_MAX_PRE_IMGS_PER_BURST_MW
-        if delta_lookback_days_mw is None:
-            delta_lookback_days_mw = DEFAULT_DELTA_LOOKBACK_DAYS_MW
 
         # Create algorithm config with provided algorithm parameters
         algo_config = AlgoConfigData(
@@ -385,6 +387,9 @@ class RunConfigData(BaseModel):
             delta_lookback_days_mw=delta_lookback_days_mw,
             lookback_strategy=lookback_strategy,
             post_date_buffer_days=DEFAULT_POST_DATE_BUFFER_DAYS,
+            model_context_length=model_context_length,
+            model_source=model_source,
+            model_cfg_path=model_cfg_path,
         )
 
         runconfig_data = RunConfigData(
@@ -610,6 +615,35 @@ class RunConfigData(BaseModel):
             raise ValueError(
                 'There are discrepancies between copol and crosspol data:\n' + msg_copol + '\n' + msg_crosspol
             )
+        return self
+
+    @model_validator(mode='after')
+    def validate_model_context_length(self) -> 'RunConfigData':
+        context_length = self.algo_config.model_context_length
+        if context_length > DEFAULT_MODEL_CONTEXT_LENGTH_MAXIMUM:
+            raise ValueError(
+                f'The model context length is greater than maximum allowed:{DEFAULT_MODEL_CONTEXT_LENGTH_MAXIMUM}'
+            )
+        df_inputs = self.df_inputs
+        df_pre = df_inputs[df_inputs.input_category == 'pre'].reset_index(drop=True)
+        df_pre_by_burst = df_pre.groupby('jpl_burst_id')[['acq_dt']].nunique().reset_index(drop=False)
+        bad_bursts = df_pre_by_burst[df_pre_by_burst.acq_dt > context_length]['jpl_burst_id'].tolist()
+        if len(bad_bursts) > 0:
+            raise ValueError(
+                f'The following bursts have more than model ({self.algo_config.model_source}) context length of '
+                f'({context_length}) pre-images: '
+                f'{", ".join(bad_bursts)}'
+            )
+        return self
+
+    @model_validator(mode='after')
+    def validate_unique_inputs(self) -> 'RunConfigData':
+        df_inputs = self.df_inputs.copy()
+        df_inputs['dedup_id'] = df_inputs.opera_id.map(get_opera_id_without_proccessing_time)
+        duplicated_ind = df_inputs[['dedup_id']].duplicated()
+        if duplicated_ind.any():
+            duplicated_opera_ids = df_inputs[duplicated_ind].opera_id.tolist()
+            raise ValueError(f'The following products are duplicated: {", ".join(duplicated_opera_ids)}')
         return self
 
     @model_validator(mode='after')
