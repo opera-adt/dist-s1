@@ -9,6 +9,7 @@ import rasterio
 from pytest import MonkeyPatch
 from pytest_mock import MockerFixture
 
+from dist_s1.data_models.data_utils import get_confirmation_confidence_threshold
 from dist_s1.data_models.defaults import DEFAULT_CONFIRMATION_CONFIDENCE_UPPER_LIM
 from dist_s1.data_models.output_models import DistS1ProductDirectory
 from dist_s1.data_models.runconfig_model import RunConfigData
@@ -119,6 +120,7 @@ def test_dist_s1_sas_workflow_no_confirmation(
     config.algo_config.stride_for_norm_param_estimation = 16
     config.algo_config.low_confidence_alert_threshold = 3.5
     config.algo_config.high_confidence_alert_threshold = 5.5
+    breakpoint()
 
     run_dist_s1_sas_workflow(config)
 
@@ -132,6 +134,7 @@ def test_dist_s1_sas_workflow_no_confirmation(
         assert tags['low_confidence_alert_threshold'] == '3.5'
         assert tags['high_confidence_alert_threshold'] == '5.5'
         assert tags['confirmation_confidence_upper_lim'] == str(DEFAULT_CONFIRMATION_CONFIDENCE_UPPER_LIM)
+        assert tags['confirmation_confidence_threshold'] == str(get_confirmation_confidence_threshold(3.5))
 
     # a lot of the information can be inspected by `product_data.compare_products(product_data_golden)`
     # if `comp = product_data.compare_products(product_data_golden)`, then

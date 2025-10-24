@@ -6,7 +6,15 @@ import torch.multiprocessing as mp
 import yaml
 from distmetrics import get_device
 from distmetrics.model_load import ALLOWED_MODELS
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_serializer, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationInfo,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
 
 from dist_s1.data_models.data_utils import (
     get_confirmation_confidence_threshold,
@@ -179,7 +187,7 @@ class AlgoConfigData(BaseModel):
         default=DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
         description='This is the threshold for the confirmation process to determine if a disturbance is confirmed. '
         'If `None`, the value will be calculated based on the alert low confidence threshold (t_low) and the number of '
-        'confirmation observations (n) default is 3 via (t_low ** 2) * n.',
+        'confirmation observations (n) default is 3 via (n ** 2) * t_low.',
     )
     metric_value_upper_lim: float = Field(
         default=DEFAULT_METRIC_VALUE_UPPER_LIM, description='Metric upper limit set during confirmation'
@@ -423,14 +431,20 @@ class AlgoConfigData(BaseModel):
             self.delta_lookback_days_mw = tuple(365 * n for n in range(self.n_anniversaries_for_mw, 0, -1))
         return self
 
-    @model_validator(mode='after')
-    def calculate_confirmation_confidence_threshold(self) -> 'AlgoConfigData':
+    @field_validator('confirmation_confidence_threshold', mode='before')
+    def calculate_confirmation_confidence_threshold(cls, v: float | None, info: ValidationInfo) -> float:
         """Calculate confirmation_confidence_threshold if not provided."""
-        if self.confirmation_confidence_threshold is None:
-            self.confirmation_confidence_threshold = get_confirmation_confidence_threshold(
-                self.low_confidence_alert_threshold
-            )
-        return self
+        if v is None:
+            low_threshold = info.data.get('low_confidence_alert_threshold')
+            if low_threshold is not None:
+                return get_confirmation_confidence_threshold(low_threshold)
+        return v
+
+    def __setattr__(self, name: str, value: object) -> None:
+        """Override setattr to recalculate confirmation_confidence_threshold when low_confidence_alert_threshold changes."""
+        super().__setattr__(name, value)
+        if name == 'low_confidence_alert_threshold':
+            super().__setattr__('confirmation_confidence_threshold', None)
 
     def to_yml(self, yaml_file: str | Path) -> None:
         """Save algorithm configuration to a YAML file."""
