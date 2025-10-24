@@ -740,7 +740,7 @@
 <td>Max observation number per year. If observations exceeds this number, then the confirmation must conclude and be reset.</td>
 </tr>
 <tr>
-<td><code>confidence_upper_lim</code></td>
+<td><code>confirmation_confidence_upper_lim</code></td>
 <td><code>int</code></td>
 <td>32000</td>
 <td>No</td>
@@ -748,10 +748,10 @@
 </tr>
 <tr>
 <td><code>confirmation_confidence_threshold</code></td>
-<td><code>float</code></td>
-<td>22.5</td>
-<td>No</td>
-<td>This is the threshold for the confirmation process to determine if a disturbance is confirmed.</td>
+<td><code>float | None</code></td>
+<td>None</td>
+<td>Yes</td>
+<td>This is the threshold for the confirmation process to determine if a disturbance is confirmed. If <code>None</code>, the value will be calculated based on the alert low confidence threshold (t_low) and the number of confirmation observations (n) default is 3 via (n ** 2) * t_low.</td>
 </tr>
 <tr>
 <td><code>metric_value_upper_lim</code></td>
