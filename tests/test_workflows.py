@@ -315,7 +315,7 @@ def test_sequential_confirmation_workflow(
         percent_reset_thresh=10,  # DEFAULT_PERCENT_RESET_THRESH
         no_count_reset_thresh=7,  # DEFAULT_NO_COUNT_RESET_THRESH
         confirmation_confidence_upper_lim=32000,  # DEFAULT_CONFIDENCE_UPPER_LIM
-        confirmation_confidence_thresh=31.5,  # DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD (3**2 * 3.5)
+        confirmation_confidence_thresh=None,  # DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD (3**2 * 3.5)
         metric_value_upper_lim=100.0,  # DEFAULT_METRIC_VALUE_UPPER_LIM
         tqdm_enabled=False,  # Disable progress bar for testing
     )
