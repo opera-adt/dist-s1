@@ -17,7 +17,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 * Issues with specifying `model_source` in runconfig or other entry point and the software incorrectly selecting the model context length.
-* Incorrect default values were set for confirmation and therefore disturbances were too conservative.
+* Incorrect default values were set for confirmation and therefore disturbances were too conservative in many tests. This is simply fixed by ensuring defaults are set using `src/dist_s1/data_models/defaults.py`.
 
 
 ## [2.0.6] - 2025-09-08
