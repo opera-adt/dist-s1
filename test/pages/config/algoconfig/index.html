@@ -762,10 +762,10 @@
 </tr>
 <tr>
 <td><code>model_source</code></td>
-<td><code>str</code></td>
+<td><code>str | None</code></td>
 <td>transformer_optimized</td>
 <td>No</td>
-<td>Model source. If <code>external</code>, use externally supplied paths for weights and config. Otherwise, use distmetrics.model_load.ALLOWED_MODELS for other models.</td>
+<td>Model source. If <code>external</code>, use externally supplied paths for weights and config. Otherwise, use distmetrics.model_load.ALLOWED_MODELS for other models. If <code>None</code>, use default model source.</td>
 </tr>
 <tr>
 <td><code>model_cfg_path</code></td>
@@ -815,6 +815,13 @@
 <td>3</td>
 <td>No</td>
 <td>Number of anniversaries to use for multi-window</td>
+</tr>
+<tr>
+<td><code>model_context_length</code></td>
+<td><code>int | None</code></td>
+<td>No default</td>
+<td>Yes</td>
+<td>Maximum context length for the model. Auto-calculated from model_source if not provided.</td>
 </tr>
 </tbody>
 </table>
