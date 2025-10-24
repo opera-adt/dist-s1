@@ -318,13 +318,19 @@ def run_confirmation_of_dist_product_workflow(
     confidence_upper_lim = run_config.algo_config.confidence_upper_lim
     confidence_threshold = run_config.algo_config.confirmation_confidence_threshold
     metric_value_upper_lim = run_config.algo_config.metric_value_upper_lim
+    alert_low_conf_thresh = run_config.algo_config.low_confidence_alert_threshold
+    alert_high_conf_thresh = run_config.algo_config.high_confidence_alert_threshold
     product_tags = get_product_tags(run_config)
+    max_obs_num_year = run_config.algo_config.max_obs_num_year
 
     confirm_disturbance_with_prior_product_and_serialize(
         current_dist_s1_product=current_dist_s1_product,
         prior_dist_s1_product=prior_dist_s1_product,
         dst_dist_product_parent=dst_dist_product_parent,
+        alert_low_conf_thresh=alert_low_conf_thresh,
+        alert_high_conf_thresh=alert_high_conf_thresh,
         no_day_limit=no_day_limit,
+        max_obs_num_year=max_obs_num_year,
         exclude_consecutive_no_dist=exclude_consecutive_no_dist,
         percent_reset_thresh=percent_reset_thresh,
         no_count_reset_thresh=no_count_reset_thresh,
@@ -340,12 +346,15 @@ def run_confirmation_of_dist_product_workflow(
 def run_sequential_confirmation_of_dist_products_workflow(
     directory_of_dist_s1_products: Path | str,
     dst_dist_product_parent: Path | str,
+    alert_low_conf_thresh: float = DEFAULT_LOW_CONFIDENCE_ALERT_THRESHOLD,
+    alert_high_conf_thresh: float = DEFAULT_HIGH_CONFIDENCE_ALERT_THRESHOLD,
     no_day_limit: int = DEFAULT_NO_DAY_LIMIT,
     exclude_consecutive_no_dist: bool = DEFAULT_EXCLUDE_CONSECUTIVE_NO_DIST,
     percent_reset_thresh: int = DEFAULT_PERCENT_RESET_THRESH,
     no_count_reset_thresh: int = DEFAULT_NO_COUNT_RESET_THRESH,
     confidence_upper_lim: int = DEFAULT_CONFIDENCE_UPPER_LIM,
     confidence_thresh: float = DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
+    max_obs_num_year: int = DEFAULT_MAX_OBS_NUM_YEAR,
     metric_value_upper_lim: float = DEFAULT_METRIC_VALUE_UPPER_LIM,
     tqdm_enabled: bool = DEFAULT_TQDM_ENABLED,
 ) -> None:
@@ -382,12 +391,17 @@ def run_sequential_confirmation_of_dist_products_workflow(
                 prior_dist_s1_product=prior_confirmed_dist_s1_prod,
                 dst_dist_product_parent=dst_dist_product_parent,
                 no_day_limit=no_day_limit,
+                alert_low_conf_thresh=alert_low_conf_thresh,
+                alert_high_conf_thresh=alert_high_conf_thresh,
                 exclude_consecutive_no_dist=exclude_consecutive_no_dist,
                 percent_reset_thresh=percent_reset_thresh,
                 no_count_reset_thresh=no_count_reset_thresh,
                 confidence_upper_lim=confidence_upper_lim,
                 confidence_thresh=confidence_thresh,
+                max_obs_num_year=max_obs_num_year,
                 metric_value_upper_lim=metric_value_upper_lim,
+                # Gets product tags from the current product
+                product_tags=None,
             )
             prior_confirmed_dist_s1_prod = dst_dist_product_parent / current_dist_s1_product.name
         generate_browse_image(dst_dist_product_directory, water_mask_path=None)
