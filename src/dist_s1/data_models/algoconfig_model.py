@@ -6,15 +6,27 @@ import torch.multiprocessing as mp
 import yaml
 from distmetrics import get_device
 from distmetrics.model_load import ALLOWED_MODELS
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_serializer, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationInfo,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
 
-from dist_s1.data_models.data_utils import get_max_context_length_from_model_source, get_max_pre_imgs_per_burst_mw
+from dist_s1.data_models.data_utils import (
+    get_confirmation_confidence_threshold,
+    get_max_context_length_from_model_source,
+    get_max_pre_imgs_per_burst_mw,
+)
 from dist_s1.data_models.defaults import (
     DEFAULT_APPLY_DESPECKLING,
     DEFAULT_APPLY_LOGIT_TO_INPUTS,
     DEFAULT_BATCH_SIZE_FOR_NORM_PARAM_ESTIMATION,
-    DEFAULT_CONFIDENCE_UPPER_LIM,
     DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
+    DEFAULT_CONFIRMATION_CONFIDENCE_UPPER_LIM,
     DEFAULT_DELTA_LOOKBACK_DAYS_MW,
     DEFAULT_DEVICE,
     DEFAULT_EXCLUDE_CONSECUTIVE_NO_DIST,
@@ -167,13 +179,15 @@ class AlgoConfigData(BaseModel):
         description='Max observation number per year. If observations exceeds this number, then the confirmation must '
         'conclude and be reset.',
     )
-    confidence_upper_lim: int = Field(
-        default=DEFAULT_CONFIDENCE_UPPER_LIM,
+    confirmation_confidence_upper_lim: int = Field(
+        default=DEFAULT_CONFIRMATION_CONFIDENCE_UPPER_LIM,
         description='Confidence upper limit for confirmation. Confidence is an accumulation of the metric over time.',
     )
-    confirmation_confidence_threshold: float = Field(
+    confirmation_confidence_threshold: float | None = Field(
         default=DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
-        description='This is the threshold for the confirmation process to determine if a disturbance is confirmed.',
+        description='This is the threshold for the confirmation process to determine if a disturbance is confirmed. '
+        'If `None`, the value will be calculated based on the alert low confidence threshold (t_low) and the number of '
+        'confirmation observations (n) default is 3 via (n ** 2) * t_low.',
     )
     metric_value_upper_lim: float = Field(
         default=DEFAULT_METRIC_VALUE_UPPER_LIM, description='Metric upper limit set during confirmation'
@@ -416,6 +430,21 @@ class AlgoConfigData(BaseModel):
         if self.delta_lookback_days_mw is None:
             self.delta_lookback_days_mw = tuple(365 * n for n in range(self.n_anniversaries_for_mw, 0, -1))
         return self
+
+    @field_validator('confirmation_confidence_threshold', mode='before')
+    def calculate_confirmation_confidence_threshold(cls, v: float | None, info: ValidationInfo) -> float:
+        """Calculate confirmation_confidence_threshold if not provided."""
+        if v is None:
+            low_threshold = info.data.get('low_confidence_alert_threshold')
+            if low_threshold is not None:
+                return get_confirmation_confidence_threshold(low_threshold)
+        return v
+
+    def __setattr__(self, name: str, value: object) -> None:
+        """Recalculate confirmation_confidence_threshold whenlow_confidence_alert_threshold changes."""
+        super().__setattr__(name, value)
+        if name == 'low_confidence_alert_threshold':
+            super().__setattr__('confirmation_confidence_threshold', None)
 
     def to_yml(self, yaml_file: str | Path) -> None:
         """Save algorithm configuration to a YAML file."""
