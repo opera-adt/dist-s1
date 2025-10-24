@@ -26,7 +26,6 @@ from dist_s1.data_models.data_utils import (
     extract_rtc_metadata_from_path,
     get_acquisition_datetime,
     get_burst_id,
-    get_max_pre_imgs_per_burst_mw,
     get_opera_id,
     get_opera_id_without_proccessing_time,
     get_polarization_from_row,
