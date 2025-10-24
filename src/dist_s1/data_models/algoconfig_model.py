@@ -441,7 +441,7 @@ class AlgoConfigData(BaseModel):
         return v
 
     def __setattr__(self, name: str, value: object) -> None:
-        """Override setattr to recalculate confirmation_confidence_threshold when low_confidence_alert_threshold changes."""
+        """Recalculate confirmation_confidence_threshold whenlow_confidence_alert_threshold changes."""
         super().__setattr__(name, value)
         if name == 'low_confidence_alert_threshold':
             super().__setattr__('confirmation_confidence_threshold', None)
