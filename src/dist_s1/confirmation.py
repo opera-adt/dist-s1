@@ -10,6 +10,17 @@ from dist_s1.constants import (
     TIF_LAYERS,
     TIF_LAYER_NODATA_VALUES,
 )
+from dist_s1.data_models.defaults import (
+    DEFAULT_CONFIDENCE_UPPER_LIM,
+    DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
+    DEFAULT_HIGH_CONFIDENCE_ALERT_THRESHOLD,
+    DEFAULT_LOW_CONFIDENCE_ALERT_THRESHOLD,
+    DEFAULT_MAX_OBS_NUM_YEAR,
+    DEFAULT_METRIC_VALUE_UPPER_LIM,
+    DEFAULT_NO_COUNT_RESET_THRESH,
+    DEFAULT_NO_DAY_LIMIT,
+    DEFAULT_PERCENT_RESET_THRESH,
+)
 from dist_s1.data_models.output_models import TIF_LAYER_DTYPES, DistS1ProductDirectory
 from dist_s1.dist_processing import label_alert_status_from_metric
 from dist_s1.packaging import update_profile
@@ -264,16 +275,16 @@ def confirm_disturbance_with_prior_product_and_serialize(
     current_dist_s1_product: DistS1ProductDirectory | str | Path,
     prior_dist_s1_product: DistS1ProductDirectory | str | Path,
     dst_dist_product_parent: str | Path | None,
-    alert_low_conf_thresh: float = 3.5,
-    alert_high_conf_thresh: float = 5.5,
+    alert_low_conf_thresh: float = DEFAULT_LOW_CONFIDENCE_ALERT_THRESHOLD,
+    alert_high_conf_thresh: float = DEFAULT_HIGH_CONFIDENCE_ALERT_THRESHOLD,
     exclude_consecutive_no_dist: bool = False,
-    percent_reset_thresh: int = 10,
-    no_count_reset_thresh: int = 7,
-    no_day_limit: int = 30,
-    max_obs_num_year: int = 253,
-    confidence_upper_lim: int = 32000,
-    confidence_thresh: float = 3**2 * 3.5,
-    metric_value_upper_lim: float = 100,
+    percent_reset_thresh: int = DEFAULT_PERCENT_RESET_THRESH,
+    no_count_reset_thresh: int = DEFAULT_NO_COUNT_RESET_THRESH,
+    no_day_limit: int = DEFAULT_NO_DAY_LIMIT,
+    max_obs_num_year: int = DEFAULT_MAX_OBS_NUM_YEAR,
+    confidence_upper_lim: int = DEFAULT_CONFIDENCE_UPPER_LIM,
+    confidence_thresh: float = DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
+    metric_value_upper_lim: float = DEFAULT_METRIC_VALUE_UPPER_LIM,
     product_tags: dict | None = None,
 ) -> DistS1ProductDirectory:
     """Perform the confirmation and packaging of a DIST-S1 product and the prior product."""
