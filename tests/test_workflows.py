@@ -120,7 +120,6 @@ def test_dist_s1_sas_workflow_no_confirmation(
     config.algo_config.stride_for_norm_param_estimation = 16
     config.algo_config.low_confidence_alert_threshold = 3.5
     config.algo_config.high_confidence_alert_threshold = 5.5
-    breakpoint()
 
     run_dist_s1_sas_workflow(config)
 
