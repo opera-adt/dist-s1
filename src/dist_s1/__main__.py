@@ -11,8 +11,8 @@ from dist_s1.confirmation import confirm_disturbance_with_prior_product_and_seri
 from dist_s1.data_models.defaults import (
     DEFAULT_APPLY_WATER_MASK,
     DEFAULT_BATCH_SIZE_FOR_NORM_PARAM_ESTIMATION,
-    DEFAULT_CONFIDENCE_UPPER_LIM,
     DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
+    DEFAULT_CONFIRMATION_CONFIDENCE_UPPER_LIM,
     DEFAULT_DELTA_LOOKBACK_DAYS_MW,
     DEFAULT_DEVICE,
     DEFAULT_DST_DIR,
@@ -106,11 +106,11 @@ def common_algo_options_for_confirmation_workflows(func: Callable) -> Callable:
         '--confidence_upper_lim',
         type=int,
         required=False,
-        default=DEFAULT_CONFIDENCE_UPPER_LIM,
+        default=DEFAULT_CONFIRMATION_CONFIDENCE_UPPER_LIM,
         help='Confidence upper limit.',
     )
     @click.option(
-        '--confidence_threshold',
+        '--confirmation_confidence_threshold',
         type=float,
         required=False,
         default=DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
@@ -411,7 +411,7 @@ def run_sas_prep(
     percent_reset_thresh: int,
     no_count_reset_thresh: int,
     confidence_upper_lim: int,
-    confidence_threshold: float,
+    confirmation_confidence_threshold: float | None,
     metric_value_upper_lim: float,
 ) -> None:
     """Run SAS prep workflow."""
@@ -453,8 +453,8 @@ def run_sas_prep(
         exclude_consecutive_no_dist=exclude_consecutive_no_dist,
         percent_reset_thresh=percent_reset_thresh,
         no_count_reset_thresh=no_count_reset_thresh,
-        confidence_upper_lim=confidence_upper_lim,
-        confirmation_confidence_threshold=confidence_threshold,
+        confirmation_confidence_upper_lim=confidence_upper_lim,
+        confirmation_confidence_threshold=confirmation_confidence_threshold,
         metric_value_upper_lim=metric_value_upper_lim,
     )
 
@@ -489,7 +489,7 @@ def run_one_confirmation(
     percent_reset_thresh: int,
     no_count_reset_thresh: int,
     confidence_upper_lim: int,
-    confidence_threshold: float,
+    confirmation_confidence_threshold: float | None,
     metric_value_upper_lim: float,
 ) -> None:
     confirm_disturbance_with_prior_product_and_serialize(
@@ -500,8 +500,8 @@ def run_one_confirmation(
         exclude_consecutive_no_dist=exclude_consecutive_no_dist,
         percent_reset_thresh=percent_reset_thresh,
         no_count_reset_thresh=no_count_reset_thresh,
-        confidence_upper_lim=confidence_upper_lim,
-        confidence_thresh=confidence_threshold,
+        confirmation_confidence_upper_lim=confidence_upper_lim,
+        confirmation_confidence_thresh=confirmation_confidence_threshold,
         metric_value_upper_lim=metric_value_upper_lim,
     )
 
@@ -528,7 +528,7 @@ def run_sequential_confirmation(
     percent_reset_thresh: int,
     no_count_reset_thresh: int,
     confidence_upper_lim: int,
-    confidence_threshold: float,
+    confirmation_confidence_threshold: float | None,
     metric_value_upper_lim: float,
 ) -> None:
     run_sequential_confirmation_of_dist_products_workflow(
@@ -538,8 +538,8 @@ def run_sequential_confirmation(
         exclude_consecutive_no_dist=exclude_consecutive_no_dist,
         percent_reset_thresh=percent_reset_thresh,
         no_count_reset_thresh=no_count_reset_thresh,
-        confidence_upper_lim=confidence_upper_lim,
-        confidence_thresh=confidence_threshold,
+        confirmation_confidence_upper_lim=confidence_upper_lim,
+        confirmation_confidence_thresh=confirmation_confidence_threshold,
         metric_value_upper_lim=metric_value_upper_lim,
     )
 
@@ -594,7 +594,7 @@ def run(
     percent_reset_thresh: int,
     no_count_reset_thresh: int,
     confidence_upper_lim: int,
-    confidence_threshold: float,
+    confirmation_confidence_threshold: float | None,
     metric_value_upper_lim: float,
 ) -> str:
     """Localize data and run dist_s1_workflow."""
@@ -637,7 +637,7 @@ def run(
         percent_reset_thresh=percent_reset_thresh,
         no_count_reset_thresh=no_count_reset_thresh,
         confidence_upper_lim=confidence_upper_lim,
-        confirmation_confidence_threshold=confidence_threshold,
+        confirmation_confidence_threshold=confirmation_confidence_threshold,
         metric_value_upper_lim=metric_value_upper_lim,
     )
 

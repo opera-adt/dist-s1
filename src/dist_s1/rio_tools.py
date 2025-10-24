@@ -57,7 +57,6 @@ def serialize_one_2d_ds(
             {
                 'driver': 'COG',
                 'compress': 'ZSTD',
-                'zlevel': 9,
                 'predictor': predictor,
                 'blocksize': 512,
                 'resampling': Resampling.average,

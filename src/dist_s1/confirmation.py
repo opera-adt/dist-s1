@@ -1,4 +1,5 @@
 from pathlib import Path
+from warnings import warn
 
 import numpy as np
 import rasterio
@@ -10,9 +11,10 @@ from dist_s1.constants import (
     TIF_LAYERS,
     TIF_LAYER_NODATA_VALUES,
 )
+from dist_s1.data_models.data_utils import get_confirmation_confidence_threshold
 from dist_s1.data_models.defaults import (
-    DEFAULT_CONFIDENCE_UPPER_LIM,
     DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
+    DEFAULT_CONFIRMATION_CONFIDENCE_UPPER_LIM,
     DEFAULT_HIGH_CONFIDENCE_ALERT_THRESHOLD,
     DEFAULT_LOW_CONFIDENCE_ALERT_THRESHOLD,
     DEFAULT_MAX_OBS_NUM_YEAR,
@@ -275,17 +277,16 @@ def confirm_disturbance_with_prior_product_and_serialize(
     current_dist_s1_product: DistS1ProductDirectory | str | Path,
     prior_dist_s1_product: DistS1ProductDirectory | str | Path,
     dst_dist_product_parent: str | Path | None,
-    alert_low_conf_thresh: float = DEFAULT_LOW_CONFIDENCE_ALERT_THRESHOLD,
-    alert_high_conf_thresh: float = DEFAULT_HIGH_CONFIDENCE_ALERT_THRESHOLD,
+    alert_low_conf_thresh: float | None = DEFAULT_LOW_CONFIDENCE_ALERT_THRESHOLD,
+    alert_high_conf_thresh: float | None = DEFAULT_HIGH_CONFIDENCE_ALERT_THRESHOLD,
     exclude_consecutive_no_dist: bool = False,
     percent_reset_thresh: int = DEFAULT_PERCENT_RESET_THRESH,
     no_count_reset_thresh: int = DEFAULT_NO_COUNT_RESET_THRESH,
     no_day_limit: int = DEFAULT_NO_DAY_LIMIT,
     max_obs_num_year: int = DEFAULT_MAX_OBS_NUM_YEAR,
-    confidence_upper_lim: int = DEFAULT_CONFIDENCE_UPPER_LIM,
-    confidence_thresh: float = DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
+    confirmation_confidence_upper_lim: int = DEFAULT_CONFIRMATION_CONFIDENCE_UPPER_LIM,
+    confirmation_confidence_thresh: float = DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
     metric_value_upper_lim: float = DEFAULT_METRIC_VALUE_UPPER_LIM,
-    product_tags: dict | None = None,
 ) -> DistS1ProductDirectory:
     """Perform the confirmation and packaging of a DIST-S1 product and the prior product."""
     if not isinstance(current_dist_s1_product, DistS1ProductDirectory):
@@ -294,6 +295,41 @@ def confirm_disturbance_with_prior_product_and_serialize(
     if not isinstance(prior_dist_s1_product, DistS1ProductDirectory):
         prior_dist_s1_product = DistS1ProductDirectory.from_product_path(prior_dist_s1_product)
     prior_product_name = prior_dist_s1_product.product_name
+
+    with rasterio.open(current_dist_s1_product.layer_path_dict['GEN-METRIC']) as src:
+        product_tags = src.tags()
+    if product_tags is None:
+        raise ValueError('No product tags found in current product; not using correctly formatted product.')
+
+    # We dynamically set the confirmation thresholds according to the product
+    # We read these thresholds from the gdal tag metadata.
+    tags_to_set = [
+        'low_confidence_alert_threshold',
+        'high_confidence_alert_threshold',
+        'confirmation_confidence_threshold',
+    ]
+    vars_to_set = [alert_low_conf_thresh, alert_high_conf_thresh, confirmation_confidence_thresh]
+    for tag, var in zip(tags_to_set, vars_to_set):
+        if var is None:
+            if tag not in product_tags:
+                raise ValueError(f'No {tag} found in product tags; not using correctly formatted product.')
+            if tag != 'confirmation_confidence_threshold':
+                var = float(product_tags[tag])
+    if product_tags['confirmation_confidence_threshold'] is None:
+        confirmation_confidence_thresh = get_confirmation_confidence_threshold(alert_low_conf_thresh)
+    else:
+        confirmation_confidence_thresh = float(product_tags['confirmation_confidence_threshold'])
+
+        # Raise warning if the confidence threshold assignment (explicit or dyanmic) mathces
+        # the expected value computed from the alert low confidence threshold.
+        expected_conf_thresh = get_confirmation_confidence_threshold(alert_low_conf_thresh)
+        if expected_conf_thresh != confirmation_confidence_thresh:
+            warn(
+                f'The `confidence_thresh` (for confirmation) has value {confirmation_confidence_thresh} '
+                f'and does not match expected value {expected_conf_thresh} computed from'
+                f'the `alert_low_conf_thresh` ({alert_low_conf_thresh}) via (alert_low_conf_thresh ** 2) '
+                '* 3.'
+            )
 
     if dst_dist_product_parent is None:
         dst_dist_product_parent = current_dist_s1_product.product_dir_path.parent
@@ -305,11 +341,6 @@ def confirm_disturbance_with_prior_product_and_serialize(
         dst_dir=dst_dist_product_parent,
         product_name=current_dist_s1_product.product_name,
     )
-    if product_tags is None:
-        with rasterio.open(current_dist_s1_product.layer_path_dict['GEN-METRIC']) as src:
-            product_tags = src.tags()
-        if product_tags is None:
-            raise ValueError('No product tags found in current product; not using correctly formatted product.')
 
     # Get dist_date from a sample path pattern
     current_date_ts = current_dist_s1_product.acq_datetime
@@ -340,8 +371,8 @@ def confirm_disturbance_with_prior_product_and_serialize(
         no_count_reset_thresh=no_count_reset_thresh,
         no_day_limit=no_day_limit,
         max_obs_num_year=max_obs_num_year,
-        conf_upper_lim=confidence_upper_lim,
-        conf_thresh=confidence_thresh,
+        conf_upper_lim=confirmation_confidence_upper_lim,
+        conf_thresh=confirmation_confidence_thresh,
         metric_value_upper_lim=metric_value_upper_lim,
     )
 

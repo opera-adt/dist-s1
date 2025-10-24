@@ -20,8 +20,8 @@ from dist_s1.data_models.defaults import (
     DEFAULT_APPLY_LOGIT_TO_INPUTS,
     DEFAULT_APPLY_WATER_MASK,
     DEFAULT_BATCH_SIZE_FOR_NORM_PARAM_ESTIMATION,
-    DEFAULT_CONFIDENCE_UPPER_LIM,
     DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
+    DEFAULT_CONFIRMATION_CONFIDENCE_UPPER_LIM,
     DEFAULT_DELTA_LOOKBACK_DAYS_MW,
     DEFAULT_DEVICE,
     DEFAULT_DST_DIR,
@@ -65,7 +65,6 @@ from dist_s1.dist_processing import (
 from dist_s1.localize_rtc_s1 import localize_rtc_s1
 from dist_s1.packaging import (
     generate_browse_image,
-    get_product_tags,
     package_disturbance_tifs_no_confirmation,
 )
 
@@ -315,12 +314,11 @@ def run_confirmation_of_dist_product_workflow(
     exclude_consecutive_no_dist = run_config.algo_config.exclude_consecutive_no_dist
     percent_reset_thresh = run_config.algo_config.percent_reset_thresh
     no_count_reset_thresh = run_config.algo_config.no_count_reset_thresh
-    confidence_upper_lim = run_config.algo_config.confidence_upper_lim
+    confidence_upper_lim = run_config.algo_config.confirmation_confidence_upper_lim
     confidence_threshold = run_config.algo_config.confirmation_confidence_threshold
     metric_value_upper_lim = run_config.algo_config.metric_value_upper_lim
     alert_low_conf_thresh = run_config.algo_config.low_confidence_alert_threshold
     alert_high_conf_thresh = run_config.algo_config.high_confidence_alert_threshold
-    product_tags = get_product_tags(run_config)
     max_obs_num_year = run_config.algo_config.max_obs_num_year
 
     confirm_disturbance_with_prior_product_and_serialize(
@@ -334,10 +332,9 @@ def run_confirmation_of_dist_product_workflow(
         exclude_consecutive_no_dist=exclude_consecutive_no_dist,
         percent_reset_thresh=percent_reset_thresh,
         no_count_reset_thresh=no_count_reset_thresh,
-        confidence_upper_lim=confidence_upper_lim,
-        confidence_thresh=confidence_threshold,
+        confirmation_confidence_upper_lim=confidence_upper_lim,
+        confirmation_confidence_thresh=confidence_threshold,
         metric_value_upper_lim=metric_value_upper_lim,
-        product_tags=product_tags,
     )
     # Generate browse image for the final product
     generate_browse_image(run_config.product_data_model, run_config.water_mask_path)
@@ -346,14 +343,14 @@ def run_confirmation_of_dist_product_workflow(
 def run_sequential_confirmation_of_dist_products_workflow(
     directory_of_dist_s1_products: Path | str,
     dst_dist_product_parent: Path | str,
-    alert_low_conf_thresh: float = DEFAULT_LOW_CONFIDENCE_ALERT_THRESHOLD,
-    alert_high_conf_thresh: float = DEFAULT_HIGH_CONFIDENCE_ALERT_THRESHOLD,
+    alert_low_conf_thresh: float | None = DEFAULT_LOW_CONFIDENCE_ALERT_THRESHOLD,
+    alert_high_conf_thresh: float | None = DEFAULT_HIGH_CONFIDENCE_ALERT_THRESHOLD,
     no_day_limit: int = DEFAULT_NO_DAY_LIMIT,
     exclude_consecutive_no_dist: bool = DEFAULT_EXCLUDE_CONSECUTIVE_NO_DIST,
     percent_reset_thresh: int = DEFAULT_PERCENT_RESET_THRESH,
     no_count_reset_thresh: int = DEFAULT_NO_COUNT_RESET_THRESH,
-    confidence_upper_lim: int = DEFAULT_CONFIDENCE_UPPER_LIM,
-    confidence_thresh: float = DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
+    confirmation_confidence_upper_lim: int = DEFAULT_CONFIRMATION_CONFIDENCE_UPPER_LIM,
+    confirmation_confidence_thresh: float | None = DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
     max_obs_num_year: int = DEFAULT_MAX_OBS_NUM_YEAR,
     metric_value_upper_lim: float = DEFAULT_METRIC_VALUE_UPPER_LIM,
     tqdm_enabled: bool = DEFAULT_TQDM_ENABLED,
@@ -396,12 +393,11 @@ def run_sequential_confirmation_of_dist_products_workflow(
                 exclude_consecutive_no_dist=exclude_consecutive_no_dist,
                 percent_reset_thresh=percent_reset_thresh,
                 no_count_reset_thresh=no_count_reset_thresh,
-                confidence_upper_lim=confidence_upper_lim,
-                confidence_thresh=confidence_thresh,
+                confirmation_confidence_upper_lim=confirmation_confidence_upper_lim,
+                confirmation_confidence_thresh=confirmation_confidence_thresh,
                 max_obs_num_year=max_obs_num_year,
                 metric_value_upper_lim=metric_value_upper_lim,
                 # Gets product tags from the current product
-                product_tags=None,
             )
             prior_confirmed_dist_s1_prod = dst_dist_product_parent / current_dist_s1_product.name
         generate_browse_image(dst_dist_product_directory, water_mask_path=None)
@@ -471,7 +467,7 @@ def run_dist_s1_sas_prep_workflow(
     percent_reset_thresh: int = DEFAULT_PERCENT_RESET_THRESH,
     no_count_reset_thresh: int = DEFAULT_NO_COUNT_RESET_THRESH,
     max_obs_num_year: int = DEFAULT_MAX_OBS_NUM_YEAR,
-    confidence_upper_lim: int = DEFAULT_CONFIDENCE_UPPER_LIM,
+    confirmation_confidence_upper_lim: int = DEFAULT_CONFIRMATION_CONFIDENCE_UPPER_LIM,
     confirmation_confidence_threshold: float = DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
     metric_value_upper_lim: float = DEFAULT_METRIC_VALUE_UPPER_LIM,
 ) -> RunConfigData:
@@ -526,7 +522,7 @@ def run_dist_s1_sas_prep_workflow(
     run_config.algo_config.percent_reset_thresh = percent_reset_thresh
     run_config.algo_config.no_count_reset_thresh = no_count_reset_thresh
     run_config.algo_config.max_obs_num_year = max_obs_num_year
-    run_config.algo_config.confidence_upper_lim = confidence_upper_lim
+    run_config.algo_config.confirmation_confidence_upper_lim = confirmation_confidence_upper_lim
     run_config.algo_config.confirmation_confidence_threshold = confirmation_confidence_threshold
     run_config.algo_config.metric_value_upper_lim = metric_value_upper_lim
     if run_config_path is not None:
@@ -593,7 +589,7 @@ def run_dist_s1_workflow(
     percent_reset_thresh: int = DEFAULT_PERCENT_RESET_THRESH,
     no_count_reset_thresh: int = DEFAULT_NO_COUNT_RESET_THRESH,
     max_obs_num_year: int = DEFAULT_MAX_OBS_NUM_YEAR,
-    confidence_upper_lim: int = DEFAULT_CONFIDENCE_UPPER_LIM,
+    confidence_upper_lim: int = DEFAULT_CONFIRMATION_CONFIDENCE_UPPER_LIM,
     confirmation_confidence_threshold: float = DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
     metric_value_upper_lim: float = DEFAULT_METRIC_VALUE_UPPER_LIM,
 ) -> Path:
@@ -639,7 +635,7 @@ def run_dist_s1_workflow(
         percent_reset_thresh=percent_reset_thresh,
         no_count_reset_thresh=no_count_reset_thresh,
         max_obs_num_year=max_obs_num_year,
-        confidence_upper_lim=confidence_upper_lim,
+        confirmation_confidence_upper_lim=confidence_upper_lim,
         confirmation_confidence_threshold=confirmation_confidence_threshold,
         metric_value_upper_lim=metric_value_upper_lim,
     )
