@@ -12,6 +12,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * Validation in RunConfigData to ensure that the maximum expected context length is not exceeded within a burst's baseline.
 * Validation in RunConfigData to ensure there are not duplicate products in the baseline/preimagery passed via a Runconfig.yml.
 * Parameters to localization and prep workflows to ensure model source's maximum sequence length (i.e. temporal context length) is correctly assigned
+* Added version floor to `distmetrics` so that this libary includes latest models with `32 x 32` input size and fixes one of the models configurations.
 
 ### Fixed
 * Issues with specifying `model_source` in runconfig or other entry point and the software incorrectly selecting the model context length.
