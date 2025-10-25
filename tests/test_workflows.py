@@ -9,7 +9,8 @@ import rasterio
 from pytest import MonkeyPatch
 from pytest_mock import MockerFixture
 
-from dist_s1.data_models.defaults import DEFAULT_CONFIDENCE_UPPER_LIM
+from dist_s1.data_models.data_utils import get_confirmation_confidence_threshold
+from dist_s1.data_models.defaults import DEFAULT_CONFIRMATION_CONFIDENCE_UPPER_LIM
 from dist_s1.data_models.output_models import DistS1ProductDirectory
 from dist_s1.data_models.runconfig_model import RunConfigData
 from dist_s1.rio_tools import check_profiles_match, open_one_profile
@@ -34,7 +35,7 @@ def test_despeckle_workflow(test_dir: Path, test_data_dir: Path, change_local_di
     df_product = gpd.read_parquet(test_data_dir / 'cropped' / '10SGD__137__2025-01-02_dist_s1_inputs.parquet')
     assert tmp_dir.exists() and tmp_dir.is_dir()
 
-    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir)
+    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, model_source='transformer_optimized')
     config.apply_water_mask = False
 
     run_despeckle_workflow(config)
@@ -73,7 +74,7 @@ def test_burst_disturbance_workflow(
 
     parquet_path = test_10SGD_dist_s1_inputs_parquet_dict['current']
     df_product = gpd.read_parquet(parquet_path)
-    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir)
+    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, model_source='transformer_optimized')
     config.apply_water_mask = False
     config.algo_config.device = 'cpu'
 
@@ -111,6 +112,7 @@ def test_dist_s1_sas_workflow_no_confirmation(
     config = RunConfigData.from_product_df(
         df_product,
         dst_dir=tmp_dir,
+        model_source='transformer_optimized',
     )
     config.apply_water_mask = True
     config.src_water_mask_path = src_water_mask_path
@@ -130,7 +132,8 @@ def test_dist_s1_sas_workflow_no_confirmation(
         tags = src.tags()
         assert tags['low_confidence_alert_threshold'] == '3.5'
         assert tags['high_confidence_alert_threshold'] == '5.5'
-        assert tags['confidence_upper_lim'] == str(DEFAULT_CONFIDENCE_UPPER_LIM)
+        assert tags['confirmation_confidence_upper_lim'] == str(DEFAULT_CONFIRMATION_CONFIDENCE_UPPER_LIM)
+        assert tags['confirmation_confidence_threshold'] == str(get_confirmation_confidence_threshold(3.5))
 
     # a lot of the information can be inspected by `product_data.compare_products(product_data_golden)`
     # if `comp = product_data.compare_products(product_data_golden)`, then
@@ -161,6 +164,7 @@ def test_dist_s1_sas_workflow_with_confirmation(
     config = RunConfigData.from_product_df(
         df_product,
         dst_dir=tmp_dir,
+        model_source='transformer_optimized',
     )
     config.apply_water_mask = True
     config.algo_config.device = 'cpu'
@@ -200,7 +204,7 @@ def test_dist_s1_workflow_interface(
 
     parquet_path = test_10SGD_dist_s1_inputs_parquet_dict['current']
     df_product = gpd.read_parquet(parquet_path)
-    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir)
+    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir, model_source='transformer_optimized')
     config.apply_water_mask = False
 
     # We don't need credentials because we mock the data.
@@ -242,7 +246,7 @@ def test_dist_s1_workflow_interface_external_model(
     model_wts_path = tmp_dir / 'model_weights.pth'
 
     # Create dummy config file (JSON format)
-    model_cfg_content = {'model_type': 'transformer', 'n_heads': 8, 'd_model': 256, 'num_layers': 6, 'max_seq_len': 4}
+    model_cfg_content = {'model_type': 'transformer', 'n_heads': 8, 'd_model': 256, 'num_layers': 6, 'max_seq_len': 10}
     with model_cfg_path.open('w') as f:
         json.dump(model_cfg_content, f)
 
@@ -251,7 +255,9 @@ def test_dist_s1_workflow_interface_external_model(
 
     parquet_path = test_10SGD_dist_s1_inputs_parquet_dict['current']
     df_product = gpd.read_parquet(parquet_path)
-    config = RunConfigData.from_product_df(df_product, dst_dir=tmp_dir)
+    config = RunConfigData.from_product_df(
+        df_product, dst_dir=tmp_dir, model_source='external', model_cfg_path=model_cfg_path
+    )
     config.apply_water_mask = False
 
     # We don't need credentials because we mock the data.
@@ -310,8 +316,8 @@ def test_sequential_confirmation_workflow(
         exclude_consecutive_no_dist=True,  # DEFAULT_EXCLUDE_CONSECUTIVE_NO_DIST
         percent_reset_thresh=10,  # DEFAULT_PERCENT_RESET_THRESH
         no_count_reset_thresh=7,  # DEFAULT_NO_COUNT_RESET_THRESH
-        confidence_upper_lim=32000,  # DEFAULT_CONFIDENCE_UPPER_LIM
-        confidence_thresh=31.5,  # DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD (3**2 * 3.5)
+        confirmation_confidence_upper_lim=32000,  # DEFAULT_CONFIDENCE_UPPER_LIM
+        confirmation_confidence_thresh=None,  # DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD (3**2 * 3.5)
         metric_value_upper_lim=100.0,  # DEFAULT_METRIC_VALUE_UPPER_LIM
         tqdm_enabled=False,  # Disable progress bar for testing
     )

@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.7] - 2025-09-08
+
+### Added
+* Validation in RunConfigData to ensure that the maximum expected context length is not exceeded within a burst's baseline.
+* Validation in RunConfigData to ensure there are not duplicate products in the baseline/preimagery passed via a Runconfig.yml.
+* Parameters to localization and prep workflows to ensure model source's maximum sequence length (i.e. temporal context length) is correctly assigned
+* Added version floor to `distmetrics` so that this libary includes latest models with `32 x 32` input size and fixes one of the models configurations.
+* Exposed all confirmation parameters in confirmation workfows.
+* Dynamically set confirmation thresholds using the product metadata (reading gdal tags) so that these parameters to have to be set by the user
+
+### Removed
+* `zlevel` from gdal metadata to resolve `WARNING  rasterio._env:rio_tools.py:67 CPLE_NotSupported in driver COG does not support creation option ZLEVEL`.
+* Removed manual specification of product tags in `confirm_disturbance_with_prior_product_and_serialize`.
+
+### Fixed
+* Issues with specifying `model_source` in runconfig or other entry point and the software incorrectly selecting the model context length.
+* Incorrect default values were set for confirmation and therefore disturbances were too conservative in many tests. This is simply fixed by ensuring defaults are set using `src/dist_s1/data_models/defaults.py`.
+
+### Changed
+* Updated variables with simply `confidence_thresh` to `confirmation_confidence_threshold` so code was explicit.
+
+
 ## [2.0.6] - 2025-09-08
 
 ### Changed
