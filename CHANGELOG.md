@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.8] - 2025-10-28
+
+### Added
+* Added the `0_generate_golden_dataset.py` - which was erroneously removed.
+
 ## [2.0.7] - 2025-09-08
 
 ### Added
