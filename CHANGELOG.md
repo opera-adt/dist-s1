@@ -11,6 +11,12 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 * Added the `0_generate_golden_dataset.py` - which was erroneously removed.
 
+### Changed
+* Default confirmation and alert thresholds.
+
+### Fixed
+* Dynamic reading of `alert_high_conf_thresh` and `alert_low_conf_thresh` from product did not work  and in sequential confirmation workflow is set to type `float` exclusively.
+
 ## [2.0.7] - 2025-09-08
 
 ### Added
