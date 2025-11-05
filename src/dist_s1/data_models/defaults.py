@@ -41,8 +41,8 @@ DEFAULT_MODEL_DTYPE = 'float32'
 DEFAULT_USE_DATE_ENCODING = False
 
 # Alert Disturbance Settings - Confidence thresholds and limits
-DEFAULT_LOW_CONFIDENCE_ALERT_THRESHOLD = 3.0
-DEFAULT_HIGH_CONFIDENCE_ALERT_THRESHOLD = 5.0
+DEFAULT_LOW_CONFIDENCE_ALERT_THRESHOLD = 2.5
+DEFAULT_HIGH_CONFIDENCE_ALERT_THRESHOLD = 4.5
 
 # Confirmation Settings - Confidence thresholds and limits
 DEFAULT_NO_DAY_LIMIT = 18  # 3 orbit cycles for given geometry with 2 satellite observation
