@@ -45,11 +45,15 @@ DEFAULT_LOW_CONFIDENCE_ALERT_THRESHOLD = 2.5
 DEFAULT_HIGH_CONFIDENCE_ALERT_THRESHOLD = 4.5
 
 # Confirmation Settings - Confidence thresholds and limits
-DEFAULT_NO_DAY_LIMIT = 18  # 3 orbit cycles for given geometry with 2 satellite observation
+DEFAULT_NO_DAY_LIMIT = (
+    30  # If there are no disturbances nor observations within 30 days, the disturbance resets or finishes
+)
 DEFAULT_EXCLUDE_CONSECUTIVE_NO_DIST = True
-DEFAULT_PERCENT_RESET_THRESH = 50  # If more than 50% of the observations are non-disturbed, the disturbance resets.
+DEFAULT_PERCENT_RESET_THRESH = (
+    50  # If more than 50% of the observations are non-disturbed, the disturbance resets. Most intuitive parameter.
+)
 DEFAULT_NO_COUNT_RESET_THRESH = (
-    4  # If the number of non-disturbed observations is greater than 7, the disturbance resets.
+    10  # If the absolute number of non-disturbed observations is greater than 10, then confirmed disturbance resets.
 )
 DEFAULT_MAX_OBS_NUM_YEAR = 253
 DEFAULT_CONFIRMATION_CONFIDENCE_UPPER_LIM = 1_000  # this is non-statistical and non-physical value - accumulated metric
