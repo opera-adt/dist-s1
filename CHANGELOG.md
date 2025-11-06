@@ -11,7 +11,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 * Added the `0_generate_golden_dataset.py` - which was erroneously removed.
 * Color bar in documentation
-* Latest product png.
+* Latest product png for README and docs.
 
 ## [2.0.7] - 2025-09-08
 
