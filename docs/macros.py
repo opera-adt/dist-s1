@@ -206,13 +206,25 @@ def define_env(env: Environment) -> None:
     def generate_disturbance_labels_table() -> str:
         """Generate the disturbance labels table from constants."""
         markdown = '## Disturbance Labels\n\n'
-        markdown += '| Label | Value | Description |\n'
-        markdown += '|-------|-------|-------------|\n'
+        markdown += '| Label | Value | Color | Description |\n'
+        markdown += '|-------|-------|-------|-------------|\n'
 
         for label, value in constants.DISTLABEL2VAL.items():
             # Convert underscores to spaces and title case for display
             display_label = label.replace('_', ' ').title()
-            markdown += f'| {display_label} | `{value}` | {label.replace("_", " ").capitalize()} status |\n'
+
+            # Get color from DIST_STATUS_CMAP and create colored square
+            if value in constants.DIST_STATUS_CMAP:
+                rgba = constants.DIST_STATUS_CMAP[value]
+                r, g, b, a = rgba
+                color_square = f'<span style="display:inline-block;width:20px;height:20px;background-color:rgba({r},{g},{b},{a/255});border:1px solid #ccc;"></span>'
+            else:
+                color_square = 'N/A'
+
+            # Get description from DIST_STATUS_LABEL_DESCRIPTIONS
+            description = constants.DIST_STATUS_LABEL_DESCRIPTIONS.get(value, 'No description available')
+
+            markdown += f'| {display_label} | `{value}` | {color_square} | {description} |\n'
 
         return markdown
 
