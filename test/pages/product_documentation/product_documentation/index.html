@@ -520,6 +520,15 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#status-layer-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      Status Layer Values
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#layer-nodata-values" class="md-nav__link">
     <span class="md-ellipsis">
       Layer NoData Values
@@ -537,15 +546,6 @@
   <a href="#layer-nodata-values_1" class="md-nav__link">
     <span class="md-ellipsis">
       Layer NoData Values
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#disturbance-labels" class="md-nav__link">
-    <span class="md-ellipsis">
-      Disturbance Labels
     </span>
   </a>
   
@@ -739,6 +739,15 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#status-layer-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      Status Layer Values
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#layer-nodata-values" class="md-nav__link">
     <span class="md-ellipsis">
       Layer NoData Values
@@ -756,15 +765,6 @@
   <a href="#layer-nodata-values_1" class="md-nav__link">
     <span class="md-ellipsis">
       Layer NoData Values
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#disturbance-labels" class="md-nav__link">
-    <span class="md-ellipsis">
-      Disturbance Labels
     </span>
   </a>
   
@@ -947,6 +947,87 @@
 </tr>
 </tbody>
 </table>
+<h3 id="status-layer-values">Status Layer Values</h3>
+<p>Disturbance labels are the values in the <code>DIST-GEN-STATUS</code> layer.
+They capture the accumulated changes observed over time.
+There are <em>first</em>, <em>provisional</em>, and <em>confirmed</em> changes.
+These descriptors represent the <em>number</em> of occurances of disturbances over time i.e. 1, 2, and at least 3
+disturbances, respectively.
+There are also <em>high</em> and <em>low</em> descriptors which represents the statistically modeled confidence of the observed
+disturbances.
+The finished descriptor means a confirmed change's value returns to the nominal baseline.</p>
+<table>
+<thead>
+<tr>
+<th>Label</th>
+<th>Value</th>
+<th>Color</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Nodata</td>
+<td><code>255</code></td>
+<td><span style="display:inline-block;width:20px;height:20px;background-color:rgba(0,0,0,1.0);border:1px solid #ccc;"></span></td>
+<td>No data available.</td>
+</tr>
+<tr>
+<td>No Disturbance</td>
+<td><code>0</code></td>
+<td><span style="display:inline-block;width:20px;height:20px;background-color:rgba(18,18,18,1.0);border:1px solid #ccc;"></span></td>
+<td>No disturbance detected.</td>
+</tr>
+<tr>
+<td>First Low Confirmed Disturbance</td>
+<td><code>1</code></td>
+<td><span style="display:inline-block;width:20px;height:20px;background-color:rgba(0,85,85,1.0);border:1px solid #ccc;"></span></td>
+<td>First low disturbance detected.</td>
+</tr>
+<tr>
+<td>Provisional Low Confirmed Disturbance</td>
+<td><code>2</code></td>
+<td><span style="display:inline-block;width:20px;height:20px;background-color:rgba(137,127,78,1.0);border:1px solid #ccc;"></span></td>
+<td>Provisional low disturbance detected meaning 2 disturbances were detected in the allowable confirmation window.</td>
+</tr>
+<tr>
+<td>Confirmedirmed Low Confirmed Disturbance</td>
+<td><code>3</code></td>
+<td><span style="display:inline-block;width:20px;height:20px;background-color:rgba(222,224,67,1.0);border:1px solid #ccc;"></span></td>
+<td>Confirmed low disturbance detected meaning <em>at least</em> 3 disturbances were detected in the allowable confirmation window.</td>
+</tr>
+<tr>
+<td>First High Confirmed Disturbance</td>
+<td><code>4</code></td>
+<td><span style="display:inline-block;width:20px;height:20px;background-color:rgba(0,136,136,1.0);border:1px solid #ccc;"></span></td>
+<td>First high disturbance detected.</td>
+</tr>
+<tr>
+<td>Provisional High Confirmed Disturbance</td>
+<td><code>5</code></td>
+<td><span style="display:inline-block;width:20px;height:20px;background-color:rgba(228,135,39,1.0);border:1px solid #ccc;"></span></td>
+<td>Provisional high disturbance detected meaning 2 disturbances were detected in the allowable confirmation window.</td>
+</tr>
+<tr>
+<td>Confirmedirmed High Confirmed Disturbance</td>
+<td><code>6</code></td>
+<td><span style="display:inline-block;width:20px;height:20px;background-color:rgba(224,27,7,1.0);border:1px solid #ccc;"></span></td>
+<td>Confirmed high disturbance detected meaning <em>at least</em> 3 disturbances were detected in the allowable confirmation window.</td>
+</tr>
+<tr>
+<td>Confirmedirmed Low Confirmed Disturbance Finished</td>
+<td><code>7</code></td>
+<td><span style="display:inline-block;width:20px;height:20px;background-color:rgba(119,119,119,1.0);border:1px solid #ccc;"></span></td>
+<td>Confirmed low disturbance finished meaning the disturbance has been confirmed and the pixel has returned to baseline status.</td>
+</tr>
+<tr>
+<td>Confirmedirmed High Confirmed Disturbance Finished</td>
+<td><code>8</code></td>
+<td><span style="display:inline-block;width:20px;height:20px;background-color:rgba(221,221,221,1.0);border:1px solid #ccc;"></span></td>
+<td>Confirmed high disturbance finished meaning the disturbance has been confirmed and the pixel has returned to baseline status.</td>
+</tr>
+</tbody>
+</table>
 <h3 id="layer-nodata-values">Layer NoData Values</h3>
 <h2 id="layer-nodata-values_1">Layer NoData Values</h2>
 <table>
@@ -1007,68 +1088,6 @@
 <td><code>GEN-DIST-LAST-DATE</code></td>
 <td><code>-1</code></td>
 <td>Latest generic disturbance detection.</td>
-</tr>
-</tbody>
-</table>
-<h2 id="disturbance-labels">Disturbance Labels</h2>
-<table>
-<thead>
-<tr>
-<th>Label</th>
-<th>Value</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Nodata</td>
-<td><code>255</code></td>
-<td>Nodata status</td>
-</tr>
-<tr>
-<td>No Disturbance</td>
-<td><code>0</code></td>
-<td>No disturbance status</td>
-</tr>
-<tr>
-<td>First Low Conf Disturbance</td>
-<td><code>1</code></td>
-<td>First low conf disturbance status</td>
-</tr>
-<tr>
-<td>Provisional Low Conf Disturbance</td>
-<td><code>2</code></td>
-<td>Provisional low conf disturbance status</td>
-</tr>
-<tr>
-<td>Confirmed Low Conf Disturbance</td>
-<td><code>3</code></td>
-<td>Confirmed low conf disturbance status</td>
-</tr>
-<tr>
-<td>First High Conf Disturbance</td>
-<td><code>4</code></td>
-<td>First high conf disturbance status</td>
-</tr>
-<tr>
-<td>Provisional High Conf Disturbance</td>
-<td><code>5</code></td>
-<td>Provisional high conf disturbance status</td>
-</tr>
-<tr>
-<td>Confirmed High Conf Disturbance</td>
-<td><code>6</code></td>
-<td>Confirmed high conf disturbance status</td>
-</tr>
-<tr>
-<td>Confirmed Low Conf Disturbance Finished</td>
-<td><code>7</code></td>
-<td>Confirmed low conf disturbance finished status</td>
-</tr>
-<tr>
-<td>Confirmed High Conf Disturbance Finished</td>
-<td><code>8</code></td>
-<td>Confirmed high conf disturbance finished status</td>
 </tr>
 </tbody>
 </table>
