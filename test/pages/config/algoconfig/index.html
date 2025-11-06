@@ -721,14 +721,14 @@
 <tr>
 <td><code>percent_reset_thresh</code></td>
 <td><code>int</code></td>
-<td>10</td>
+<td>50</td>
 <td>No</td>
 <td>Precentage number threshold to reset disturbance. Values below <code>percent_reset_thresh</code> will reset disturbance.</td>
 </tr>
 <tr>
 <td><code>no_count_reset_thresh</code></td>
 <td><code>int</code></td>
-<td>7</td>
+<td>10</td>
 <td>No</td>
 <td>If the number of non-disturbed observations <code>prevnocount</code> is above <code>nocount_reset_thresh</code> disturbance will reset.</td>
 </tr>
@@ -742,7 +742,7 @@
 <tr>
 <td><code>confirmation_confidence_upper_lim</code></td>
 <td><code>int</code></td>
-<td>32000</td>
+<td>1000</td>
 <td>No</td>
 <td>Confidence upper limit for confirmation. Confidence is an accumulation of the metric over time.</td>
 </tr>
@@ -756,7 +756,7 @@
 <tr>
 <td><code>metric_value_upper_lim</code></td>
 <td><code>float</code></td>
-<td>100.0</td>
+<td>10</td>
 <td>No</td>
 <td>Metric upper limit set during confirmation</td>
 </tr>
