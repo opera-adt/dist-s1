@@ -223,7 +223,7 @@ def define_env(env: Environment) -> None:
 
         for label, value in constants.DISTLABEL2VAL.items():
             # Convert underscores to spaces and title case for display
-            display_label = label.replace('_', ' ').title().replace('Conf', 'Confirmed')
+            display_label = label.replace('conf_', 'confidence').replace('_', ' ').title()
 
             # Get color from DIST_STATUS_CMAP and create colored square
             if value in constants.DIST_STATUS_CMAP:

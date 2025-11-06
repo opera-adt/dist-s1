@@ -12,6 +12,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * Added the `0_generate_golden_dataset.py` - which was erroneously removed.
 * Color bar in documentation
 * Latest product png for README and docs.
+* Better descriptions and names for disturbance labels. Including a description of the label table too.
 
 ## [2.0.7] - 2025-09-08
 
