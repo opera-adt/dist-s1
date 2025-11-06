@@ -312,6 +312,8 @@ def test_sequential_confirmation_workflow(
     run_sequential_confirmation_of_dist_products_workflow(
         directory_of_dist_s1_products=unconfirmed_products_chile_fire_dir,
         dst_dist_product_parent=tmp_sequential_dir,
+        alert_low_conf_thresh=2.5,  # these are the alert thresholds used in the golden dataset
+        alert_high_conf_thresh=4.5,  # these are the alert thresholds used in the golden dataset
         no_day_limit=30,  # DEFAULT_NO_DAY_LIMIT
         exclude_consecutive_no_dist=True,  # DEFAULT_EXCLUDE_CONSECUTIVE_NO_DIST
         percent_reset_thresh=10,  # DEFAULT_PERCENT_RESET_THRESH
