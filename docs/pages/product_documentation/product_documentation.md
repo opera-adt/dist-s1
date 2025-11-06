@@ -73,8 +73,11 @@ OPERA_L3_DIST-ALERT-S1_T10SGD_20250102T015857Z_20250806T145521Z_S1_30_v0.1/
 
 {{ generate_constants_table(constants.TIF_LAYER_DTYPES, "DIST-S1 Product Layers", "Data Type") }}
 
+### Status Layer Values
+
+{{ generate_disturbance_labels_table() }}
+
+
 ### Layer NoData Values
 
 {{ generate_constants_table(constants.TIF_LAYER_NODATA_VALUES, "Layer NoData Values", "NoData Value") }}
-
-{{ generate_disturbance_labels_table() }}
