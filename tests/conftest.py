@@ -78,6 +78,14 @@ def cropped_10SGD_dataset_runconfig() -> Path:
 
 
 @pytest.fixture
+def cropped_10SGD_dataset_runconfig_with_20_preimages() -> Path:
+    """Fixture to provide the path to the test_out directory."""
+    test_dir = Path(__file__)
+    runconfig_path = test_dir.parent / 'test_data' / 'cropped' / 'sample_runconfig_10SGD_cropped_20_preimages.yml'
+    return runconfig_path
+
+
+@pytest.fixture
 def cli_runner() -> CliRunner:
     """Fixture to provide a Click test runner."""
     return CliRunner()

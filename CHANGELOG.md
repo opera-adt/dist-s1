@@ -10,6 +10,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 * Added the `0_generate_golden_dataset.py` - which was erroneously removed.
+* Resolves https://github.com/opera-adt/dist-s1/issues/185 - needed to switch order of validation
 
 ## [2.0.7] - 2025-09-08
 
