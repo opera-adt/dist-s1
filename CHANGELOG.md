@@ -19,6 +19,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 * Dynamic reading of `alert_high_conf_thresh` and `alert_low_conf_thresh` from product did not work  and in sequential confirmation workflow is set to type `float` exclusively.
+*  Resolves https://github.com/opera-adt/dist-s1/issues/185 - needed to switch order of validation as indicated in the issue ticket - model source and context length need to be created in the AlgoConfig object before they can be used by runconfig.
 
 ## [2.0.7] - 2025-09-08
 

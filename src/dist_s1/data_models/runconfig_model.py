@@ -373,6 +373,7 @@ class RunConfigData(BaseModel):
         model_context_length: int | None = None,
         delta_lookback_days_mw: list[int] | None = None,
         n_anniversaries_for_mw: int = DEFAULT_N_ANNIVERSARIES_FOR_MW,
+        device: str = 'cpu',  # to avoid annoying validation errors on GPU devices
     ) -> 'RunConfigData':
         """Transform input table from dist-s1-enumerator into RunConfigData object.
 
@@ -390,6 +391,8 @@ class RunConfigData(BaseModel):
             model_context_length=model_context_length,
             model_source=model_source,
             model_cfg_path=model_cfg_path,
+            n_anniversaries_for_mw=n_anniversaries_for_mw,
+            device=device,
         )
 
         runconfig_data = RunConfigData(
@@ -618,8 +621,24 @@ class RunConfigData(BaseModel):
         return self
 
     @model_validator(mode='after')
+    def handle_algo_config_loading(self) -> 'RunConfigData':
+        """
+        Load the algo config from the yaml file if it is not already loaded.
+
+        This must occur before any validation of inputs that require algo config!
+        This includes `validate_model_context_length`, `validate_unique_inputs`, and
+        `validate_single_pass_for_post_data`.
+        """
+        if self.algo_config_path is not None and self._algo_config_loaded is False:
+            algo_config_data = AlgoConfigData.from_yaml(self.algo_config_path)
+            self.algo_config.__dict__.update(algo_config_data.model_dump())
+            self._algo_config_loaded = True
+        return self
+
+    @model_validator(mode='after')
     def validate_model_context_length(self) -> 'RunConfigData':
         context_length = self.algo_config.model_context_length
+        print(f'context_length: {context_length}')
         if context_length > DEFAULT_MODEL_CONTEXT_LENGTH_MAXIMUM:
             raise ValueError(
                 f'The model context length is greater than maximum allowed:{DEFAULT_MODEL_CONTEXT_LENGTH_MAXIMUM}'
@@ -656,14 +675,6 @@ class RunConfigData(BaseModel):
                 'The minimum acquisition date is more than 20 minutes greaterthan the maximum acquisition date:'
                 f'{min_acq_date} - {max_acq_date}'
             )
-        return self
-
-    @model_validator(mode='after')
-    def handle_algo_config_loading(self) -> 'RunConfigData':
-        if self.algo_config_path is not None and self._algo_config_loaded is False:
-            algo_config_data = AlgoConfigData.from_yaml(self.algo_config_path)
-            self.algo_config.__dict__.update(algo_config_data.model_dump())
-            self._algo_config_loaded = True
         return self
 
     def __setattr__(self, name: str, value: object) -> None:

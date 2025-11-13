@@ -8,7 +8,7 @@ The workflow will run much, much faster.
 
 We do a considerable amount of testing and since our workflow is IO heavy, we have to be careful in regards to providing paths to the workflow.
 
-This data generation of how we can crop this data is shown here: https://github.com/OPERA-Cal-Val/dist-s1-research/blob/dev/marshak/S_create_test_data/Generate_Test_Data.ipynb 
+This data generation of how we can crop this data is shown here: https://github.com/OPERA-Cal-Val/dist-s1-research/blob/dev/marshak/S_create_test_data/1_Generate_Test_Data.ipynb 
 The data is then transferred to `test_data/cropped`.
 
 

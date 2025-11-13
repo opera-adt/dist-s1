@@ -6,12 +6,51 @@ from pathlib import Path
 import geopandas as gpd
 import pytest
 from click.testing import CliRunner
+from pydantic import ValidationError
 from pytest import MonkeyPatch
 from pytest_mock import MockerFixture
 
 from dist_s1.__main__ import cli as dist_s1
 from dist_s1.data_models.output_models import DistS1ProductDirectory
 from dist_s1.data_models.runconfig_model import RunConfigData
+
+
+@pytest.mark.parametrize('model_source', ['transformer_v1_32', 'transformer_optimized'])
+def test_dist_s1_sas_interface(
+    cli_runner: CliRunner,
+    test_dir: Path,
+    change_local_dir: Callable[[Path], None],
+    cropped_10SGD_dataset_runconfig_with_20_preimages: Path,
+    mocker: MockerFixture,
+    model_source: str,
+) -> None:
+    # Store original working directory
+    change_local_dir(test_dir)
+    tmp_dir = test_dir / 'tmp'
+    if tmp_dir.exists():
+        shutil.rmtree(tmp_dir)
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    # Load and modify runconfig - not the paths are relative to the test_dir
+    runconfig_data = RunConfigData.from_yaml(cropped_10SGD_dataset_runconfig_with_20_preimages)
+
+    tmp_runconfig_yml_path = tmp_dir / 'runconfig.yml'
+    tmp_algo_params_yml_path = tmp_dir / 'algo_params.yml'
+    if model_source == 'transformer_v1_32':
+        runconfig_data.to_yaml(tmp_runconfig_yml_path)
+        result = cli_runner.invoke(
+            dist_s1, ['run_sas', '--run_config_path', str(tmp_runconfig_yml_path)], catch_exceptions=False
+        )
+        assert result.exit_code == 0
+    else:
+        runconfig_data.algo_config.model_context_length = 10
+        runconfig_data.algo_config.model_source = model_source
+        # The error should be raised because there are 20 baseline images and it's too many!
+        # Validation occurs because the above assigns to an attributes of algo config not runconfig.
+        with pytest.raises(ValidationError, match=r'The following bursts have more than model'):
+            runconfig_data.to_yaml(tmp_runconfig_yml_path, algo_param_path=tmp_algo_params_yml_path)
+
+    shutil.rmtree(tmp_dir)
 
 
 def test_dist_s1_sas_main(
@@ -103,6 +142,7 @@ def test_dist_s1_sas_main(
 
 
 @pytest.mark.parametrize('device', ['best', 'cpu'])
+@pytest.mark.parametrize('model_source', ['transformer_optimized', 'transformer_optimized_fine'])
 def test_dist_s1_main_interface(
     cli_runner: CliRunner,
     test_dir: Path,
@@ -111,6 +151,7 @@ def test_dist_s1_main_interface(
     mocker: MockerFixture,
     monkeypatch: MonkeyPatch,
     device: str,
+    model_source: str,
 ) -> None:
     """Tests the main dist-s1 CLI interface (not the outputs)."""
     # Store original working directory
@@ -136,6 +177,8 @@ def test_dist_s1_main_interface(
             'run',
             '--mgrs_tile_id',
             '10SGD',
+            '--model_source',
+            model_source,
             '--post_date',
             '2025-01-02',
             '--track_number',
