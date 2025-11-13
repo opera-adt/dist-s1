@@ -45,14 +45,22 @@ DEFAULT_LOW_CONFIDENCE_ALERT_THRESHOLD = 2.5
 DEFAULT_HIGH_CONFIDENCE_ALERT_THRESHOLD = 4.5
 
 # Confirmation Settings - Confidence thresholds and limits
-DEFAULT_NO_DAY_LIMIT = 30
+DEFAULT_NO_DAY_LIMIT = (
+    30  # If there are no disturbances nor observations within 30 days, the disturbance resets or finishes
+)
 DEFAULT_EXCLUDE_CONSECUTIVE_NO_DIST = True
-DEFAULT_PERCENT_RESET_THRESH = 10
-DEFAULT_NO_COUNT_RESET_THRESH = 7
+DEFAULT_PERCENT_RESET_THRESH = (
+    50  # If more than 50% of the observations are non-disturbed, the disturbance resets. Most intuitive parameter.
+)
+DEFAULT_NO_COUNT_RESET_THRESH = (
+    10  # If the absolute number of non-disturbed observations is greater than 10, then confirmed disturbance resets.
+)
 DEFAULT_MAX_OBS_NUM_YEAR = 253
-DEFAULT_CONFIRMATION_CONFIDENCE_UPPER_LIM = 32000
-DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD = None  # 3**2 * 2.5  # 22.5
-DEFAULT_METRIC_VALUE_UPPER_LIM = 100.0
+DEFAULT_CONFIRMATION_CONFIDENCE_UPPER_LIM = 1_000  # this is non-statistical and non-physical value - accumulated metric
+DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD = (
+    None  # dynamically set to (DEFAULT_N_CONFIRMATION_OBSERVATIONS**2) * ALERT_LOW_CONFIDENCE_THRESHOLD
+)
+DEFAULT_METRIC_VALUE_UPPER_LIM = 10
 DEFAULT_N_CONFIRMATION_OBSERVATIONS = 3
 
 

@@ -277,15 +277,15 @@ def confirm_disturbance_with_prior_product_and_serialize(
     current_dist_s1_product: DistS1ProductDirectory | str | Path,
     prior_dist_s1_product: DistS1ProductDirectory | str | Path,
     dst_dist_product_parent: str | Path | None,
-    alert_low_conf_thresh: float | None = DEFAULT_LOW_CONFIDENCE_ALERT_THRESHOLD,
-    alert_high_conf_thresh: float | None = DEFAULT_HIGH_CONFIDENCE_ALERT_THRESHOLD,
+    alert_low_conf_thresh: float = DEFAULT_LOW_CONFIDENCE_ALERT_THRESHOLD,
+    alert_high_conf_thresh: float = DEFAULT_HIGH_CONFIDENCE_ALERT_THRESHOLD,
     exclude_consecutive_no_dist: bool = False,
     percent_reset_thresh: int = DEFAULT_PERCENT_RESET_THRESH,
     no_count_reset_thresh: int = DEFAULT_NO_COUNT_RESET_THRESH,
     no_day_limit: int = DEFAULT_NO_DAY_LIMIT,
     max_obs_num_year: int = DEFAULT_MAX_OBS_NUM_YEAR,
     confirmation_confidence_upper_lim: int = DEFAULT_CONFIRMATION_CONFIDENCE_UPPER_LIM,
-    confirmation_confidence_thresh: float = DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
+    confirmation_confidence_thresh: float | None = DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
     metric_value_upper_lim: float = DEFAULT_METRIC_VALUE_UPPER_LIM,
 ) -> DistS1ProductDirectory:
     """Perform the confirmation and packaging of a DIST-S1 product and the prior product."""
@@ -301,35 +301,16 @@ def confirm_disturbance_with_prior_product_and_serialize(
     if product_tags is None:
         raise ValueError('No product tags found in current product; not using correctly formatted product.')
 
-    # We dynamically set the confirmation thresholds according to the product
-    # We read these thresholds from the gdal tag metadata.
-    tags_to_set = [
-        'low_confidence_alert_threshold',
-        'high_confidence_alert_threshold',
-        'confirmation_confidence_threshold',
-    ]
-    vars_to_set = [alert_low_conf_thresh, alert_high_conf_thresh, confirmation_confidence_thresh]
-    for tag, var in zip(tags_to_set, vars_to_set):
-        if var is None:
-            if tag not in product_tags:
-                raise ValueError(f'No {tag} found in product tags; not using correctly formatted product.')
-            if tag != 'confirmation_confidence_threshold':
-                var = float(product_tags[tag])
-    if product_tags['confirmation_confidence_threshold'] is None:
-        confirmation_confidence_thresh = get_confirmation_confidence_threshold(alert_low_conf_thresh)
-    else:
-        confirmation_confidence_thresh = float(product_tags['confirmation_confidence_threshold'])
-
-        # Raise warning if the confidence threshold assignment (explicit or dyanmic) mathces
-        # the expected value computed from the alert low confidence threshold.
-        expected_conf_thresh = get_confirmation_confidence_threshold(alert_low_conf_thresh)
-        if expected_conf_thresh != confirmation_confidence_thresh:
-            warn(
-                f'The `confidence_thresh` (for confirmation) has value {confirmation_confidence_thresh} '
-                f'and does not match expected value {expected_conf_thresh} computed from'
-                f'the `alert_low_conf_thresh` ({alert_low_conf_thresh}) via (alert_low_conf_thresh ** 2) '
-                '* 3.'
-            )
+    expected_confirmation_confidence_thresh = get_confirmation_confidence_threshold(alert_low_conf_thresh)
+    if confirmation_confidence_thresh is None:
+        confirmation_confidence_thresh = expected_confirmation_confidence_thresh
+    if confirmation_confidence_thresh != expected_confirmation_confidence_thresh:
+        warn(
+            f'The `confirmation_confidence_thresh` has value {confirmation_confidence_thresh} '
+            f'and does not match expected value {expected_confirmation_confidence_thresh} computed from'
+            f'the `alert_low_conf_thresh` ({alert_low_conf_thresh}) via (alert_low_conf_thresh ** 2) '
+            '* 3, where the alert_low_conf_thresh is explicitly set.'
+        )
 
     if dst_dist_product_parent is None:
         dst_dist_product_parent = current_dist_s1_product.product_dir_path.parent

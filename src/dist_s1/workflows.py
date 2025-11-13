@@ -343,8 +343,8 @@ def run_confirmation_of_dist_product_workflow(
 def run_sequential_confirmation_of_dist_products_workflow(
     directory_of_dist_s1_products: Path | str,
     dst_dist_product_parent: Path | str,
-    alert_low_conf_thresh: float | None = DEFAULT_LOW_CONFIDENCE_ALERT_THRESHOLD,
-    alert_high_conf_thresh: float | None = DEFAULT_HIGH_CONFIDENCE_ALERT_THRESHOLD,
+    alert_low_conf_thresh: float = DEFAULT_LOW_CONFIDENCE_ALERT_THRESHOLD,
+    alert_high_conf_thresh: float = DEFAULT_HIGH_CONFIDENCE_ALERT_THRESHOLD,
     no_day_limit: int = DEFAULT_NO_DAY_LIMIT,
     exclude_consecutive_no_dist: bool = DEFAULT_EXCLUDE_CONSECUTIVE_NO_DIST,
     percent_reset_thresh: int = DEFAULT_PERCENT_RESET_THRESH,
