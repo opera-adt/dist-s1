@@ -16,6 +16,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 * Default confirmation and alert thresholds.
+* Default stride for transformer inference is set to 7 (from 16).
 
 ### Fixed
 * Dynamic reading of `alert_high_conf_thresh` and `alert_low_conf_thresh` from product did not work  and in sequential confirmation workflow is set to type `float` exclusively.
