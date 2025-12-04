@@ -9,6 +9,11 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [2.0.8] - 2025-10-28
 
 ### Added
+* Remove extra print statement (each new assignment re-validates and so there are lots of extra prints)
+
+## [2.0.8] - 2025-10-28
+
+### Added
 * Added the `0_generate_golden_dataset.py` - which was erroneously removed.
 * Color bar in documentation
 * Latest product png for README and docs!
