@@ -1,6 +1,6 @@
 ## DIST-S1 Documentation
 
-![sample_product](assets/subset_OPERA_L3_DIST-ALERT-S1_T11SLT_20250121T135246Z_20250205T190752Z_S1_30_v0.1.png)
+![sample_product](assets/subset_los_angeles_fire_2025_03_03.png)
 
 Welcome! This site documents the DIST-S1 package. The documentation is focused two important aspects of the `DIST-S1` package:
 

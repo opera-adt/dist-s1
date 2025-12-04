@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.8] - 2025-10-28
+
+### Added
+* Added the `0_generate_golden_dataset.py` - which was erroneously removed.
+* Color bar in documentation
+* Latest product png for README and docs!
+* Better descriptions and names for disturbance labels. Including a description of the label table too.
+
+### Changed
+* Default confirmation and alert thresholds.
+* Default stride for transformer inference is set to 7 (from 16).
+
+### Fixed
+* Dynamic reading of `alert_high_conf_thresh` and `alert_low_conf_thresh` from product did not work  and in sequential confirmation workflow is set to type `float` exclusively.
+*  Resolves https://github.com/opera-adt/dist-s1/issues/185 - needed to switch order of validation as indicated in the issue ticket - model source and context length need to be created in the AlgoConfig object before they can be used by runconfig.
+
 ## [2.0.7] - 2025-09-08
 
 ### Added

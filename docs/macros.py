@@ -17,6 +17,18 @@ from dist_s1.data_models.output_models import ProductNameData
 from dist_s1.data_models.runconfig_model import RunConfigData
 
 
+label_preface = """
+Disturbance labels are the values in the `DIST-GEN-STATUS` layer.
+They capture the accumulated changes observed over time.
+There are *first*, *provisional*, and *confirmed* changes.
+These descriptors represent the *number* of occurances of disturbances over time i.e. 1, 2, and at least 3
+disturbances, respectively.
+There are also *high* and *low* descriptors which represents the statistically modeled confidence of the observed
+disturbances.
+The finished descriptor means a confirmed change's value returns to the nominal baseline.
+"""
+
+
 def define_env(env: Environment) -> None:
     """Define the macro environment for MkDocs."""
     # Make modules available in templates
@@ -205,14 +217,26 @@ def define_env(env: Environment) -> None:
     @env.macro
     def generate_disturbance_labels_table() -> str:
         """Generate the disturbance labels table from constants."""
-        markdown = '## Disturbance Labels\n\n'
-        markdown += '| Label | Value | Description |\n'
-        markdown += '|-------|-------|-------------|\n'
+        markdown = f'{label_preface}\n\n'
+        markdown += '| Label | Value | Color | Description |\n'
+        markdown += '|-------|-------|-------|-------------|\n'
 
         for label, value in constants.DISTLABEL2VAL.items():
             # Convert underscores to spaces and title case for display
-            display_label = label.replace('_', ' ').title()
-            markdown += f'| {display_label} | `{value}` | {label.replace("_", " ").capitalize()} status |\n'
+            display_label = label.replace('conf_', 'confidence_').replace('_', ' ').title()
+
+            # Get color from DIST_STATUS_CMAP and create colored square
+            if value in constants.DIST_STATUS_CMAP:
+                rgba = constants.DIST_STATUS_CMAP[value]
+                r, g, b, a = rgba
+                color_square = f'<span style="display:inline-block;width:20px;height:20px;background-color:rgba({r},{g},{b},{a / 255});border:1px solid #ccc;"></span>'  # noqa: E501
+            else:
+                color_square = 'N/A'
+
+            # Get description from DIST_STATUS_LABEL_DESCRIPTIONS
+            description = constants.DIST_STATUS_LABEL_DESCRIPTIONS.get(value, 'No description available')
+
+            markdown += f'| {display_label} | `{value}` | {color_square} | {description} |\n'
 
         return markdown
 

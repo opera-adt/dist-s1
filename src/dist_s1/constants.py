@@ -89,3 +89,22 @@ DIST_STATUS_CMAP = {
     8: (221, 221, 221, 255),  # Confirmed high finished
     255: (0, 0, 0, 255),  # No data
 }
+
+DIST_STATUS_LABEL_DESCRIPTIONS = {
+    0: 'No disturbance detected.',
+    1: 'First low disturbance detected.',
+    2: 'Provisional low disturbance detected meaning 2 disturbances were detected in the allowable '
+    'confirmation window.',
+    3: 'Confirmed low disturbance detected meaning *at least* 3 disturbances were detected in the allowable '
+    'confirmation window.',
+    4: 'First high disturbance detected.',
+    5: 'Provisional high disturbance detected meaning 2 disturbances were detected in the allowable '
+    'confirmation window.',
+    6: 'Confirmed high disturbance detected meaning *at least* 3 disturbances were detected in the allowable '
+    'confirmation window.',
+    7: 'Confirmed low disturbance finished meaning the disturbance has been confirmed and the pixel has returned to '
+    'baseline status.',
+    8: 'Confirmed high disturbance finished meaning the disturbance has been confirmed and the pixel has returned to '
+    'baseline status.',
+    255: 'No data available.',
+}
