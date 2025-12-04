@@ -392,7 +392,6 @@ class AlgoConfigData(BaseModel):
                 f'The assigned model_context_length ({self.model_context_length}) is greater than the maximum allowed '
                 f'({DEFAULT_MODEL_CONTEXT_LENGTH_MAXIMUM}).'
             )
-        print(f'model_context_length: {self.model_context_length}')
         return self
 
     @model_validator(mode='after')

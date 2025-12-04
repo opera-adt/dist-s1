@@ -638,7 +638,6 @@ class RunConfigData(BaseModel):
     @model_validator(mode='after')
     def validate_model_context_length(self) -> 'RunConfigData':
         context_length = self.algo_config.model_context_length
-        print(f'context_length: {context_length}')
         if context_length > DEFAULT_MODEL_CONTEXT_LENGTH_MAXIMUM:
             raise ValueError(
                 f'The model context length is greater than maximum allowed:{DEFAULT_MODEL_CONTEXT_LENGTH_MAXIMUM}'
