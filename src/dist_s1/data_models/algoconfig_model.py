@@ -1,3 +1,4 @@
+import json
 import warnings
 from pathlib import Path
 
@@ -5,7 +6,7 @@ import torch
 import torch.multiprocessing as mp
 import yaml
 from distmetrics import get_device
-from distmetrics.model_load import ALLOWED_MODELS
+from distmetrics.model_load import ALLOWED_MODELS, load_library_model_config
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -421,6 +422,19 @@ class AlgoConfigData(BaseModel):
         if self.max_pre_imgs_per_burst_mw is None:
             self.max_pre_imgs_per_burst_mw = get_max_pre_imgs_per_burst_mw(
                 self.model_context_length, self.n_anniversaries_for_mw
+            )
+        return self
+
+    @model_validator(mode='after')
+    def validate_stride_for_norm_param_estimation(self) -> 'AlgoConfigData':
+        if self.model_source == 'external':
+            config = json.load(self.model_cfg_path)
+        else:
+            config = load_library_model_config(self.model_source)
+        if config['input_size'] < self.norm_param_estimation_stride:
+            raise ValueError(
+                f'The assigned stride_for_norm_param_estimation ({self.norm_param_estimation_stride}) is greater than '
+                f'the model input size ({config["input_size"]}).'
             )
         return self
 
