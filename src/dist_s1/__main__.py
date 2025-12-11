@@ -352,6 +352,14 @@ def common_options_for_dist_workflows(func: Callable) -> Callable:
         default=None,
         help='Path to prior DIST-S1 product. If provided, will be used for confirmation.',
     )
+    @click.option(
+        '--model_context_length',
+        type=int,
+        required=False,
+        default=None,
+        help='Model context length. If not provided, will be calculated using max allowed by model source '
+        '(though not more than 20).',
+    )
     @functools.wraps(func)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         return func(*args, **kwargs)
@@ -413,6 +421,7 @@ def run_sas_prep(
     confidence_upper_lim: int,
     confirmation_confidence_threshold: float | None,
     metric_value_upper_lim: float,
+    model_context_length: int | None,
 ) -> None:
     """Run SAS prep workflow."""
     run_dist_s1_sas_prep_workflow(
@@ -596,6 +605,7 @@ def run(
     confidence_upper_lim: int,
     confirmation_confidence_threshold: float | None,
     metric_value_upper_lim: float,
+    model_context_length: int | None,
 ) -> str:
     """Localize data and run dist_s1_workflow."""
     return run_dist_s1_workflow(
@@ -639,6 +649,7 @@ def run(
         confidence_upper_lim=confidence_upper_lim,
         confirmation_confidence_threshold=confirmation_confidence_threshold,
         metric_value_upper_lim=metric_value_upper_lim,
+        model_context_length=model_context_length,
     )
 
 

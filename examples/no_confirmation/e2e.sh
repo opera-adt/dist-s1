@@ -5,5 +5,6 @@ dist-s1 run \
     --dst_dir '../../notebooks/los-angeles' \
     --memory_strategy 'low' \
     --device 'cpu' \
+    --model_source 'transformer_v1_32' \
     --n_workers_for_norm_param_estimation 5 \
     --apply_water_mask true \

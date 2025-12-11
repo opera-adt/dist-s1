@@ -149,3 +149,6 @@ claude.md
 # Tests not tracked
 _tests_not_tracked/
 tests/tmp*/
+
+# Memory data files
+*.dat
