@@ -356,8 +356,8 @@ def common_options_for_dist_workflows(func: Callable) -> Callable:
         '--model_context_length',
         type=int,
         required=False,
-        default=None,
-        help='Model context length. If not provided, will be calculated using max allowed by model source '
+        default=-1,
+        help='Model context length. If not provided or set to -1, will be calculated using max allowed by model source '
         '(though not more than 20).',
     )
     @functools.wraps(func)
@@ -421,9 +421,11 @@ def run_sas_prep(
     confidence_upper_lim: int,
     confirmation_confidence_threshold: float | None,
     metric_value_upper_lim: float,
-    model_context_length: int | None,
+    model_context_length: int,
 ) -> None:
     """Run SAS prep workflow."""
+    if model_context_length == -1:
+        model_context_length = None
     run_dist_s1_sas_prep_workflow(
         mgrs_tile_id,
         post_date,
@@ -605,9 +607,11 @@ def run(
     confidence_upper_lim: int,
     confirmation_confidence_threshold: float | None,
     metric_value_upper_lim: float,
-    model_context_length: int | None,
+    model_context_length: int,
 ) -> str:
     """Localize data and run dist_s1_workflow."""
+    if model_context_length == -1:
+        model_context_length = None
     return run_dist_s1_workflow(
         mgrs_tile_id,
         post_date,
