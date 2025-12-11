@@ -428,7 +428,8 @@ class AlgoConfigData(BaseModel):
     @model_validator(mode='after')
     def validate_stride_for_norm_param_estimation(self) -> 'AlgoConfigData':
         if self.model_source == 'external':
-            config = json.load(self.model_cfg_path)
+            with Path(self.model_cfg_path).open() as f:
+                config = json.load(f)
         else:
             config = load_library_model_config(self.model_source)
         if config['input_size'] < self.stride_for_norm_param_estimation:
