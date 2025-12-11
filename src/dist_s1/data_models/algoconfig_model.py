@@ -431,7 +431,7 @@ class AlgoConfigData(BaseModel):
             config = json.load(self.model_cfg_path)
         else:
             config = load_library_model_config(self.model_source)
-        if config['input_size'] < self.norm_param_estimation_stride:
+        if config['input_size'] < self.stride_for_norm_param_estimation:
             raise ValueError(
                 f'The assigned stride_for_norm_param_estimation ({self.norm_param_estimation_stride}) is greater than '
                 f'the model input size ({config["input_size"]}).'
