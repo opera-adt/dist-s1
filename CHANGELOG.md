@@ -10,6 +10,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 * Remove extra print statement (each new assignment re-validates and so there are lots of extra prints)
+* CLI/workflow parameters to manually set model context length
 
 ## [2.0.8] - 2025-10-28
 
