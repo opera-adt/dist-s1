@@ -91,7 +91,7 @@ class AlgoConfigData(BaseModel):
     stride_for_norm_param_estimation: int = Field(
         default=DEFAULT_STRIDE_FOR_NORM_PARAM_ESTIMATION,
         ge=1,
-        le=16,
+        le=32,
         description='Stride for norm parameter estimation from the baseline. '
         'Utilizing a larger stride will improve metric accuracy and utilize more memory.'
         'Memory usage scales inverse quadratically with stride. That is, '
