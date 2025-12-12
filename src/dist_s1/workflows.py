@@ -470,8 +470,10 @@ def run_dist_s1_sas_prep_workflow(
     confirmation_confidence_upper_lim: int = DEFAULT_CONFIRMATION_CONFIDENCE_UPPER_LIM,
     confirmation_confidence_threshold: float = DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
     metric_value_upper_lim: float = DEFAULT_METRIC_VALUE_UPPER_LIM,
+    model_context_length: int | None = None,
 ) -> RunConfigData:
-    model_context_length = get_max_context_length_from_model_source(model_source, model_cfg_path)
+    if model_context_length is None:
+        model_context_length = get_max_context_length_from_model_source(model_source, model_cfg_path)
     if max_pre_imgs_per_burst_mw is None:
         max_pre_imgs_per_burst_mw = get_max_pre_imgs_per_burst_mw(model_context_length, n_anniversaries_for_mw)
     if delta_lookback_days_mw is None:
@@ -592,6 +594,7 @@ def run_dist_s1_workflow(
     confidence_upper_lim: int = DEFAULT_CONFIRMATION_CONFIDENCE_UPPER_LIM,
     confirmation_confidence_threshold: float = DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
     metric_value_upper_lim: float = DEFAULT_METRIC_VALUE_UPPER_LIM,
+    model_context_length: int | None = None,
 ) -> Path:
     run_config = run_dist_s1_sas_prep_workflow(
         mgrs_tile_id,
@@ -638,6 +641,7 @@ def run_dist_s1_workflow(
         confirmation_confidence_upper_lim=confidence_upper_lim,
         confirmation_confidence_threshold=confirmation_confidence_threshold,
         metric_value_upper_lim=metric_value_upper_lim,
+        model_context_length=model_context_length,
     )
     _ = run_dist_s1_sas_workflow(run_config)
 

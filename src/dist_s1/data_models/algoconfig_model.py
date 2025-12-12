@@ -1,3 +1,4 @@
+import json
 import warnings
 from pathlib import Path
 
@@ -5,7 +6,7 @@ import torch
 import torch.multiprocessing as mp
 import yaml
 from distmetrics import get_device
-from distmetrics.model_load import ALLOWED_MODELS
+from distmetrics.model_load import ALLOWED_MODELS, load_library_model_config
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -91,7 +92,7 @@ class AlgoConfigData(BaseModel):
     stride_for_norm_param_estimation: int = Field(
         default=DEFAULT_STRIDE_FOR_NORM_PARAM_ESTIMATION,
         ge=1,
-        le=16,
+        le=32,
         description='Stride for norm parameter estimation from the baseline. '
         'Utilizing a larger stride will improve metric accuracy and utilize more memory.'
         'Memory usage scales inverse quadratically with stride. That is, '
@@ -392,7 +393,6 @@ class AlgoConfigData(BaseModel):
                 f'The assigned model_context_length ({self.model_context_length}) is greater than the maximum allowed '
                 f'({DEFAULT_MODEL_CONTEXT_LENGTH_MAXIMUM}).'
             )
-        print(f'model_context_length: {self.model_context_length}')
         return self
 
     @model_validator(mode='after')
@@ -422,6 +422,20 @@ class AlgoConfigData(BaseModel):
         if self.max_pre_imgs_per_burst_mw is None:
             self.max_pre_imgs_per_burst_mw = get_max_pre_imgs_per_burst_mw(
                 self.model_context_length, self.n_anniversaries_for_mw
+            )
+        return self
+
+    @model_validator(mode='after')
+    def validate_stride_for_norm_param_estimation(self) -> 'AlgoConfigData':
+        if self.model_source == 'external':
+            with Path(self.model_cfg_path).open() as f:
+                config = json.load(f)
+        else:
+            config = load_library_model_config(self.model_source)
+        if config['input_size'] < self.stride_for_norm_param_estimation:
+            raise ValueError(
+                f'The assigned stride_for_norm_param_estimation ({self.norm_param_estimation_stride}) is greater than '
+                f'the model input size ({config["input_size"]}).'
             )
         return self
 

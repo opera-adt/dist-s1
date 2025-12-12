@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.9] - 2025-12-03
+
+### Added
+* Remove extra print statement (each new assignment re-validates and so there are lots of extra prints)
+* CLI/workflow parameters to manually set model context length
+* Allow for larger stride (up to 32) to allow for models with 32 input sizes to be handled effectively.
+
 ## [2.0.8] - 2025-10-28
 
 ### Added
