@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.10] - 2025-12-16
+
+### Added
+* Product data structure for data living on public s3 (dst_dir is s3 bucket and prefix of where the directory lives)
+
+
 ## [2.0.9] - 2025-12-03
 
 ### Added
