@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import wraps
 from mimetypes import guess_type
 from pathlib import Path
+from typing import ParamSpec, TypeVar
 
 import boto3
 import rasterio
@@ -12,6 +13,11 @@ from botocore import UNSIGNED
 from botocore.config import Config
 from botocore.exceptions import ClientError
 from tqdm import tqdm
+
+
+# Define TypeVars to preserve function signatures
+P = ParamSpec('P')
+R = TypeVar('R')
 
 
 def rasterio_anon_s3_env[P, R](func: Callable[P, R]) -> Callable[P, R]:
@@ -150,20 +156,12 @@ def parse_s3_uri(uri: str) -> tuple[str, str]:
 
 
 def check_s3_prefix_exists(bucket: str, prefix: str) -> bool:
-    """Check if S3 prefix has any objects under it.
-
-    Uses unsigned requests for public bucket access.
-    """
     s3 = boto3.client('s3', config=Config(signature_version=UNSIGNED))
     response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix, MaxKeys=1)
     return 'Contents' in response
 
 
 def check_s3_object_exists(bucket: str, key: str) -> bool:
-    """Check if S3 object exists using HEAD request.
-
-    Uses unsigned requests for public bucket access.
-    """
     s3 = boto3.client('s3', config=Config(signature_version=UNSIGNED))
     try:
         s3.head_object(Bucket=bucket, Key=key)
