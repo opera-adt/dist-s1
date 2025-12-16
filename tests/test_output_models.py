@@ -126,3 +126,37 @@ def test_generate_product_path_with_placeholders(test_dir: Path) -> None:
     # Clean up
     if tmp_dir.exists():
         shutil.rmtree(tmp_dir)
+
+
+def test_from_product_path_s3(test_dir: Path) -> None:
+    """Test loading product from public S3 bucket."""
+    s3_uri = 's3://dist-s1-golden-datasets/2.0.9/golden_dataset/OPERA_L3_DIST-ALERT-S1_T11SLT_20250121T135246Z_20251215T221221Z_S1A_30_v0.1/'
+
+    product = DistS1ProductDirectory.from_product_path(s3_uri)
+
+    assert product.product_name == 'OPERA_L3_DIST-ALERT-S1_T11SLT_20250121T135246Z_20251215T221221Z_S1A_30_v0.1'
+    assert product.mgrs_tile_id == '11SLT'
+    assert product.acq_datetime.year == 2025
+    assert product.acq_datetime.month == 1
+    assert product.acq_datetime.day == 21
+
+    assert product.validate_layer_paths()
+    assert product.validate_tif_layer_dtypes()
+
+    for layer in product.layers:
+        assert layer in product.layer_path_dict
+        layer_uri = product.layer_path_dict[layer]
+        assert layer_uri.startswith('s3://')
+        assert product.product_name in layer_uri
+
+    # Download the product and verify it matches
+    tmp_dir = test_dir / 'tmp_s3_download'
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    product_same = product.download_to(tmp_dir)
+
+    assert product == product_same
+
+    # Clean up
+    if tmp_dir.exists():
+        shutil.rmtree(tmp_dir)

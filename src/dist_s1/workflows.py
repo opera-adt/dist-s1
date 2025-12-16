@@ -341,7 +341,7 @@ def run_confirmation_of_dist_product_workflow(
 
 
 def run_sequential_confirmation_of_dist_products_workflow(
-    directory_of_dist_s1_products: Path | str,
+    dist_s1_data: Path | str | list[Path | str],
     dst_dist_product_parent: Path | str,
     alert_low_conf_thresh: float = DEFAULT_LOW_CONFIDENCE_ALERT_THRESHOLD,
     alert_high_conf_thresh: float = DEFAULT_HIGH_CONFIDENCE_ALERT_THRESHOLD,
@@ -355,21 +355,24 @@ def run_sequential_confirmation_of_dist_products_workflow(
     metric_value_upper_lim: float = DEFAULT_METRIC_VALUE_UPPER_LIM,
     tqdm_enabled: bool = DEFAULT_TQDM_ENABLED,
 ) -> None:
-    if isinstance(directory_of_dist_s1_products, str):
-        directory_of_dist_s1_products = Path(directory_of_dist_s1_products)
     if isinstance(dst_dist_product_parent, str):
         dst_dist_product_parent = Path(dst_dist_product_parent)
         dst_dist_product_parent.mkdir(parents=True, exist_ok=True)
 
-    # Sorted is important here as we assume earlier products are older
-    product_dirs = sorted(list(directory_of_dist_s1_products.glob('OPERA*')))
-    product_dirs = list(Path(p) for p in product_dirs)
-    product_dirs = list(filter(lambda x: x.is_dir(), product_dirs))
+    if isinstance(dist_s1_data, list):
+        product_dirs = [DistS1ProductDirectory.from_product_path(p) for p in dist_s1_data]
+        product_dirs = sorted(product_dirs, key=lambda x: x.product_name)
+    else:
+        if isinstance(dist_s1_data, str):
+            dist_s1_data = Path(dist_s1_data)
+        product_dirs_paths = sorted(list(dist_s1_data.glob('OPERA*')))
+        product_dirs_paths = list(filter(lambda x: x.is_dir(), product_dirs_paths))
+        product_dirs = [DistS1ProductDirectory.from_product_path(p) for p in product_dirs_paths]
 
     if len(product_dirs) == 0:
-        raise ValueError(f'No product directories found in the product directory {directory_of_dist_s1_products}.')
+        raise ValueError(f'No product directories found in the product directory {dist_s1_data}.')
     if len(product_dirs) == 1:
-        raise ValueError(f'Only one product directory in the product directory {directory_of_dist_s1_products}.')
+        raise ValueError(f'Only one product directory in the product directory {dist_s1_data}.')
 
     for k, current_dist_s1_product in tqdm(
         enumerate(product_dirs),
@@ -378,9 +381,7 @@ def run_sequential_confirmation_of_dist_products_workflow(
         disable=not tqdm_enabled,
     ):
         if k == 0:
-            dst_dist_product_directory = dst_dist_product_parent / product_dirs[0].name
-            shutil.copytree(product_dirs[0], dst_dist_product_directory, dirs_exist_ok=True)
-            dst_dist_product_directory = DistS1ProductDirectory.from_product_path(dst_dist_product_directory)
+            dst_dist_product_directory = product_dirs[0].copy_to(dst_dist_product_parent)
             prior_confirmed_dist_s1_prod = dst_dist_product_directory
         else:
             dst_dist_product_directory = confirm_disturbance_with_prior_product_and_serialize(
@@ -399,7 +400,7 @@ def run_sequential_confirmation_of_dist_products_workflow(
                 metric_value_upper_lim=metric_value_upper_lim,
                 # Gets product tags from the current product
             )
-            prior_confirmed_dist_s1_prod = dst_dist_product_parent / current_dist_s1_product.name
+            prior_confirmed_dist_s1_prod = dst_dist_product_parent / current_dist_s1_product.product_name
         generate_browse_image(dst_dist_product_directory, water_mask_path=None)
 
 
