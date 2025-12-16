@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import wraps
 from mimetypes import guess_type
 from pathlib import Path
-from typing import Any, ParamSpec, TypeVar
+from typing import ParamSpec, TypeVar
 
 import boto3
 import rasterio
@@ -19,16 +19,13 @@ P = ParamSpec('P')
 R = TypeVar('R')
 
 
-def with_rasterio_env(**env_options: Any) -> Callable[[Callable[P, R]], Callable[P, R]]:  # noqa: ANN401
-    def decorator(func: Callable[P, R]) -> Callable[P, R]:
-        @wraps(func)
-        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-            with rasterio.Env(**env_options):
-                return func(*args, **kwargs)
+def rasterio_anon_s3_env(func: Callable[P, R]) -> Callable[P, R]:  # noqa: UP047
+    @wraps(func)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+        with rasterio.Env(AWS_NO_SIGN_REQUEST='YES'):
+            return func(*args, **kwargs)
 
-        return wrapper
-
-    return decorator
+    return wrapper
 
 
 def get_s3_client(profile_name: str | None = None) -> boto3.client:
