@@ -1,14 +1,26 @@
 import logging
 import shutil
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from functools import wraps
 from mimetypes import guess_type
 from pathlib import Path
 
 import boto3
+import rasterio
 from botocore import UNSIGNED
 from botocore.config import Config
 from botocore.exceptions import ClientError
 from tqdm import tqdm
+
+
+def rasterio_anon_s3_env[P, R](func: Callable[P, R]) -> Callable[P, R]:
+    @wraps(func)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+        with rasterio.Env(AWS_NO_SIGN_REQUEST='YES'):
+            return func(*args, **kwargs)
+
+    return wrapper
 
 
 def get_s3_client(profile_name: str | None = None) -> boto3.client:

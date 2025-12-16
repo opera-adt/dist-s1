@@ -4,6 +4,7 @@ from warnings import warn
 import numpy as np
 import rasterio
 
+from dist_s1.aws import rasterio_anon_s3_env
 from dist_s1.constants import (
     BASE_DATE_FOR_CONFIRMATION,
     DISTLABEL2VAL,
@@ -273,6 +274,7 @@ def confirm_disturbance_arr(
     }
 
 
+@rasterio_anon_s3_env
 def confirm_disturbance_with_prior_product_and_serialize(
     current_dist_s1_product: DistS1ProductDirectory | str | Path,
     prior_dist_s1_product: DistS1ProductDirectory | str | Path,

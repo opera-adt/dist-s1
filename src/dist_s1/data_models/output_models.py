@@ -15,6 +15,7 @@ from dist_s1.aws import (
     download_product_from_s3,
     is_s3_path,
     parse_s3_uri,
+    rasterio_anon_s3_env,
 )
 from dist_s1.constants import (
     EXPECTED_FORMAT_STRING,
@@ -280,6 +281,7 @@ class DistS1ProductDirectory(BaseModel):
                     failed_layers.append(layer)
         return len(failed_layers) == 0
 
+    @rasterio_anon_s3_env
     def validate_tif_layer_dtypes(self) -> bool:
         failed_layers = []
         for layer, path_or_uri in self.layer_path_dict.items():
@@ -298,6 +300,7 @@ class DistS1ProductDirectory(BaseModel):
                 failed_layers.append(layer)
         return len(failed_layers) == 0
 
+    @rasterio_anon_s3_env
     def compare_products(self, other: 'DistS1ProductDirectory') -> ProductComparisonResult:
         """Compare two ProductDirectoryData instances with detailed results.
 

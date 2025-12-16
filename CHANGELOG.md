@@ -11,6 +11,9 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 * Product data structure for data living on public s3 (dst_dir is s3 bucket and prefix of where the directory lives)
 
+### Removed
+* Github action to generate docs in test workflow (deprecated)
+
 
 ## [2.0.9] - 2025-12-03
 
