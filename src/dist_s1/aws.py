@@ -160,9 +160,7 @@ def check_s3_object_exists(bucket: str, key: str) -> bool:
     return True
 
 
-def download_file_from_s3(
-    bucket: str, key: str, dst_path: Path | str, profile_name: str | None = None
-) -> None:
+def download_file_from_s3(bucket: str, key: str, dst_path: Path | str, profile_name: str | None = None) -> None:
     """Download file from S3 to local path.
 
     Parameters
@@ -187,9 +185,7 @@ def download_file_from_s3(
     s3.download_file(bucket, key, str(dst_path))
 
 
-def download_product_from_s3(
-    s3_uri: str, dst_dir: Path | str, profile_name: str | None = None
-) -> Path:
+def download_product_from_s3(s3_uri: str, dst_dir: Path | str, profile_name: str | None = None) -> Path:
     """Download DIST-S1 product from S3 to local directory.
 
     Parameters
