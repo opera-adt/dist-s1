@@ -9,6 +9,12 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [2.0.9] - 2025-12-03
 
 ### Added
+
+* Colorbar utilities for easier visualization.
+
+## [2.0.9] - 2025-12-03
+
+### Added
 * Remove extra print statement (each new assignment re-validates and so there are lots of extra prints)
 * CLI/workflow parameters to manually set model context length
 * Allow for larger stride (up to 32) to allow for models with 32 input sizes to be handled effectively.
