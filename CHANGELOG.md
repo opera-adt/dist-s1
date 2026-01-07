@@ -6,12 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.10] - 2025-12-03
+## [2.0.10] - 2025-12-16
 
 ### Added
 * Matplotlib functions for easier visualization of status layers consistent with GeoTiff.
 * Exposed `delta_window_days` for enumeration of inputs in python API and CLI. Not necessary except for writing this parameter to the final product.
   * The default is set at 60 which matches what it is in `dist_s1_enumerator` for `1.0.9` (which is now version floor).
+* Product data structure for data living on *public* s3 (dst_dir is s3 bucket and prefix of where the directory lives)
+  * Assume reading is done via no-sign request.
+* Uploads both zipped product and unzipped product so confirmation can happen directly reading data on-the-fly.
+
+### Changed
+* Simplify the cognitive load of `aws.py` (used for the release scripts as well as hyp3)
+
+### Removed
+* Github action to generate docs in test workflow (deprecated)
 
 ## [2.0.9] - 2025-12-03
 

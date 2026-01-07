@@ -317,7 +317,7 @@ def test_sequential_confirmation_workflow(
     # Run sequential confirmation workflow with explicit default parameters
     # Note: These are the default values from DEFAULT_* constants to ensure test stability
     run_sequential_confirmation_of_dist_products_workflow(
-        directory_of_dist_s1_products=unconfirmed_products_chile_fire_dir,
+        dist_s1_data=unconfirmed_products_chile_fire_dir,
         dst_dist_product_parent=tmp_sequential_dir,
         alert_low_conf_thresh=2.5,  # these are the alert thresholds used in the golden dataset
         alert_high_conf_thresh=4.5,  # these are the alert thresholds used in the golden dataset
