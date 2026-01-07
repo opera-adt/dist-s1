@@ -1,10 +1,9 @@
-import logging
 import shutil
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import wraps
 from mimetypes import guess_type
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import ParamSpec, TypeVar
 
 import boto3
@@ -67,63 +66,24 @@ def upload_file_to_s3(path_to_file: Path | str, bucket: str, prefix: str = '', p
     s3_client.put_object_tagging(Bucket=bucket, Key=key, Tagging=tag_set)
 
 
-def upload_file_with_error_handling(file_info: tuple[Path, str, str, str | None]) -> tuple[bool, str, str | None]:
-    path_to_file, bucket, key, profile_name = file_info
-    try:
-        s3_client = get_s3_client(profile_name)
-        extra_args = {'ContentType': get_content_type(key)}
-
-        s3_client.upload_file(str(path_to_file), bucket, key, extra_args)
-
-        tag_set = get_tag_set(path_to_file.name)
-        s3_client.put_object_tagging(Bucket=bucket, Key=key, Tagging=tag_set)
-
-    except Exception as e:
-        error_msg = f'Failed to upload {path_to_file} to s3://{bucket}/{key}: {str(e)}'
-        logging.exception(error_msg)
-        return False, error_msg, str(e)
-    else:
-        return True, f'Successfully uploaded {path_to_file} to s3://{bucket}/{key}', None
-
-
 def upload_files_to_s3_threaded(
     file_list: list[tuple[Path, str, str]], bucket: str, profile_name: str | None = None, max_workers: int = 5
-) -> tuple[list[str], list[str]]:
-    successful_uploads = []
-    failed_uploads = []
-
-    # Prepare file info tuples for threading
-    file_info_list = []
-    for file_path, s3_key, prefix in file_list:
+) -> None:
+    def _upload(file_path: Path, s3_key: str, prefix: str) -> None:
         full_key = str(Path(prefix) / s3_key) if prefix else s3_key
-        file_info_list.append((file_path, bucket, full_key, profile_name))
+        upload_file_to_s3(file_path, bucket, full_key, profile_name)
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_to_file = {
-            executor.submit(upload_file_with_error_handling, file_info): file_info[0] for file_info in file_info_list
+        futures = {
+            executor.submit(_upload, file_path, s3_key, prefix): file_path for file_path, s3_key, prefix in file_list
         }
 
-        # Process completed uploads with progress bar
-        with tqdm(total=len(file_info_list), desc='Uploading files to S3', unit='file') as pbar:
-            for future in as_completed(future_to_file):
-                file_path = future_to_file[future]
-                try:
-                    success, message, error = future.result()
-                    if success:
-                        successful_uploads.append(message)
-                        pbar.set_postfix_str(f'✓ {file_path.name}')
-                    else:
-                        failed_uploads.append(message)
-                        pbar.set_postfix_str(f'✗ {file_path.name}')
-                except Exception as e:
-                    error_msg = f'Unexpected error uploading {file_path}: {str(e)}'
-                    failed_uploads.append(error_msg)
-                    logging.exception(error_msg)
-                    pbar.set_postfix_str(f'✗ {file_path.name}')
-                finally:
-                    pbar.update(1)
-
-    return successful_uploads, failed_uploads
+        with tqdm(total=len(file_list), desc='Uploading files to S3', unit='file') as pbar:
+            for future in as_completed(futures):
+                file_path = futures[future]
+                future.result()  # Raises exception if upload failed
+                pbar.set_postfix_str(file_path.name)
+                pbar.update(1)
 
 
 def upload_product_to_s3(
@@ -141,7 +101,6 @@ def upload_product_to_s3(
 
 
 def is_s3_path(path: str | Path) -> bool:
-    """Check if path is S3 URI."""
     return str(path).startswith('s3://')
 
 
@@ -170,19 +129,6 @@ def check_s3_object_exists(bucket: str, key: str) -> bool:
 
 
 def download_file_from_s3(bucket: str, key: str, dst_path: Path | str, profile_name: str | None = None) -> None:
-    """Download file from S3 to local path.
-
-    Parameters
-    ----------
-    bucket : str
-        S3 bucket name
-    key : str
-        S3 object key
-    dst_path : Path | str
-        Local destination path
-    profile_name : str | None
-        AWS profile name. If None, uses unsigned requests for public buckets.
-    """
     dst_path = Path(dst_path)
     dst_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -195,62 +141,31 @@ def download_file_from_s3(bucket: str, key: str, dst_path: Path | str, profile_n
 
 
 def download_product_from_s3(s3_uri: str, dst_dir: Path | str, profile_name: str | None = None) -> Path:
-    """Download DIST-S1 product from S3 to local directory.
-
-    Parameters
-    ----------
-    s3_uri : str
-        S3 URI of the product directory (s3://bucket/prefix/product_name/)
-    dst_dir : Path | str
-        Local destination directory
-    profile_name : str | None
-        AWS profile name. If None, uses unsigned requests for public buckets.
-
-    Returns
-    -------
-    Path
-        Path to the downloaded product directory
-    """
-    from pathlib import PurePosixPath
-
     bucket, key_prefix = parse_s3_uri(s3_uri)
     key_prefix = key_prefix.rstrip('/')
 
     product_name = PurePosixPath(key_prefix).name
-    dst_dir = Path(dst_dir)
-    product_dir = dst_dir / product_name
+    product_dir = Path(dst_dir) / product_name
     product_dir.mkdir(parents=True, exist_ok=True)
 
-    if profile_name:
-        s3 = get_s3_client(profile_name)
-    else:
-        s3 = boto3.client('s3', config=Config(signature_version=UNSIGNED))
+    s3 = get_s3_client(profile_name) if profile_name else boto3.client('s3', config=Config(signature_version=UNSIGNED))
 
-    # List all objects under the prefix
+    # Collect all file keys first to show accurate progress
+    files = []
     paginator = s3.get_paginator('list_objects_v2')
-    pages = paginator.paginate(Bucket=bucket, Prefix=key_prefix)
+    for page in paginator.paginate(Bucket=bucket, Prefix=key_prefix):
+        for obj in page.get('Contents', []):
+            if not obj['Key'].endswith('/'):
+                files.append(obj['Key'])
 
-    files_to_download = []
-    for page in pages:
-        if 'Contents' not in page:
-            continue
-        for obj in page['Contents']:
-            key = obj['Key']
-            # Skip if it's a directory marker
-            if key.endswith('/'):
-                continue
-            files_to_download.append(key)
-
-    # Download all files with progress bar
-    with tqdm(total=len(files_to_download), desc=f'Downloading {product_name}', unit='file') as pbar:
-        for key in files_to_download:
-            # Get relative path from product directory
-            rel_path = PurePosixPath(key).relative_to(key_prefix)
-            dst_file = product_dir / rel_path
+    # Download with progress bar
+    with tqdm(total=len(files), desc=f'Downloading {product_name}', unit='file') as pbar:
+        for key in files:
+            dst_file = product_dir / PurePosixPath(key).relative_to(key_prefix)
             dst_file.parent.mkdir(parents=True, exist_ok=True)
 
             s3.download_file(bucket, key, str(dst_file))
-            pbar.set_postfix_str(f'{dst_file.name}')
+            pbar.set_postfix_str(dst_file.name)
             pbar.update(1)
 
     return product_dir
