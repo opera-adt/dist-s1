@@ -543,7 +543,7 @@ def run_sequential_confirmation(
     metric_value_upper_lim: float,
 ) -> None:
     run_sequential_confirmation_of_dist_products_workflow(
-        directory_of_dist_s1_products=unconfirmed_dist_s1_product_dir,
+        dist_s1_data=unconfirmed_dist_s1_product_dir,
         dst_dist_product_parent=dst_dist_product_parent,
         no_day_limit=no_day_limit,
         exclude_consecutive_no_dist=exclude_consecutive_no_dist,
