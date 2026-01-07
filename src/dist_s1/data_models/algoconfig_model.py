@@ -29,6 +29,7 @@ from dist_s1.data_models.defaults import (
     DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
     DEFAULT_CONFIRMATION_CONFIDENCE_UPPER_LIM,
     DEFAULT_DELTA_LOOKBACK_DAYS_MW,
+    DEFAULT_DELTA_WINDOW_DAYS,
     DEFAULT_DEVICE,
     DEFAULT_EXCLUDE_CONSECUTIVE_NO_DIST,
     DEFAULT_HIGH_CONFIDENCE_ALERT_THRESHOLD,
@@ -230,6 +231,14 @@ class AlgoConfigData(BaseModel):
     n_anniversaries_for_mw: int = Field(
         default=DEFAULT_N_ANNIVERSARIES_FOR_MW,
         description='Number of anniversaries to use for multi-window',
+    )
+    delta_window_days: int = Field(
+        default=DEFAULT_DELTA_WINDOW_DAYS,
+        ge=1,
+        description='The acceptable window of time to search for pre-image RTC-S1 data. Default is 60 days (or 2'
+        'months). This amounts to `post_date - lookback_days - delta_window_days` to `post_date - lookback_days`. '
+        "If lookback strategy is 'multi_window', this means the maximum window of time to search for pre-images on "
+        'each anniversary date where `post_date - n * lookback_days` are the anniversary dates for n = 1,...',
     )
     model_context_length: int | None = Field(
         default=None,
