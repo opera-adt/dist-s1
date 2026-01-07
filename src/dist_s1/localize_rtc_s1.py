@@ -7,6 +7,7 @@ from dist_s1_enumerator import enumerate_one_dist_s1_product, localize_rtc_s1_ts
 from dist_s1.credentials import ensure_earthdata_credentials
 from dist_s1.data_models.data_utils import get_max_pre_imgs_per_burst_mw
 from dist_s1.data_models.defaults import (
+    DEFAULT_DELTA_WINDOW_DAYS,
     DEFAULT_LOOKBACK_STRATEGY,
     DEFAULT_MODEL_CONTEXT_LENGTH_MAXIMUM,
     DEFAULT_MODEL_SOURCE,
@@ -28,6 +29,7 @@ def localize_rtc_s1(
     tqdm_enabled: bool = True,
     model_context_length: int = DEFAULT_MODEL_CONTEXT_LENGTH_MAXIMUM,
     n_anniversaries_for_mw: int = DEFAULT_N_ANNIVERSARIES_FOR_MW,
+    delta_window_days: int = DEFAULT_DELTA_WINDOW_DAYS,
     model_source: str = DEFAULT_MODEL_SOURCE,
     model_cfg_path: Path | str | None = None,
 ) -> RunConfigData:
@@ -52,6 +54,12 @@ def localize_rtc_s1(
         Max pre-images per burst for multi-window
     delta_lookback_days_mw : tuple[int, int]
         Lookback days for multi-window
+    delta_window_days : int
+        Window days for multi-window
+        The acceptable window of time to search for pre-image RTC-S1 data. Default is 60 days (or 2 months).
+        This amounts to roughly `post_date - lookback_days - delta_window_days` to `post_date - lookback_days`.
+        If lookback strategy is 'multi_window', this means the maximum window of time to search for pre-images on each
+        anniversary date where `post_date - n * lookback_days` are the anniversary dates for n = 1,....
     input_data_dir : Path | str | None
         Directory for input data storage
     dst_dir : Path | str | None
@@ -97,6 +105,7 @@ def localize_rtc_s1(
         post_date_buffer_days=post_date_buffer_days,
         max_pre_imgs_per_burst=max_pre_imgs_per_burst_mw,
         delta_lookback_days=delta_lookback_days_mw,
+        delta_window_days=delta_window_days,
     )
     if df_product.empty:
         raise ValueError(

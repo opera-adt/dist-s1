@@ -1,6 +1,7 @@
+import shutil
 from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import ClassVar
 from warnings import warn
 
@@ -8,6 +9,14 @@ import numpy as np
 import rasterio
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from dist_s1.aws import (
+    check_s3_object_exists,
+    check_s3_prefix_exists,
+    download_product_from_s3,
+    is_s3_path,
+    parse_s3_uri,
+    rasterio_anon_s3_env,
+)
 from dist_s1.constants import (
     EXPECTED_FORMAT_STRING,
     MAX_FLOAT_LAYER_DIFF,
@@ -194,9 +203,13 @@ class DistS1ProductDirectory(BaseModel):
     tif_layer_dtypes: ClassVar[dict[str, str]] = dict(TIF_LAYER_DTYPES)
 
     @property
-    def product_dir_path(self) -> Path:
-        path = self.dst_dir / self.product_name
-        return path
+    def product_dir_path(self) -> Path | str:
+        if is_s3_path(str(self.dst_dir)):
+            bucket, key = parse_s3_uri(str(self.dst_dir))
+            key = key.rstrip('/')
+            product_key = f'{key}/{self.product_name}' if key else self.product_name
+            return f's3://{bucket}/{product_key}'
+        return self.dst_dir / self.product_name
 
     def __str__(self) -> str:
         return str(self.product_dir_path)
@@ -208,11 +221,16 @@ class DistS1ProductDirectory(BaseModel):
         return product_name
 
     @field_validator('dst_dir')
-    def validate_dst_dir(cls, dst_dir: Path | str) -> Path:
+    def validate_dst_dir(cls, dst_dir: Path | str) -> Path | str:
+        if is_s3_path(dst_dir):
+            return str(dst_dir)
         return Path(dst_dir)
 
     @model_validator(mode='after')
     def validate_product_directory(self) -> Path:
+        if is_s3_path(str(self.dst_dir)):
+            return self
+
         product_dir = self.product_dir_path
         if product_dir.exists() and not product_dir.is_dir():
             raise ValueError(f'Path {product_dir} exists but is not a directory')
@@ -225,7 +243,12 @@ class DistS1ProductDirectory(BaseModel):
         return list(TIF_LAYERS)
 
     @property
-    def layer_path_dict(self) -> dict[str, Path]:
+    def layer_path_dict(self) -> dict[str, Path | str]:
+        if is_s3_path(str(self.dst_dir)):
+            base_uri = str(self.product_dir_path)
+            layer_dict = {layer: f'{base_uri}/{self.product_name}_{layer}.tif' for layer in self.layers}
+            layer_dict['browse'] = f'{base_uri}/{self.product_name}.png'
+            return layer_dict
         layer_dict = {layer: self.product_dir_path / f'{self.product_name}_{layer}.tif' for layer in self.layers}
         layer_dict['browse'] = self.product_dir_path / f'{self.product_name}.png'
         return layer_dict
@@ -241,29 +264,43 @@ class DistS1ProductDirectory(BaseModel):
 
     def validate_layer_paths(self) -> bool:
         failed_layers = []
-        for layer, path in self.layer_path_dict.items():
-            if layer not in TIF_LAYERS:
-                continue
-            if not path.exists():
-                warn(f'Layer {layer} does not exist at path: {path}', UserWarning)
-                failed_layers.append(layer)
+        if is_s3_path(str(self.dst_dir)):
+            for layer, path_or_uri in self.layer_path_dict.items():
+                if layer not in TIF_LAYERS:
+                    continue
+                bucket, key = parse_s3_uri(path_or_uri)
+                if not check_s3_object_exists(bucket, key):
+                    warn(f'Layer {layer} does not exist: {path_or_uri}', UserWarning)
+                    failed_layers.append(layer)
+        else:
+            for layer, path in self.layer_path_dict.items():
+                if layer not in TIF_LAYERS:
+                    continue
+                if not path.exists():
+                    warn(f'Layer {layer} does not exist at path: {path}', UserWarning)
+                    failed_layers.append(layer)
         return len(failed_layers) == 0
 
+    @rasterio_anon_s3_env
     def validate_tif_layer_dtypes(self) -> bool:
         failed_layers = []
-        for layer, path in self.layer_path_dict.items():
+        for layer, path_or_uri in self.layer_path_dict.items():
             if layer not in TIF_LAYERS:
                 continue
-            if path.suffix == '.tif':
-                with rasterio.open(path) as src:
+            try:
+                with rasterio.open(str(path_or_uri)) as src:
                     if src.dtypes[0] != TIF_LAYER_DTYPES[layer]:
                         warn(
                             f'Layer {layer} has incorrect dtype: {src.dtypes[0]}; should be: {TIF_LAYER_DTYPES[layer]}',
                             UserWarning,
                         )
                         failed_layers.append(layer)
+            except Exception as e:
+                warn(f'Failed to validate layer {layer}: {e}', UserWarning)
+                failed_layers.append(layer)
         return len(failed_layers) == 0
 
+    @rasterio_anon_s3_env
     def compare_products(self, other: 'DistS1ProductDirectory') -> ProductComparisonResult:
         """Compare two ProductDirectoryData instances with detailed results.
 
@@ -409,24 +446,13 @@ class DistS1ProductDirectory(BaseModel):
 
     @classmethod
     def from_product_path(cls, product_dir_path: Path | str) -> 'DistS1ProductDirectory':
-        """Create a ProductDirectoryData instance from an existing product directory path.
+        if is_s3_path(product_dir_path):
+            return cls._from_s3_product_path(str(product_dir_path))
+        return cls._from_local_product_path(Path(product_dir_path))
 
-        Parameters
-        ----------
-        product_dir_path : Path or str
-            Path to an existing DIST-ALERT-S1 product directory
-
-        Returns
-        -------
-        ProductDirectoryData
-            Instance of ProductDirectoryData initialized from the directory
-
-        Raises
-        ------
-        ValueError
-            If product directory is invalid or missing required files/layers
-        """
-        product_dir_path = Path(product_dir_path)
+    @classmethod
+    def _from_local_product_path(cls, product_dir_path: Path) -> 'DistS1ProductDirectory':
+        """Load from local filesystem."""
         if not product_dir_path.exists() or not product_dir_path.is_dir():
             raise ValueError(f'Product directory does not exist or is not a directory: {product_dir_path}')
 
@@ -436,11 +462,34 @@ class DistS1ProductDirectory(BaseModel):
 
         obj = cls(product_name=product_name, dst_dir=product_dir_path.parent)
 
-        # Validate all layers exist and have correct dtypes
         if not obj.validate_layer_paths():
             raise ValueError(f'Product directory missing required layers: {product_dir_path}')
         if not obj.validate_tif_layer_dtypes():
             raise ValueError(f'Product directory contains layers with incorrect dtypes: {product_dir_path}')
+
+        return obj
+
+    @classmethod
+    def _from_s3_product_path(cls, s3_uri: str) -> 'DistS1ProductDirectory':
+        """Load from S3 location."""
+        bucket, key_prefix = parse_s3_uri(s3_uri)
+
+        if not check_s3_prefix_exists(bucket, key_prefix):
+            raise ValueError(f'S3 product directory does not exist: {s3_uri}')
+
+        product_name = PurePosixPath(key_prefix).name
+        if not ProductNameData.validate_product_name(product_name):
+            raise ValueError(f'Invalid product name: {product_name}')
+
+        parent_key = str(PurePosixPath(key_prefix).parent)
+        s3_parent_uri = f's3://{bucket}/{parent_key}'
+
+        obj = cls(product_name=product_name, dst_dir=s3_parent_uri)
+
+        if not obj.validate_layer_paths():
+            raise ValueError(f'S3 product missing required layers: {s3_uri}')
+        if not obj.validate_tif_layer_dtypes():
+            raise ValueError(f'S3 product has incorrect dtypes: {s3_uri}')
 
         return obj
 
@@ -525,3 +574,26 @@ class DistS1ProductDirectory(BaseModel):
                 dst.write(zero_array, 1)
 
         return product_dir_data
+
+    def download_to(self, dst_dir: Path | str, profile_name: str | None = None) -> 'DistS1ProductDirectory':
+        if not is_s3_path(str(self.dst_dir)):
+            raise ValueError('download_to only works with S3 data. Current product is already local.')
+
+        downloaded_dir = download_product_from_s3(str(self.product_dir_path), dst_dir, profile_name)
+        return self.from_product_path(downloaded_dir)
+
+    def copy_to(self, dst_dir: Path | str, profile_name: str | None = None) -> 'DistS1ProductDirectory':
+        if is_s3_path(str(self.dst_dir)):
+            return self.download_to(dst_dir, profile_name)
+
+        dst_dir = Path(dst_dir)
+        dst_dir.mkdir(parents=True, exist_ok=True)
+
+        src_product_dir = self.product_dir_path
+        dst_product_dir = dst_dir / self.product_name
+
+        if dst_product_dir.exists():
+            shutil.rmtree(dst_product_dir)
+
+        shutil.copytree(src_product_dir, dst_product_dir)
+        return self.from_product_path(dst_product_dir)
