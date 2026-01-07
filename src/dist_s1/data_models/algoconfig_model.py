@@ -235,10 +235,10 @@ class AlgoConfigData(BaseModel):
     delta_window_days: int = Field(
         default=DEFAULT_DELTA_WINDOW_DAYS,
         ge=1,
-        description='The acceptable window of time to search for pre-image RTC-S1 data. Default is 60 days (or 2 months). '
-        'This amounts to roughly `post_date - lookback_days - delta_window_days` to `post_date - lookback_days`. '
-        'If lookback strategy is \'multi_window\', this means the maximum window of time to search for pre-images on each '
-        'anniversary date where `post_date - n * lookback_days` are the anniversary dates for n = 1,...',
+        description='The acceptable window of time to search for pre-image RTC-S1 data. Default is 60 days (or 2'
+        'months). This amounts to `post_date - lookback_days - delta_window_days` to `post_date - lookback_days`. '
+        "If lookback strategy is 'multi_window', this means the maximum window of time to search for pre-images on "
+        'each anniversary date where `post_date - n * lookback_days` are the anniversary dates for n = 1,...',
     )
     model_context_length: int | None = Field(
         default=None,
