@@ -108,3 +108,17 @@ DIST_STATUS_LABEL_DESCRIPTIONS = {
     'baseline status.',
     255: 'No data available.',
 }
+
+DISTLABEL2CBARLABEL = {
+    'nodata': 'No Data',
+    'no_disturbance': 'No Dist',
+    'first_low_conf_disturbance': '1st Low',
+    'provisional_low_conf_disturbance': 'Prov Low',
+    'confirmed_low_conf_disturbance': 'Conf Low',
+    'first_high_conf_disturbance': '1st High',
+    'provisional_high_conf_disturbance': 'Prov High',
+    'confirmed_high_conf_disturbance': 'Conf High',
+    'confirmed_low_conf_disturbance_finished': 'Low Fin',
+    'confirmed_high_conf_disturbance_finished': 'High Fin',
+}
+DISTVAL2CBARLABEL = {k: DISTLABEL2CBARLABEL[v] for k, v in DISTVAL2LABEL.items()}
