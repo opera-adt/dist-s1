@@ -220,8 +220,8 @@ def common_options_for_dist_workflows(func: Callable) -> Callable:
         default=DEFAULT_DELTA_WINDOW_DAYS,
         help='The acceptable window of time to search for pre-image RTC-S1 data. Default is 60 days (or 2 months). '
         'This amounts to roughly `post_date - lookback_days - delta_window_days` to `post_date - lookback_days`. '
-        'If lookback strategy is \'multi_window\', this means the maximum window of time to search for pre-images on each '
-        'anniversary date where `post_date - n * lookback_days` are the anniversary dates for n = 1,...',
+        'If lookback strategy is `multi_window`, this means the maximum window of time to search for pre-images on each'
+        ' anniversary date where `post_date - n * lookback_days` are the anniversary dates for n = 1,...',
     )
     @click.option(
         '--max_pre_imgs_per_burst_mw',
