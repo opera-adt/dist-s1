@@ -10,6 +10,8 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 * Matplotlib functions for easier visualization of status layers consistent with GeoTiff.
+* Exposed `delta_window_days` for enumeration of inputs in python API and CLI. Not necessary except for writing this parameter to the final product.
+  * The default is set at 60 which matches what it is in `dist_s1_enumerator` for `1.0.9` (which is now version floor).
 
 ## [2.0.9] - 2025-12-03
 
