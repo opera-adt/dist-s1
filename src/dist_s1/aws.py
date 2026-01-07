@@ -87,17 +87,27 @@ def upload_files_to_s3_threaded(
 
 
 def upload_product_to_s3(
-    product_directory: Path | str, bucket: str, prefix: str = '', profile_name: str | None = None
+    product_directory: Path | str,
+    bucket: str,
+    prefix: str = '',
+    upload_zipped: bool = True,
 ) -> None:
-    product_posix_path = Path(product_directory)
+    product_dir_path = Path(product_directory)
 
-    for file in product_posix_path.glob('*.png'):
-        upload_file_to_s3(file, bucket, prefix, profile_name)
+    for file in product_dir_path.glob('*.png'):
+        upload_file_to_s3(file, bucket, prefix)
 
-    product_zip_path = f'{product_posix_path}.zip'
-    shutil.make_archive(str(product_posix_path), 'zip', product_posix_path)
-    upload_file_to_s3(product_zip_path, bucket, prefix)
-    Path(product_zip_path).unlink()
+    if upload_zipped:
+        product_zip_path = f'{product_dir_path}.zip'
+        shutil.make_archive(str(product_dir_path), 'zip', product_dir_path)
+        upload_file_to_s3(product_zip_path, bucket, prefix)
+        Path(product_zip_path).unlink()
+
+    prefix_prod = f'{prefix}/{product_dir_path.name}' if prefix else product_dir_path.name
+    for file in product_dir_path.glob('*.png'):
+        upload_file_to_s3(file, bucket, prefix_prod)
+    for file in product_directory.glob('*.tif'):
+        upload_file_to_s3(file, bucket, prefix_prod)
 
 
 def is_s3_path(path: str | Path) -> bool:

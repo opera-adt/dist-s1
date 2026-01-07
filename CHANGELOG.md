@@ -11,6 +11,10 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 * Product data structure for data living on *public* s3 (dst_dir is s3 bucket and prefix of where the directory lives)
   * Assume reading is done via no-sign request.
+* Uploads both zipped product and unzipped product so confirmation can happen directly reading data on-the-fly.
+
+### Changed
+* Simplify the cognitive load of `aws.py` (used for the release scripts as well as hyp3)
 
 ### Removed
 * Github action to generate docs in test workflow (deprecated)
