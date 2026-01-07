@@ -887,6 +887,13 @@
 <td>Number of anniversaries to use for multi-window</td>
 </tr>
 <tr>
+<td><code>delta_window_days</code></td>
+<td><code>int</code></td>
+<td>60</td>
+<td>No</td>
+<td>The acceptable window of time to search for pre-image RTC-S1 data. Default is 60 days (or 2months). This amounts to <code>post_date - lookback_days - delta_window_days</code> to <code>post_date - lookback_days</code>. If lookback strategy is 'multi_window', this means the maximum window of time to search for pre-images on each anniversary date where <code>post_date - n * lookback_days</code> are the anniversary dates for n = 1,...</td>
+</tr>
+<tr>
 <td><code>model_context_length</code></td>
 <td><code>int | None</code></td>
 <td>No default</td>
