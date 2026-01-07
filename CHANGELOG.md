@@ -9,6 +9,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [2.0.10] - 2025-12-16
 
 ### Added
+* Matplotlib functions for easier visualization of status layers consistent with GeoTiff.
 * Product data structure for data living on *public* s3 (dst_dir is s3 bucket and prefix of where the directory lives)
   * Assume reading is done via no-sign request.
 * Uploads both zipped product and unzipped product so confirmation can happen directly reading data on-the-fly.
@@ -18,7 +19,6 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Removed
 * Github action to generate docs in test workflow (deprecated)
-
 
 ## [2.0.9] - 2025-12-03
 
