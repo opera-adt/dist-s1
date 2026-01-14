@@ -23,7 +23,7 @@ def upload_directory_to_s3(
             files_to_upload.append((file_path, s3_key, prefix))
 
     if files_to_upload:
-        successful, failed = upload_files_to_s3_threaded(files_to_upload, bucket, profile_name, max_workers)
+        upload_files_to_s3_threaded(files_to_upload, bucket, profile_name, max_workers)
 
 
 def upload_file_to_s3_with_path(file_path: Path, bucket: str, prefix: str, profile_name: str | None = None) -> None:
@@ -59,10 +59,7 @@ def upload_data_to_s3(
             all_files_to_upload.append((path, s3_key, full_prefix))
 
     if all_files_to_upload:
-        successful, failed = upload_files_to_s3_threaded(all_files_to_upload, bucket, profile_name, max_workers)
-    if failed:
-        print(f'Failed to upload {len(failed)} files')
-        print(failed)
+        upload_files_to_s3_threaded(all_files_to_upload, bucket, profile_name, max_workers)
 
 
 def main() -> None:
