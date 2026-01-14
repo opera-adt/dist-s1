@@ -579,6 +579,7 @@ class DistS1ProductDirectory(BaseModel):
         if not is_s3_path(str(self.dst_dir)):
             raise ValueError('download_to only works with S3 data. Current product is already local.')
 
+        breakpoint()
         downloaded_dir = download_product_from_s3(str(self.product_dir_path), dst_dir, profile_name)
         return self.from_product_path(downloaded_dir)
 

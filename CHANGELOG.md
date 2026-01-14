@@ -15,12 +15,16 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * Product data structure for data living on *public* s3 (dst_dir is s3 bucket and prefix of where the directory lives)
   * Assume reading is done via no-sign request.
 * Uploads both zipped product and unzipped product so confirmation can happen directly reading data on-the-fly.
+* Tqdm for sequential confirmation processes (s3 validation takes longer than validation of local products).
 
 ### Changed
 * Simplify the cognitive load of `aws.py` (used for the release scripts as well as hyp3)
 
 ### Removed
 * Github action to generate docs in test workflow (deprecated)
+
+### Fixed
+* The sequential confirmation for s3 products was downloading files alongside product directories and making the download process fail.
 
 ## [2.0.9] - 2025-12-03
 

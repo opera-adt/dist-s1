@@ -363,14 +363,20 @@ def run_sequential_confirmation_of_dist_products_workflow(
         dst_dist_product_parent.mkdir(parents=True, exist_ok=True)
 
     if isinstance(dist_s1_data, list):
-        product_dirs = [DistS1ProductDirectory.from_product_path(p) for p in dist_s1_data]
+        product_dirs = [
+            DistS1ProductDirectory.from_product_path(p)
+            for p in tqdm(dist_s1_data, disable=not tqdm_enabled, desc='Loading product directories')
+        ]
         product_dirs = sorted(product_dirs, key=lambda x: x.product_name)
     else:
         if isinstance(dist_s1_data, str):
             dist_s1_data = Path(dist_s1_data)
         product_dirs_paths = sorted(list(dist_s1_data.glob('OPERA*')))
         product_dirs_paths = list(filter(lambda x: x.is_dir(), product_dirs_paths))
-        product_dirs = [DistS1ProductDirectory.from_product_path(p) for p in product_dirs_paths]
+        product_dirs = [
+            DistS1ProductDirectory.from_product_path(p)
+            for p in tqdm(product_dirs_paths, disable=not tqdm_enabled, desc='Loading product directories')
+        ]
 
     if len(product_dirs) == 0:
         raise ValueError(f'No product directories found in the product directory {dist_s1_data}.')
