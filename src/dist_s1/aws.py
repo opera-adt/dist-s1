@@ -152,9 +152,13 @@ def download_file_from_s3(bucket: str, key: str, dst_path: Path | str, profile_n
 
 def download_product_from_s3(s3_uri: str, dst_dir: Path | str, profile_name: str | None = None) -> Path:
     bucket, key_prefix = parse_s3_uri(s3_uri)
-    key_prefix = key_prefix.rstrip('/')
 
+    # Want to remove trailing slash so path is non-empty
+    # Add it back so we can list files underneath the prefix
+    key_prefix = key_prefix.rstrip('/')
     product_name = PurePosixPath(key_prefix).name
+    key_prefix += '/'
+
     product_dir = Path(dst_dir) / product_name
     product_dir.mkdir(parents=True, exist_ok=True)
 
