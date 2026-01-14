@@ -14,6 +14,7 @@ from dist_s1.data_models.defaults import (
     DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD,
     DEFAULT_CONFIRMATION_CONFIDENCE_UPPER_LIM,
     DEFAULT_DELTA_LOOKBACK_DAYS_MW,
+    DEFAULT_DELTA_WINDOW_DAYS,
     DEFAULT_DEVICE,
     DEFAULT_DST_DIR,
     DEFAULT_EXCLUDE_CONSECUTIVE_NO_DIST,
@@ -211,6 +212,16 @@ def common_options_for_dist_workflows(func: Callable) -> Callable:
         required=False,
         default=DEFAULT_N_ANNIVERSARIES_FOR_MW,
         help='Number of anniversaries to use for multi-window lookback strategy.',
+    )
+    @click.option(
+        '--delta_window_days',
+        type=int,
+        required=False,
+        default=DEFAULT_DELTA_WINDOW_DAYS,
+        help='The acceptable window of time to search for pre-image RTC-S1 data. Default is 60 days (or 2 months). '
+        'This amounts to roughly `post_date - lookback_days - delta_window_days` to `post_date - lookback_days`. '
+        'If lookback strategy is `multi_window`, this means the maximum window of time to search for pre-images on each'
+        ' anniversary date where `post_date - n * lookback_days` are the anniversary dates for n = 1,...',
     )
     @click.option(
         '--max_pre_imgs_per_burst_mw',
@@ -414,6 +425,7 @@ def run_sas_prep(
     model_dtype: str,
     use_date_encoding: bool,
     n_anniversaries_for_mw: int,
+    delta_window_days: int,
     no_day_limit: int,
     exclude_consecutive_no_dist: bool,
     percent_reset_thresh: int,
@@ -460,6 +472,7 @@ def run_sas_prep(
         model_dtype=model_dtype,
         use_date_encoding=use_date_encoding,
         n_anniversaries_for_mw=n_anniversaries_for_mw,
+        delta_window_days=delta_window_days,
         no_day_limit=no_day_limit,
         exclude_consecutive_no_dist=exclude_consecutive_no_dist,
         percent_reset_thresh=percent_reset_thresh,
@@ -543,7 +556,7 @@ def run_sequential_confirmation(
     metric_value_upper_lim: float,
 ) -> None:
     run_sequential_confirmation_of_dist_products_workflow(
-        directory_of_dist_s1_products=unconfirmed_dist_s1_product_dir,
+        dist_s1_data=unconfirmed_dist_s1_product_dir,
         dst_dist_product_parent=dst_dist_product_parent,
         no_day_limit=no_day_limit,
         exclude_consecutive_no_dist=exclude_consecutive_no_dist,
@@ -598,6 +611,7 @@ def run(
     model_dtype: str,
     use_date_encoding: bool,
     n_anniversaries_for_mw: int,
+    delta_window_days: int,
     run_config_path: str | Path | None,
     prior_dist_s1_product: str | Path | None,
     no_day_limit: int,
@@ -642,6 +656,7 @@ def run(
         model_compilation=model_compilation,
         algo_config_path=algo_config_path,
         n_anniversaries_for_mw=n_anniversaries_for_mw,
+        delta_window_days=delta_window_days,
         model_dtype=model_dtype,
         use_date_encoding=use_date_encoding,
         run_config_path=run_config_path,
