@@ -40,8 +40,8 @@ def update_profile(src_profile: dict, dtype: np.dtype, nodata_value: int | float
 def convert_geotiff_to_png(
     geotiff_path: Path,
     out_png_path: Path,
-    output_height: int = None,
-    output_width: int = None,
+    output_height: int | None = 1024,
+    output_width: int | None = 1024,
     colormap: dict | None = None,
     water_mask_path: Path | str | None = None,
 ) -> None:
