@@ -12,9 +12,12 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * Browse png images are now 1024 x 1024 (rather than 3660 x 3660).
 * Browse png now are named `<DIST-S1-OPERA-ID>_BROWSE.png` (rather than `<DIST-S1-OPERA-ID>.png`).
 
-
 ### Fixed
 * Regression test - return types needed to be fixed since simplification of `aws.py` in `v2.0.10`.
+* Now ensures browse png exists and proper formatting.
+
+### Removed
+* Removed unusued class function `generate_product_path_with_placeholders`
 
 ## [2.0.10] - 2025-12-16
 
