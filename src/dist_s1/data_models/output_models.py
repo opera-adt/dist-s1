@@ -247,10 +247,10 @@ class DistS1ProductDirectory(BaseModel):
         if is_s3_path(str(self.dst_dir)):
             base_uri = str(self.product_dir_path)
             layer_dict = {layer: f'{base_uri}/{self.product_name}_{layer}.tif' for layer in self.layers}
-            layer_dict['browse'] = f'{base_uri}/{self.product_name}.png'
+            layer_dict['browse'] = f'{base_uri}/{self.product_name}_BROWSE.png'
             return layer_dict
         layer_dict = {layer: self.product_dir_path / f'{self.product_name}_{layer}.tif' for layer in self.layers}
-        layer_dict['browse'] = self.product_dir_path / f'{self.product_name}.png'
+        layer_dict['browse'] = self.product_dir_path / f'{self.product_name}_BROWSE.png'
         return layer_dict
 
     @property

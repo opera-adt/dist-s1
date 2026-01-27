@@ -8,6 +8,11 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [2.0.11] - 2025-01-14
 
+### Changed
+* Browse png images are now 1024 x 1024 (rather than 3660 x 3660).
+* Browse png now are named `<DIST-S1-OPERA-ID>_BROWSE.png` (rather than `<DIST-S1-OPERA-ID>.png`).
+
+
 ### Fixed
 * Regression test - return types needed to be fixed since simplification of `aws.py` in `v2.0.10`.
 
