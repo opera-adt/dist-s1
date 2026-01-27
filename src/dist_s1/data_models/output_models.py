@@ -27,8 +27,6 @@ from dist_s1.constants import (
     TIF_LAYER_NODATA_VALUES,
 )
 from dist_s1.data_models.data_utils import compare_dist_s1_product_tag, get_acquisition_datetime
-from dist_s1.rio_tools import get_mgrs_profile
-from dist_s1.water_mask import apply_water_mask
 
 
 PRODUCT_TAGS_FOR_EQUALITY = [
