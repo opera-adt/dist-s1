@@ -8,6 +8,10 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [2.0.11] - 2025-01-14
 
+### Added
+* Products can now use RTC-S1 derived from Sentinel-1D 
+  * we do not check input sensors in the filenames provided; we only ensure (i.e. validate) that output DIST-S1 products are appropriately named so there is a token with the sensor depending what sensor acquired the recent data. We have added S1D to that list of acceptable names.
+
 ### Changed
 * Browse png images are now 1024 x 1024 (rather than 3660 x 3660).
 * Browse png now are named `<DIST-S1-OPERA-ID>_BROWSE.png` (rather than `<DIST-S1-OPERA-ID>.png`).
