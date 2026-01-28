@@ -108,7 +108,7 @@ class ProductNameData(BaseModel):
             tokens[1] != 'L3',
             tokens[2] != 'DIST-ALERT-S1',
             not tokens[3].startswith('T'),  # MGRS tile ID
-            tokens[6] not in ['S1A', 'S1B', 'S1C'],
+            tokens[6] not in ['S1A', 'S1B', 'S1C', 'S1D'],
             tokens[7] != '30',
             not tokens[8].startswith('v'),  # Version
         ]
