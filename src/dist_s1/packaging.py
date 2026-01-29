@@ -191,15 +191,7 @@ def generate_browse_image(product_data: DistS1ProductDirectory, water_mask_path:
     with Env(GDAL_PAM_ENABLED='NO'):
         convert_geotiff_to_png(
             product_data.layer_path_dict['GEN-DIST-STATUS'],
-            product_data.layer_path_dict['browse-high-res'],
-            colormap=DIST_STATUS_CMAP,
-            output_height=3660,
-            output_width=3660,
-        )
-
-        convert_geotiff_to_png(
-            product_data.layer_path_dict['GEN-DIST-STATUS'],
-            product_data.layer_path_dict['browse-low-res'],
+            product_data.layer_path_dict['browse'],
             colormap=DIST_STATUS_CMAP,
             output_height=1220,
             output_width=1220,

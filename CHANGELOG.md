@@ -14,8 +14,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 * There are two browse images:
-  *  `<DIST-S1-OPERA-ID>_BROWSE.png` a 3660 x 3660 resolution image (matching resolution of the product)
-  *  `<DIST-S1-OPERA-ID>_BROWSE_low_res.png` which is 1220 x 1220 image
+  *  `<DIST-S1-OPERA-ID>_BROWSE.png` a 1220 x 1220 resolution image (1/3 spatial resolution of the product).
 
 ### Fixed
 * Regression test - return types needed to be fixed since simplification of `aws.py` in `v2.0.10`.
