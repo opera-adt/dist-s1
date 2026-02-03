@@ -27,8 +27,6 @@ from dist_s1.constants import (
     TIF_LAYER_NODATA_VALUES,
 )
 from dist_s1.data_models.data_utils import compare_dist_s1_product_tag, get_acquisition_datetime
-from dist_s1.rio_tools import get_mgrs_profile
-from dist_s1.water_mask import apply_water_mask
 
 
 PRODUCT_TAGS_FOR_EQUALITY = [
@@ -110,7 +108,7 @@ class ProductNameData(BaseModel):
             tokens[1] != 'L3',
             tokens[2] != 'DIST-ALERT-S1',
             not tokens[3].startswith('T'),  # MGRS tile ID
-            tokens[6] not in ['S1A', 'S1B', 'S1C'],
+            tokens[6] not in ['S1A', 'S1B', 'S1C', 'S1D'],
             tokens[7] != '30',
             not tokens[8].startswith('v'),  # Version
         ]
@@ -247,10 +245,10 @@ class DistS1ProductDirectory(BaseModel):
         if is_s3_path(str(self.dst_dir)):
             base_uri = str(self.product_dir_path)
             layer_dict = {layer: f'{base_uri}/{self.product_name}_{layer}.tif' for layer in self.layers}
-            layer_dict['browse'] = f'{base_uri}/{self.product_name}.png'
+            layer_dict['browse'] = f'{base_uri}/{self.product_name}_BROWSE.png'
             return layer_dict
         layer_dict = {layer: self.product_dir_path / f'{self.product_name}_{layer}.tif' for layer in self.layers}
-        layer_dict['browse'] = self.product_dir_path / f'{self.product_name}.png'
+        layer_dict['browse'] = self.product_dir_path / f'{self.product_name}_BROWSE.png'
         return layer_dict
 
     @property
@@ -266,16 +264,12 @@ class DistS1ProductDirectory(BaseModel):
         failed_layers = []
         if is_s3_path(str(self.dst_dir)):
             for layer, path_or_uri in self.layer_path_dict.items():
-                if layer not in TIF_LAYERS:
-                    continue
                 bucket, key = parse_s3_uri(path_or_uri)
                 if not check_s3_object_exists(bucket, key):
                     warn(f'Layer {layer} does not exist: {path_or_uri}', UserWarning)
                     failed_layers.append(layer)
         else:
             for layer, path in self.layer_path_dict.items():
-                if layer not in TIF_LAYERS:
-                    continue
                 if not path.exists():
                     warn(f'Layer {layer} does not exist at path: {path}', UserWarning)
                     failed_layers.append(layer)
@@ -492,88 +486,6 @@ class DistS1ProductDirectory(BaseModel):
             raise ValueError(f'S3 product has incorrect dtypes: {s3_uri}')
 
         return obj
-
-    @classmethod
-    def generate_product_path_with_placeholders(
-        cls,
-        mgrs_tile_id: str,
-        acq_datetime: datetime,
-        sensor: str,
-        dst_dir: Path | str,
-        water_mask_path: Path | str | None = None,
-        overwrite: bool = False,
-    ) -> 'DistS1ProductDirectory':
-        """Generate a product directory with placeholder GeoTIFF files containing zeros.
-
-        Parameters
-        ----------
-        mgrs_tile_id : str
-            MGRS tile ID for the product
-        acq_datetime : datetime
-            Acquisition datetime for the product
-        dst_dir : Path | str
-            Directory where the product will be created
-        water_mask_path : Path | str | None, optional
-            Path to water mask file. If provided, water mask will be validated and applied to all layers.
-            If None, no water mask is applied.
-        overwrite : bool, optional
-            If True, overwrite existing files. If False, skip if files exist.
-
-        Returns
-        -------
-        ProductDirectoryData
-            Instance of ProductDirectoryData with generated placeholder files
-
-        Raises
-        ------
-        FileNotFoundError
-            If water_mask_path is provided but the file doesn't exist
-        ValueError
-            If product name validation fails, water mask doesn't cover the MGRS tile, or water mask application fails
-        """
-        processing_datetime = datetime.now()
-
-        product_name_data = ProductNameData(
-            mgrs_tile_id=mgrs_tile_id,
-            acq_date_time=acq_datetime,
-            processing_date_time=processing_datetime,
-            sensor=sensor,
-        )
-
-        product_dir_data = cls(product_name=str(product_name_data), dst_dir=dst_dir)
-
-        if water_mask_path is not None:
-            water_mask_path = Path(water_mask_path)
-            if not water_mask_path.exists():
-                raise FileNotFoundError(f'Water mask file does not exist: {water_mask_path}')
-
-        for layer_name in TIF_LAYERS:
-            layer_path = product_dir_data.layer_path_dict[layer_name]
-
-            if layer_path.exists() and not overwrite:
-                continue
-
-            dtype_str = cls.tif_layer_dtypes[layer_name]
-            dtype = np.dtype(dtype_str)
-
-            if np.issubdtype(dtype, np.floating):
-                nodata_value = np.nan
-            else:
-                nodata_value = 255
-
-            mgrs_profile = get_mgrs_profile(mgrs_tile_id, dtype=dtype, nodata=nodata_value)
-
-            height = mgrs_profile['height']
-            width = mgrs_profile['width']
-            zero_array = np.zeros((height, width), dtype=dtype)
-
-            if water_mask_path is not None:
-                zero_array = apply_water_mask(zero_array, mgrs_profile, water_mask_path)
-
-            with rasterio.open(layer_path, 'w', **mgrs_profile) as dst:
-                dst.write(zero_array, 1)
-
-        return product_dir_data
 
     def download_to(self, dst_dir: Path | str, profile_name: str | None = None) -> 'DistS1ProductDirectory':
         if not is_s3_path(str(self.dst_dir)):

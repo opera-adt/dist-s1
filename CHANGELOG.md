@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.11] - 2025-01-14
+
+### Added
+* Products can now use RTC-S1 derived from Sentinel-1D 
+  * we do not check input sensors in the filenames provided; we only ensure (i.e. validate) that output DIST-S1 products are appropriately named so there is a token with the sensor depending what sensor acquired the recent data. We have added S1D to that list of acceptable names.
+
+### Changed
+* There are two browse images:
+  *  `<DIST-S1-OPERA-ID>_BROWSE.png` a 1220 x 1220 resolution image (1/3 spatial resolution of the product).
+
+### Fixed
+* Regression test - return types needed to be fixed since simplification of `aws.py` in `v2.0.10`.
+* Now ensures browse png exists and proper formatting.
+
+### Removed
+* Removed unusued class function `generate_product_path_with_placeholders`
+
 ## [2.0.10] - 2025-12-16
 
 ### Added
