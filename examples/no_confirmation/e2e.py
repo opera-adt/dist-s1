@@ -13,9 +13,9 @@ def main() -> None:
     product_dst_dir = Path('../../notebooks/los-angeles')  # directory to save the final products
     apply_water_mask = True  # apply water mask to the data
     src_water_mask_path = None  # Path('../notebooks/los-angeles/water_mask.tif')  # path to an existing water mask file
-    model_source = 'transformer_v1_32'
+    model_source = 'transformer_optimized'
     device = 'cpu'  # can be cpu, cuda, mps or best
-    n_workers_for_norm_param_estimation = 2  # number of workers for normal parameter estimation
+    n_workers_for_norm_param_estimation = 4  # number of workers for normal parameter estimation
     n_workers_for_despeckling = 10  # number of workers for despeckling
     model_context_length = None
 

@@ -40,10 +40,9 @@ def update_profile(src_profile: dict, dtype: np.dtype, nodata_value: int | float
 def convert_geotiff_to_png(
     geotiff_path: Path,
     out_png_path: Path,
-    output_height: int | None = 1024,
-    output_width: int | None = 1024,
+    output_height: int | None = None,
+    output_width: int | None = None,
     colormap: dict | None = None,
-    water_mask_path: Path | str | None = None,
 ) -> None:
     with rasterio.open(geotiff_path) as ds:
         band = ds.read(1)
@@ -51,8 +50,6 @@ def convert_geotiff_to_png(
         if colormap is None:
             colormap = ds.colormap(1) if ds.count == 1 else None
 
-        if water_mask_path is not None:
-            band = apply_water_mask(band, profile_src, water_mask_path)
         output_height = output_height or band.shape[0]
         output_width = output_width or band.shape[1]
 
@@ -60,7 +57,6 @@ def convert_geotiff_to_png(
             band = ds.read(1, out_shape=(output_height, output_width), resampling=Resampling.nearest)
 
         profile = {'driver': 'PNG', 'height': output_height, 'width': output_width, 'count': 1, 'dtype': band.dtype}
-        # Dummy crs and transform to avoid warnings
         profile.update({'crs': profile_src['crs'], 'transform': profile_src['transform']})
 
         serialize_one_2d_ds(band, profile, out_png_path, colormap=colormap)
@@ -197,5 +193,6 @@ def generate_browse_image(product_data: DistS1ProductDirectory, water_mask_path:
             product_data.layer_path_dict['GEN-DIST-STATUS'],
             product_data.layer_path_dict['browse'],
             colormap=DIST_STATUS_CMAP,
-            water_mask_path=water_mask_path,
+            output_height=1220,
+            output_width=1220,
         )
