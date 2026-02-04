@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.12] - 2025-02-04
+
+### Fixed
+* Fixes delivery script `regression_test/2_delivery.py` (see https://github.com/opera-adt/dist-s1/issues/210)
+
+### Changed
+* s3 function for uploading data to s3 is entirely within `2_delivery.py` (see above)
+
+### Added
+* Multithreading to downloading products from s3
+
 ## [2.0.11] - 2025-01-14
 
 ### Added
