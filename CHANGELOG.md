@@ -12,10 +12,10 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * Fixes delivery script `regression_test/2_delivery.py` (see https://github.com/opera-adt/dist-s1/issues/210)
 
 ### Changed
-* s3 function for uploading data to s3 is entirely within `2_delivery.py` (see above)
+* s3 function for uploading input and dist-s1 product data to s3 is entirely within `2_delivery.py` (see above)
 
 ### Added
-* Multithreading to downloading products from s3
+* Added multithreading to downloading products from s3 (and made easier to read)
 
 ## [2.0.11] - 2025-01-14
 
