@@ -13,7 +13,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 * s3 function for uploading input and dist-s1 product data to s3 is entirely within `2_delivery.py` (see above)
-* Remove `computed_field` decorator from `water_mask_path` so it is not serialized to yml.
+* Remove `computed_field` decorator from `water_mask_path` so it is not serialized to `runconfig.yml` files.
 
 ### Added
 * Added multithreading to downloading products from s3 (and made easier to read)
