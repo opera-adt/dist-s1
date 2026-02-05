@@ -14,7 +14,6 @@ from pydantic import (
     Field,
     ValidationError,
     ValidationInfo,
-    computed_field,
     field_serializer,
     field_validator,
     model_validator,
@@ -506,7 +505,6 @@ class RunConfigData(BaseModel):
             self._df_inputs = df
         return self._df_inputs.copy()
 
-    @computed_field
     @property
     def water_mask_path(self) -> Path | None:
         """Get the water mask path, processing if needed when apply_water_mask is True."""

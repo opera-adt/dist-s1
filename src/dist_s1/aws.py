@@ -1,6 +1,6 @@
 import shutil
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 from functools import wraps
 from mimetypes import guess_type
 from pathlib import Path, PurePosixPath
@@ -64,26 +64,6 @@ def upload_file_to_s3(path_to_file: Path | str, bucket: str, prefix: str = '', p
     tag_set = get_tag_set(file_posix_path.name)
 
     s3_client.put_object_tagging(Bucket=bucket, Key=key, Tagging=tag_set)
-
-
-def upload_files_to_s3_threaded(
-    file_list: list[tuple[Path, str, str]], bucket: str, profile_name: str | None = None, max_workers: int = 5
-) -> None:
-    def _upload(file_path: Path, s3_key: str, prefix: str) -> None:
-        full_key = str(Path(prefix) / s3_key) if prefix else s3_key
-        upload_file_to_s3(file_path, bucket, full_key, profile_name)
-
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {
-            executor.submit(_upload, file_path, s3_key, prefix): file_path for file_path, s3_key, prefix in file_list
-        }
-
-        with tqdm(total=len(file_list), desc='Uploading files to S3', unit='file') as pbar:
-            for future in as_completed(futures):
-                file_path = futures[future]
-                future.result()  # Raises exception if upload failed
-                pbar.set_postfix_str(file_path.name)
-                pbar.update(1)
 
 
 def upload_product_to_s3(
@@ -150,7 +130,9 @@ def download_file_from_s3(bucket: str, key: str, dst_path: Path | str, profile_n
     s3.download_file(bucket, key, str(dst_path))
 
 
-def download_product_from_s3(s3_uri: str, dst_dir: Path | str, profile_name: str | None = None) -> Path:
+def download_product_from_s3(
+    s3_uri: str, dst_dir: Path | str, profile_name: str | None = None, max_workers: int = 4
+) -> Path:
     bucket, key_prefix = parse_s3_uri(s3_uri)
 
     # Want to remove trailing slash so path is non-empty
@@ -172,14 +154,19 @@ def download_product_from_s3(s3_uri: str, dst_dir: Path | str, profile_name: str
             if not obj['Key'].endswith('/'):
                 files.append(obj['Key'])
 
-    # Download with progress bar
-    with tqdm(total=len(files), desc=f'Downloading {product_name}', unit='file') as pbar:
-        for key in files:
-            dst_file = product_dir / PurePosixPath(key).relative_to(key_prefix)
-            dst_file.parent.mkdir(parents=True, exist_ok=True)
+    def download_single_file(key: str) -> None:
+        dst_file = product_dir / PurePosixPath(key).relative_to(key_prefix)
+        dst_file.parent.mkdir(parents=True, exist_ok=True)
+        s3.download_file(bucket, key, str(dst_file))
 
-            s3.download_file(bucket, key, str(dst_file))
-            pbar.set_postfix_str(dst_file.name)
-            pbar.update(1)
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        list(
+            tqdm(
+                executor.map(download_single_file, files),
+                total=len(files),
+                desc=f'Downloading {product_name}',
+                unit='file',
+            )
+        )
 
     return product_dir
