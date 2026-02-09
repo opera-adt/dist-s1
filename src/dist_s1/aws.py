@@ -21,7 +21,13 @@ R = TypeVar('R')
 def rasterio_anon_s3_env(func: Callable[P, R]) -> Callable[P, R]:  # noqa: UP047
     @wraps(func)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-        with rasterio.Env(AWS_NO_SIGN_REQUEST='YES'):
+        with rasterio.Env(
+            AWS_NO_SIGN_REQUEST='YES',
+            GDAL_HTTP_COOKIEFILE='/tmp/cookies.txt',
+            GDAL_HTTP_COOKIEJAR='/tmp/cookies.txt',
+            GDAL_DISABLE_READDIR_ON_OPEN='EMPTY_COLUMN',
+            CPL_VSIL_CURL_ALLOWED_EXTENSIONS='tif',
+        ):
             return func(*args, **kwargs)
 
     return wrapper
