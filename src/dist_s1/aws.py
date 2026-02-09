@@ -25,8 +25,8 @@ def rasterio_anon_s3_env(func: Callable[P, R]) -> Callable[P, R]:  # noqa: UP047
             AWS_NO_SIGN_REQUEST='YES',
             GDAL_HTTP_COOKIEFILE='/tmp/cookies.txt',
             GDAL_HTTP_COOKIEJAR='/tmp/cookies.txt',
-            GDAL_DISABLE_READDIR_ON_OPEN='EMPTY_COLUMN',
-            CPL_VSIL_CURL_ALLOWED_EXTENSIONS='tif',
+            GDAL_DISABLE_READDIR_ON_OPEN='EMPTY_DIR',
+            CPL_VSIL_CURL_ALLOWED_EXTENSIONS='.tif,.png',
         ):
             return func(*args, **kwargs)
 
