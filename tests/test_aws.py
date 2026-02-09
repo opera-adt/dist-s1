@@ -33,13 +33,10 @@ def test_upload_product_to_s3(
     prefix_prod = f'{prefix}/{tmp_product_dir.name}'
 
     # Expected uploads:
-    # 1. PNGs to root prefix
-    # 2. Zip to root prefix
-    # 3. PNGs to prefix/product_name
-    # 4. TIFs to prefix/product_name
+    # 1. Zip to root prefix
+    # 2. PNGs to prefix/product_name
+    # 3. TIFs to prefix/product_name
     expected_calls = []
-    for png in png_files:
-        expected_calls.append(call(png, bucket, prefix))
     expected_calls.append(call(zip_path, bucket, prefix))
     for png in png_files:
         expected_calls.append(call(png, bucket, prefix_prod))
@@ -47,7 +44,7 @@ def test_upload_product_to_s3(
         expected_calls.append(call(tif, bucket, prefix_prod))
 
     mock_upload.assert_has_calls(expected_calls, any_order=True)
-    assert mock_upload.call_count == 2 * len(png_files) + len(tif_files) + 1
+    assert mock_upload.call_count == len(png_files) + len(tif_files) + 1
 
     # Verify zip cleanup
     assert not Path(zip_path).exists()
