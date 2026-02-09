@@ -80,9 +80,6 @@ def upload_product_to_s3(
 ) -> None:
     product_dir_path = Path(product_directory)
 
-    for file in product_dir_path.glob('*.png'):
-        upload_file_to_s3(file, bucket, prefix)
-
     if upload_zipped:
         product_zip_path = f'{product_dir_path}.zip'
         shutil.make_archive(str(product_dir_path), 'zip', product_dir_path)

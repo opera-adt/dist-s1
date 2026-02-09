@@ -11,6 +11,9 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 * Added more rasterio env variables to improve performance of remote confirmation process.
 
+### Fixed
+* Do not upload 2 browse images to s3 when prefix is provided.
+
 ## [2.0.12] - 2025-02-04
 
 ### Fixed
