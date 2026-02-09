@@ -6,22 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.13] - 2025-02-04
-
-### Changed
-* Added more rasterio env variables to improve performance of remote confirmation process.
-
-### Fixed
-* Do not upload 2 browse images to s3 when prefix is provided.
 
 ## [2.0.12] - 2025-02-04
 
 ### Fixed
 * Fixes delivery script `regression_test/2_delivery.py` (see https://github.com/opera-adt/dist-s1/issues/210)
+* Do not upload 2 browse images to s3 when prefix is provided.
 
 ### Changed
 * s3 function for uploading input and dist-s1 product data to s3 is entirely within `2_delivery.py` (see above)
 * Remove `computed_field` decorator from `water_mask_path` so it is not serialized to `runconfig.yml` files.
+* Added more rasterio env variables to improve performance of remote confirmation process.
 
 ### Added
 * Added multithreading to downloading products from s3 (and made easier to read)
