@@ -21,7 +21,13 @@ R = TypeVar('R')
 def rasterio_anon_s3_env(func: Callable[P, R]) -> Callable[P, R]:  # noqa: UP047
     @wraps(func)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-        with rasterio.Env(AWS_NO_SIGN_REQUEST='YES'):
+        with rasterio.Env(
+            AWS_NO_SIGN_REQUEST='YES',
+            GDAL_HTTP_COOKIEFILE='/tmp/cookies.txt',
+            GDAL_HTTP_COOKIEJAR='/tmp/cookies.txt',
+            GDAL_DISABLE_READDIR_ON_OPEN='EMPTY_DIR',
+            CPL_VSIL_CURL_ALLOWED_EXTENSIONS='.tif,.png',
+        ):
             return func(*args, **kwargs)
 
     return wrapper
@@ -73,9 +79,6 @@ def upload_product_to_s3(
     upload_zipped: bool = True,
 ) -> None:
     product_dir_path = Path(product_directory)
-
-    for file in product_dir_path.glob('*.png'):
-        upload_file_to_s3(file, bucket, prefix)
 
     if upload_zipped:
         product_zip_path = f'{product_dir_path}.zip'
