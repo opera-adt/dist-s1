@@ -370,7 +370,7 @@ def test_run_sequential_confirmation_main_interface(
     """Test the run_sequential_confirmation CLI interface that mirrors confirm_sequence.sh.
 
     This test mirrors the functionality of confirm_sequence.sh:
-    dist-s1 run_sequential_confirmation --unconfirmed_dist_s1_product_dir ./chile_fire_unconfirmed \
+    dist-s1 run_sequential_confirmation --dist_s1_data ./chile_fire_unconfirmed \
                                         --dst_dist_product_parent chile_fire_confirmed
     """
     change_local_dir(test_dir)
@@ -389,7 +389,7 @@ def test_run_sequential_confirmation_main_interface(
         dist_s1,
         [
             'run_sequential_confirmation',
-            '--unconfirmed_dist_s1_product_dir',
+            '--dist_s1_data',
             str(unconfirmed_products_chile_fire_dir),
             '--dst_dist_product_parent',
             str(tmp_dir),

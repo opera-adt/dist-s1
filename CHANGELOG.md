@@ -12,7 +12,9 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 * Changed entrypoint for Docker container so it can do `run` and `run_sequential_confirmation_of_dist_products_workflow`.
-* `dst_dist_product_parent` in `run_sequential_confirmation_of_dist_products_workflow` now permits `None` and if so saves to `mgrs_tile_id_{fd}_{ld}` where `fd` is the first date time series, and `ld` is the last date.
+* `run_sequential_confirmation_of_dist_products_workflow` was changed for greater flexibility and cloud usage:
+  * now `dst_dist_product_parent` permits `None` value and if so saves to `mgrs_tile_id_{fd}_{ld}` where `fd` is the first date time series, and `ld` is the last date.
+  * `dist_s1_data` can be directory of products (previously allowed) OR list of granules (not allowed)
 
 ### Added
 * Ability for `run_sequential_confirmation_of_dist_products_workflow` to upload products to s3 bucket. 
