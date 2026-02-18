@@ -683,11 +683,11 @@ class RunConfigData(BaseModel):
     def validate_prior_dist_s1_product_mgrs_tile_id(self) -> 'RunConfigData':
         if self.prior_dist_s1_product is not None:
             prior_mgrs_tile_id = self.prior_dist_s1_product.mgrs_tile_id
-        if prior_mgrs_tile_id != self.mgrs_tile_id:
-            raise ValueError(
-                f'The prior DIST-S1 product MGRS tile ID ({prior_mgrs_tile_id}) does not match the current '
-                f'MGRS tile ID ({self.mgrs_tile_id})'
-            )
+            if prior_mgrs_tile_id != self.mgrs_tile_id:
+                raise ValueError(
+                    f'The prior DIST-S1 product MGRS tile ID ({prior_mgrs_tile_id}) does not match the current '
+                    f'MGRS tile ID ({self.mgrs_tile_id})'
+                )
         return self
 
     @field_serializer('prior_dist_s1_product')
