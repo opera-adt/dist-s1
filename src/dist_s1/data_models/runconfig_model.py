@@ -679,6 +679,17 @@ class RunConfigData(BaseModel):
             super().__setattr__('_processed_water_mask_path', None)
         super().__setattr__(name, value)
 
+    @model_validator(mode='after')
+    def validate_prior_dist_s1_product_mgrs_tile_id(self) -> 'RunConfigData':
+        if self.prior_dist_s1_product is not None:
+            prior_mgrs_tile_id = self.prior_dist_s1_product.mgrs_tile_id
+            if prior_mgrs_tile_id != self.mgrs_tile_id:
+                raise ValueError(
+                    f'The prior DIST-S1 product MGRS tile ID ({prior_mgrs_tile_id}) does not match the current '
+                    f'MGRS tile ID ({self.mgrs_tile_id})'
+                )
+        return self
+
     @field_serializer('prior_dist_s1_product')
     def serialize_prior_dist_s1_product(self, prior_dist_s1_product: DistS1ProductDirectory | Path | str | None) -> str:
         if prior_dist_s1_product is None:

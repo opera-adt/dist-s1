@@ -530,22 +530,37 @@ def run_one_confirmation(
     )
 
 
+class CommaSeparatedGranulesOrDirectoryOfProducts(click.ParamType):
+    name = 'comma_list'
+
+    def convert(self, value: str | list, param: click.Parameter, ctx: click.Context) -> list:
+        if ',' in value:
+            return [v.strip() for v in value.split(',')]
+        else:
+            return value.strip()
+
+
 @cli.command(
     name='run_sequential_confirmation',
     help='Run sequential confirmation of unconfirmed DIST-S1 products. Confirms products in order of oldest to newest.',
 )
 @click.option(
-    '--unconfirmed_dist_s1_product_dir',
-    type=str,
+    '--dist_s1_data',
+    type=CommaSeparatedGranulesOrDirectoryOfProducts(),
     required=True,
     help='Directory of OPERA products that are unconfirmed',
 )
 @click.option(
-    '--dst_dist_product_parent', type=str, required=True, help='Path to parent directory for new DIST-S1 product.'
+    '--dst_dist_product_parent',
+    type=str,
+    required=False,
+    default=None,
+    help='Path to parent directory for new DIST-S1 product. If None, will be created in the current directory with the '
+    'MGRS Tile ID as the name with first/last date.',
 )
 @common_algo_options_for_confirmation_workflows
 def run_sequential_confirmation(
-    unconfirmed_dist_s1_product_dir: str | Path,
+    dist_s1_data: str | Path | list,
     dst_dist_product_parent: str | Path | None,
     no_day_limit: int,
     exclude_consecutive_no_dist: bool,
@@ -556,7 +571,7 @@ def run_sequential_confirmation(
     metric_value_upper_lim: float,
 ) -> None:
     run_sequential_confirmation_of_dist_products_workflow(
-        dist_s1_data=unconfirmed_dist_s1_product_dir,
+        dist_s1_data=dist_s1_data,
         dst_dist_product_parent=dst_dist_product_parent,
         no_day_limit=no_day_limit,
         exclude_consecutive_no_dist=exclude_consecutive_no_dist,
