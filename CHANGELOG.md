@@ -7,6 +7,18 @@ and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [2.0.13] - 2025-02-19
+
+### Changed
+
+* Changed entrypoint for Docker container so it can do `run` and `run_sequential_confirmation_of_dist_products_workflow`.
+* `dst_dist_product_parent` in `run_sequential_confirmation_of_dist_products_workflow` now permits `None` and if so saves to `mgrs_tile_id_{fd}_{ld}` where `fd` is the first date time series, and `ld` is the last date.
+
+### Added
+* Ability for `run_sequential_confirmation_of_dist_products_workflow` to upload products to s3 bucket. 
+* Validation for checking prior MGRS tile id in `RunConfigData`
+
+
 ## [2.0.12] - 2025-02-04
 
 ### Fixed

@@ -541,7 +541,12 @@ def run_one_confirmation(
     help='Directory of OPERA products that are unconfirmed',
 )
 @click.option(
-    '--dst_dist_product_parent', type=str, required=True, help='Path to parent directory for new DIST-S1 product.'
+    '--dst_dist_product_parent',
+    type=str,
+    required=False,
+    default=None,
+    help='Path to parent directory for new DIST-S1 product. If None, will be created in the current directory with the '
+    'MGRS Tile ID as the name with first/last date.',
 )
 @common_algo_options_for_confirmation_workflows
 def run_sequential_confirmation(
