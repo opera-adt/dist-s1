@@ -530,14 +530,15 @@ def run_one_confirmation(
     )
 
 
-class CommaSeparatedGranulesOrDirectoryOfProducts(click.ParamType):
+class SpaceSeparatedGranulesOrDirectoryOfProducts(click.ParamType):
     name = 'comma_list'
 
     def convert(self, value: str | list, param: click.Parameter, ctx: click.Context) -> list:
-        if ',' in value:
-            return [v.strip() for v in value.split(',')]
+        values = [v.strip() for v in value.split(' ')]
+        if len(values) == 1:
+            return values[0]
         else:
-            return value.strip()
+            return values
 
 
 @cli.command(
@@ -546,7 +547,7 @@ class CommaSeparatedGranulesOrDirectoryOfProducts(click.ParamType):
 )
 @click.option(
     '--dist_s1_data',
-    type=CommaSeparatedGranulesOrDirectoryOfProducts(),
+    type=SpaceSeparatedGranulesOrDirectoryOfProducts(),
     required=True,
     help='Directory of OPERA products that are unconfirmed',
 )
