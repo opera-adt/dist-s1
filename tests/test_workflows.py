@@ -293,11 +293,15 @@ def test_dist_s1_workflow_interface_external_model(
         shutil.rmtree(tmp_dir)
 
 
+@pytest.mark.parametrize('bucket,bucket_prefix', [(None, ''), ('foo', 'bar')])
 def test_sequential_confirmation_workflow(
     test_dir: Path,
     change_local_dir: Callable,
     unconfirmed_products_chile_fire_dir: Path,
     confirmed_products_chile_fire_golden_dir: Path,
+    mocker: MockerFixture,
+    bucket: str | None,
+    bucket_prefix: str,
 ) -> None:
     """Test sequential confirmation workflow against golden dataset.
 
@@ -306,6 +310,7 @@ def test_sequential_confirmation_workflow(
     2. Runs run_sequential_confirmation_of_dist_products_workflow
     3. Compares output with golden dataset in test_data/golden_datasets/\
         products_with_confirmation_cropped__chile-fire_2024
+    4. When bucket is provided, verifies S3 uploads are called correctly
     """
     # Ensure that validation is relative to the test directory
     change_local_dir(test_dir)
@@ -313,6 +318,13 @@ def test_sequential_confirmation_workflow(
     if tmp_sequential_dir.exists():
         shutil.rmtree(tmp_sequential_dir)
     tmp_sequential_dir.mkdir(parents=True, exist_ok=True)
+
+    # Mock S3 upload functions if bucket is provided
+    mock_upload_product = None
+    mock_upload_file = None
+    if bucket is not None:
+        mock_upload_product = mocker.patch('dist_s1.workflows.upload_product_to_s3')
+        mock_upload_file = mocker.patch('dist_s1.workflows.upload_file_to_s3')
 
     # Run sequential confirmation workflow with explicit default parameters
     # Note: These are the default values from DEFAULT_* constants to ensure test stability
@@ -329,6 +341,8 @@ def test_sequential_confirmation_workflow(
         confirmation_confidence_thresh=None,  # DEFAULT_CONFIRMATION_CONFIDENCE_THRESHOLD (3**2 * 3.5)
         metric_value_upper_lim=100.0,  # DEFAULT_METRIC_VALUE_UPPER_LIM
         tqdm_enabled=False,  # Disable progress bar for testing
+        bucket=bucket,
+        bucket_prefix=bucket_prefix,
     )
 
     # Compare each confirmed product with the corresponding golden dataset product
@@ -349,6 +363,37 @@ def test_sequential_confirmation_workflow(
         confirmed_product = DistS1ProductDirectory.from_product_path(confirmed_path)
 
         assert golden_product == confirmed_product, f'Product comparison failed for {golden_path.name}'
+
+    # Verify S3 uploads if bucket was provided
+    if bucket is not None:
+        assert mock_upload_product is not None
+        assert mock_upload_file is not None
+
+        # Verify upload_product_to_s3 was called for each confirmed product
+        assert mock_upload_product.call_count == len(confirmed_products), (
+            f'Expected {len(confirmed_products)} product uploads, got {mock_upload_product.call_count}'
+        )
+
+        # Verify each product was uploaded to the correct S3 path
+        ts_prefix = f'{bucket_prefix}/{tmp_sequential_dir.name}'
+        for call_args in mock_upload_product.call_args_list:
+            args, _ = call_args
+            _, upload_bucket, upload_prefix = args
+            assert upload_bucket == bucket
+            assert upload_prefix == ts_prefix
+
+        # Verify upload_file_to_s3 was called once for the zip file
+        assert mock_upload_file.call_count == 1, f'Expected 1 zip file upload, got {mock_upload_file.call_count}'
+
+        # Verify the zip file was uploaded with correct parameters
+        zip_call_args = mock_upload_file.call_args
+        args, _ = zip_call_args
+        zip_path, upload_bucket, upload_prefix = args
+        assert upload_bucket == bucket
+        assert upload_prefix == bucket_prefix
+        # Verify zip filename matches pattern: <mgrs_tile_id>_*.zip
+        zip_filename = Path(zip_path).name
+        assert zip_filename == f'{tmp_sequential_dir.name}.zip'
 
     if ERASE_WORKFLOW_OUTPUTS:
         shutil.rmtree(tmp_sequential_dir)
