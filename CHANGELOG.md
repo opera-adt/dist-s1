@@ -15,10 +15,14 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * `run_sequential_confirmation_of_dist_products_workflow` was changed for greater flexibility and cloud usage:
   * now `dst_dist_product_parent` permits `None` value and if so saves to `mgrs_tile_id_{fd}_{ld}` where `fd` is the first date time series, and `ld` is the last date.
   * `dist_s1_data` can be directory of products (previously allowed) OR list of granules (not allowed)
+* As the workflow in the previous bullet, the CLI entrypoint `run_sequential_confirmation` can pass a list of granules that are space separated via `--dist_s1_data` (this argument was changed as well to allow for flexibility), still allows a directory to be specified.
 
 ### Added
 * Ability for `run_sequential_confirmation_of_dist_products_workflow` to upload products to s3 bucket. 
 * Validation for checking prior MGRS tile id in `RunConfigData`
+
+### Fixed
+* Bucket and prefix were not properly exposed in the CLI of `run_sequential_confirmation_of_dist_products_workflow`. 
 
 
 ## [2.0.12] - 2025-02-04

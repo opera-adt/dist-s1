@@ -530,14 +530,15 @@ def run_one_confirmation(
     )
 
 
-class CommaSeparatedGranulesOrDirectoryOfProducts(click.ParamType):
+class SpaceSeparatedGranulesOrDirectoryOfProducts(click.ParamType):
     name = 'comma_list'
 
     def convert(self, value: str | list, param: click.Parameter, ctx: click.Context) -> list:
-        if ',' in value:
-            return [v.strip() for v in value.split(',')]
+        values = [v.strip() for v in value.split(' ')]
+        if len(values) == 1:
+            return values[0]
         else:
-            return value.strip()
+            return values
 
 
 @cli.command(
@@ -546,7 +547,7 @@ class CommaSeparatedGranulesOrDirectoryOfProducts(click.ParamType):
 )
 @click.option(
     '--dist_s1_data',
-    type=CommaSeparatedGranulesOrDirectoryOfProducts(),
+    type=SpaceSeparatedGranulesOrDirectoryOfProducts(),
     required=True,
     help='Directory of OPERA products that are unconfirmed',
 )
@@ -557,6 +558,20 @@ class CommaSeparatedGranulesOrDirectoryOfProducts(click.ParamType):
     default=None,
     help='Path to parent directory for new DIST-S1 product. If None, will be created in the current directory with the '
     'MGRS Tile ID as the name with first/last date.',
+)
+@click.option(
+    '--bucket',
+    type=str,
+    required=False,
+    default='',
+    help='S3 bucket to upload the final products to.',
+)
+@click.option(
+    '--bucket_prefix',
+    type=str,
+    required=False,
+    default='',
+    help='S3 bucket prefix to upload the final products to.',
 )
 @common_algo_options_for_confirmation_workflows
 def run_sequential_confirmation(
@@ -569,6 +584,8 @@ def run_sequential_confirmation(
     confidence_upper_lim: int,
     confirmation_confidence_threshold: float | None,
     metric_value_upper_lim: float,
+    bucket: str | None,
+    bucket_prefix: str,
 ) -> None:
     run_sequential_confirmation_of_dist_products_workflow(
         dist_s1_data=dist_s1_data,
@@ -580,6 +597,8 @@ def run_sequential_confirmation(
         confirmation_confidence_upper_lim=confidence_upper_lim,
         confirmation_confidence_thresh=confirmation_confidence_threshold,
         metric_value_upper_lim=metric_value_upper_lim,
+        bucket=bucket,
+        bucket_prefix=bucket_prefix,
     )
 
 
