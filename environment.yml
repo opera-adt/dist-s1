@@ -37,7 +37,8 @@ dependencies:
  - boto3
  # Docs
  - mkdocs
- - mkdocs-material 
+ - mkdocs-material
  - mkdocstrings-python
  - mkdocs-redirects
+ - mkdocs-macros-plugin
  - griffe-pydantic>=0.1.1
