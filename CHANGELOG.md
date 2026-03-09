@@ -20,6 +20,9 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * Ability for `run_sequential_confirmation_of_dist_products_workflow` to upload products to s3 bucket. 
 * Validation for checking prior MGRS tile id in `RunConfigData`
 
+### Fixed
+* Bucket and prefix were not properly exposed in the CLI of `run_sequential_confirmation_of_dist_products_workflow`. 
+
 
 ## [2.0.12] - 2025-02-04
 
