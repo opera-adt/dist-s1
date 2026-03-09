@@ -563,7 +563,7 @@ class SpaceSeparatedGranulesOrDirectoryOfProducts(click.ParamType):
     '--bucket',
     type=str,
     required=False,
-    default=None,
+    default='',
     help='S3 bucket to upload the final products to.',
 )
 @click.option(
