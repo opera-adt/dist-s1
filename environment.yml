@@ -36,9 +36,9 @@ dependencies:
  - tqdm
  - boto3
  # Docs
- - mkdocs
+ - mkdocs>=1.6
  - mkdocs-material
  - mkdocstrings-python
  - mkdocs-redirects
- - mkdocs-macros-plugin
+ - mkdocs-macros-plugin>=1.3.7
  - griffe-pydantic>=0.1.1
