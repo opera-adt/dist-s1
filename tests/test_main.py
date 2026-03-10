@@ -361,17 +361,20 @@ OPERA_L3_DIST-ALERT-S1_T19HBD_20240202T100430Z_20250806T143249Z_S1_30_v0.1 \
     shutil.rmtree(tmp_dir)
 
 
+@pytest.mark.parametrize('use_s3_params', [False, True])
 def test_run_sequential_confirmation_main_interface(
     cli_runner: CliRunner,
     test_dir: Path,
     change_local_dir: Callable[[Path], None],
     unconfirmed_products_chile_fire_dir: Path,
+    mocker: MockerFixture,
+    use_s3_params: bool,
 ) -> None:
-    """Test the run_sequential_confirmation CLI interface that mirrors confirm_sequence.sh.
+    """Test the run_sequential_confirmation CLI interface.
 
-    This test mirrors the functionality of confirm_sequence.sh:
-    dist-s1 run_sequential_confirmation --dist_s1_data ./chile_fire_unconfirmed \
-                                        --dst_dist_product_parent chile_fire_confirmed
+    Tests both modes:
+    1. Using --dist_s1_data with a local directory
+    2. Using --dist_s1_data_bucket and --dist_s1_data_job_ids with S3 parameters
     """
     change_local_dir(test_dir)
     tmp_dir = test_dir / 'tmp_confirm_sequence'
@@ -379,33 +382,64 @@ def test_run_sequential_confirmation_main_interface(
         shutil.rmtree(tmp_dir)
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
-    # Count the number of unconfirmed products
     unconfirmed_products = list(unconfirmed_products_chile_fire_dir.glob('OPERA*'))
     expected_product_count = len(unconfirmed_products)
     assert expected_product_count > 0, 'Need at least 1 product for sequential confirmation'
 
-    # Run the CLI command
-    result = cli_runner.invoke(
-        dist_s1,
-        [
-            'run_sequential_confirmation',
-            '--dist_s1_data',
-            str(unconfirmed_products_chile_fire_dir),
-            '--dst_dist_product_parent',
-            str(tmp_dir),
-        ],
-        catch_exceptions=False,
-    )
+    if use_s3_params:
+        product_uris = [f's3://test-bucket/job-{i}/{p.name}' for i, p in enumerate(unconfirmed_products)]
+        mock_get_opera = mocker.patch('dist_s1.__main__.get_opera_product_from_s3_job_id_prefix')
+        mock_get_opera.side_effect = product_uris
+
+        mocker.patch('dist_s1.data_models.output_models.check_s3_prefix_exists', return_value=True)
+        mocker.patch('dist_s1.data_models.output_models.check_s3_object_exists', return_value=True)
+
+        product_path_mapping = {uri: unconfirmed_products[i] for i, uri in enumerate(product_uris)}
+
+        def mock_from_s3(s3_uri: str) -> DistS1ProductDirectory:
+            local_path = product_path_mapping[s3_uri]
+            return DistS1ProductDirectory._from_local_product_path(Path(local_path))
+
+        mocker.patch(
+            'dist_s1.data_models.output_models.DistS1ProductDirectory._from_s3_product_path',
+            side_effect=mock_from_s3,
+        )
+
+        result = cli_runner.invoke(
+            dist_s1,
+            [
+                'run_sequential_confirmation',
+                '--dist_s1_data_bucket',
+                'test-bucket',
+                '--dist_s1_data_job_ids',
+                ' '.join([f'job-{i}' for i in range(len(unconfirmed_products))]),
+                '--dst_dist_product_parent',
+                str(tmp_dir),
+            ],
+            catch_exceptions=False,
+        )
+
+        assert mock_get_opera.call_count == expected_product_count
+    else:
+        result = cli_runner.invoke(
+            dist_s1,
+            [
+                'run_sequential_confirmation',
+                '--dist_s1_data',
+                str(unconfirmed_products_chile_fire_dir),
+                '--dst_dist_product_parent',
+                str(tmp_dir),
+            ],
+            catch_exceptions=False,
+        )
 
     assert result.exit_code == 0, f'CLI command failed: {result.output}'
 
-    # Verify that all products were confirmed
     confirmed_products = list(tmp_dir.glob('OPERA*'))
     assert len(confirmed_products) == expected_product_count, (
         f'Expected {expected_product_count} confirmed products, got {len(confirmed_products)}'
     )
 
-    # Verify all confirmed products exist and have expected names
     confirmed_product_names = {p.name for p in confirmed_products}
     unconfirmed_product_names = {p.name for p in unconfirmed_products}
     assert confirmed_product_names == unconfirmed_product_names, (

@@ -21,7 +21,7 @@ from pydantic import (
 
 from dist_s1.data_models.algoconfig_model import AlgoConfigData
 from dist_s1.data_models.data_utils import (
-    check_filename_format,
+    check_rtc_filename_format,
     extract_rtc_metadata_from_path,
     get_acquisition_datetime,
     get_burst_id,
@@ -192,7 +192,7 @@ class RunConfigData(BaseModel):
     def check_filename_format(cls, values: Path, field: ValidationInfo) -> None:
         """Check the filename format to ensure correct structure and tokens."""
         for file_path in values:
-            check_filename_format(file_path.name, field.field_name.split('_')[-1])
+            check_rtc_filename_format(file_path.name, field.field_name.split('_')[-1])
         return values
 
     @field_validator('mgrs_tile_id')

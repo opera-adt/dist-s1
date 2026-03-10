@@ -7,6 +7,7 @@ from typing import ParamSpec, TypeVar
 import click
 from distmetrics.model_load import ALLOWED_MODELS
 
+from dist_s1.aws import get_opera_product_from_s3_job_id_prefix
 from dist_s1.confirmation import confirm_disturbance_with_prior_product_and_serialize
 from dist_s1.data_models.defaults import (
     DEFAULT_APPLY_WATER_MASK,
@@ -530,12 +531,15 @@ def run_one_confirmation(
     )
 
 
-class CommaSeparatedGranulesOrDirectoryOfProducts(click.ParamType):
-    name = 'comma_list'
+class SpaceSeparatedValues(click.ParamType):
+    name = 'space_list'
 
     def convert(self, value: str | list, param: click.Parameter, ctx: click.Context) -> list:
-        if ',' in value:
-            return [v.strip() for v in value.split(',')]
+        if ' ' in value:
+            values = value.split()
+            if len(values) == 1:
+                return values[0]
+            return values
         else:
             return value.strip()
 
@@ -546,9 +550,24 @@ class CommaSeparatedGranulesOrDirectoryOfProducts(click.ParamType):
 )
 @click.option(
     '--dist_s1_data',
-    type=CommaSeparatedGranulesOrDirectoryOfProducts(),
-    required=True,
-    help='Directory of OPERA products that are unconfirmed',
+    type=SpaceSeparatedValues(),
+    required=False,
+    default=None,
+    help='Directory of OPERA products that are unconfirmed or space-separated list of S3 URIs',
+)
+@click.option(
+    '--dist_s1_data_bucket',
+    type=str,
+    required=False,
+    default=None,
+    help='S3 bucket containing OPERA products (must be used with --dist_s1_data_job_ids)',
+)
+@click.option(
+    '--dist_s1_data_job_ids',
+    type=SpaceSeparatedValues(),
+    required=False,
+    default=None,
+    help='Space-separated list of job IDs in S3 bucket (must be used with --dist_s1_data_bucket)',
 )
 @click.option(
     '--dst_dist_product_parent',
@@ -560,7 +579,9 @@ class CommaSeparatedGranulesOrDirectoryOfProducts(click.ParamType):
 )
 @common_algo_options_for_confirmation_workflows
 def run_sequential_confirmation(
-    dist_s1_data: str | Path | list,
+    dist_s1_data: str | Path | list | None,
+    dist_s1_data_bucket: str | None,
+    dist_s1_data_job_ids: str | None,
     dst_dist_product_parent: str | Path | None,
     no_day_limit: int,
     exclude_consecutive_no_dist: bool,
@@ -570,6 +591,25 @@ def run_sequential_confirmation(
     confirmation_confidence_threshold: float | None,
     metric_value_upper_lim: float,
 ) -> None:
+    if dist_s1_data is not None and (dist_s1_data_bucket is not None or dist_s1_data_job_ids is not None):
+        raise click.BadParameter(
+            'Cannot specify both --dist_s1_data and (--dist_s1_data_bucket/--dist_s1_data_job_ids). '
+            'Use either --dist_s1_data OR the bucket/job_ids pair.'
+        )
+
+    if (dist_s1_data_bucket is None) != (dist_s1_data_job_ids is None):
+        raise click.BadParameter('Both --dist_s1_data_bucket and --dist_s1_data_job_ids must be provided together.')
+
+    if dist_s1_data is None and dist_s1_data_bucket is None:
+        raise click.BadParameter(
+            'Must provide either --dist_s1_data OR (--dist_s1_data_bucket and --dist_s1_data_job_ids).'
+        )
+
+    if dist_s1_data_bucket is not None and dist_s1_data_job_ids is not None:
+        dist_s1_data = [
+            get_opera_product_from_s3_job_id_prefix(dist_s1_data_bucket, job_id) for job_id in dist_s1_data_job_ids
+        ]
+
     run_sequential_confirmation_of_dist_products_workflow(
         dist_s1_data=dist_s1_data,
         dst_dist_product_parent=dst_dist_product_parent,
