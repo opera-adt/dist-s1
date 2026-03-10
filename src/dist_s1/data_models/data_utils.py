@@ -83,7 +83,7 @@ def get_acquisition_datetime(opera_rtc_s1_path: Path | str) -> datetime:
         raise ValueError(f"Datetime token in filename '{opera_rtc_s1_path.name}' is not correctly formatted.")
 
 
-def check_filename_format(filename: str, polarization: str) -> None:
+def check_rtc_filename_format(filename: str, polarization: str) -> None:
     if polarization not in ['crosspol', 'copol']:
         raise ValueError(f"Polarization '{polarization}' is not valid; must be in ['crosspol', 'copol']")
 
@@ -180,3 +180,31 @@ def get_confirmation_confidence_threshold(
     alert_low_conf_thresh: float, n_confirmation_obs: int = DEFAULT_N_CONFIRMATION_OBSERVATIONS
 ) -> float:
     return (n_confirmation_obs**2) * alert_low_conf_thresh
+
+
+def validate_dist_s1_product_name(product_name: str) -> bool:
+    tokens = product_name.split('_')
+
+    if len(tokens) != 9:
+        return False
+
+    conditions = [
+        tokens[0] != 'OPERA',
+        tokens[1] != 'L3',
+        tokens[2] != 'DIST-ALERT-S1',
+        not tokens[3].startswith('T'),
+        tokens[6] not in ['S1A', 'S1B', 'S1C', 'S1D'],
+        tokens[7] != '30',
+        not tokens[8].startswith('v'),
+    ]
+
+    if any(conditions):
+        return False
+
+    try:
+        datetime.strptime(tokens[4], '%Y%m%dT%H%M%SZ')
+        datetime.strptime(tokens[5], '%Y%m%dT%H%M%SZ')
+    except ValueError:
+        return False
+
+    return True

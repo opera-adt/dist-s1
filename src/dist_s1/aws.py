@@ -133,6 +133,47 @@ def download_file_from_s3(bucket: str, key: str, dst_path: Path | str, profile_n
     s3.download_file(bucket, key, str(dst_path))
 
 
+def get_opera_product_from_s3_job_id_prefix(bucket: str, prefix: str, profile_name: str | None = None) -> str:
+    from dist_s1.data_models.data_utils import validate_dist_s1_product_name
+
+    s3 = get_s3_client(profile_name) if profile_name else boto3.client('s3', config=Config(signature_version=UNSIGNED))
+
+    prefix = prefix.rstrip('/')
+
+    opera_product_dirs = []
+    paginator = s3.get_paginator('list_objects_v2')
+
+    list_prefix = f'{prefix}/' if prefix else ''
+    for page in paginator.paginate(Bucket=bucket, Prefix=list_prefix):
+        for obj in page.get('Contents', []):
+            key = obj['Key']
+            if 'OPERA_L3_DIST' not in key:
+                continue
+
+            relative_path = key[len(list_prefix) :] if list_prefix else key
+            parts = relative_path.split('/')
+            if len(parts) >= 2 and parts[0].startswith('OPERA_L3_DIST'):
+                opera_product_dirs.append(parts[0])
+
+    opera_product_dirs = list(set(opera_product_dirs))
+
+    if len(opera_product_dirs) == 0:
+        raise ValueError(f'No OPERA product directories found in s3://{bucket}/{prefix}')
+
+    if len(opera_product_dirs) > 1:
+        raise ValueError(
+            f'Multiple OPERA products found in s3://{bucket}/{prefix}. '
+            f'Expected exactly one. Found: {sorted(opera_product_dirs)}'
+        )
+
+    product_name = opera_product_dirs[0]
+
+    if not validate_dist_s1_product_name(product_name):
+        raise ValueError(f'Invalid OPERA product name: {product_name}')
+
+    return f's3://{bucket}/{prefix}/{product_name}'
+
+
 def download_product_from_s3(
     s3_uri: str, dst_dir: Path | str, profile_name: str | None = None, max_workers: int = 4
 ) -> Path:
