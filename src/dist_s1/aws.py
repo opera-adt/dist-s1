@@ -150,7 +150,7 @@ def get_opera_product_from_s3_job_id_prefix(bucket: str, prefix: str, profile_na
             if 'OPERA_L3_DIST' not in key:
                 continue
 
-            relative_path = key[len(list_prefix):] if list_prefix else key
+            relative_path = key[len(list_prefix) :] if list_prefix else key
             parts = relative_path.split('/')
             if len(parts) >= 2 and parts[0].startswith('OPERA_L3_DIST'):
                 opera_product_dirs.append(parts[0])
