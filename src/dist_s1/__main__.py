@@ -541,7 +541,7 @@ class SpaceSeparatedValues(click.ParamType):
                 return values[0]
             return values
         else:
-            return values
+            return value
 
 
 @cli.command(

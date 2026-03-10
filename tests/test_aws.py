@@ -103,15 +103,13 @@ def test_get_opera_product_from_s3_prefix_multiple_products(mocker: MockerFixtur
     mock_paginator = mocker.MagicMock()
     mock_s3_client.get_paginator.return_value = mock_paginator
 
+    opera_id_1 = 'OPERA_L3_DIST-ALERT-S1_T36UYA_20220324T152116Z_20260309T202443Z_S1A_30_v0.1'
+    opera_id_2 = 'OPERA_L3_DIST-ALERT-S1_T36UYA_20220325T152116Z_20260309T202443Z_S1A_30_v0.1'
     mock_paginator.paginate.return_value = [
         {
             'Contents': [
-                {
-                    'Key': 'job-123/OPERA_L3_DIST-ALERT-S1_T36UYA_20220324T152116Z_20260309T202443Z_S1A_30_v0.1/file1.tif'
-                },
-                {
-                    'Key': 'job-123/OPERA_L3_DIST-ALERT-S1_T36UYA_20220325T152116Z_20260309T202443Z_S1A_30_v0.1/file2.tif'
-                },
+                {'Key': f'job-123/{opera_id_1}/file1.tif'},
+                {'Key': f'job-123/{opera_id_2}/file2.tif'},
             ]
         }
     ]
@@ -127,22 +125,19 @@ def test_get_opera_product_from_s3_prefix_ignores_zip_files(mocker: MockerFixtur
     mock_paginator = mocker.MagicMock()
     mock_s3_client.get_paginator.return_value = mock_paginator
 
+    opera_id = 'OPERA_L3_DIST-ALERT-S1_T36UYA_20220324T152116Z_20260309T202443Z_S1A_30_v0.1'
     mock_paginator.paginate.return_value = [
         {
             'Contents': [
-                {'Key': 'job-123/OPERA_L3_DIST-ALERT-S1_T36UYA_20220324T152116Z_20260309T202443Z_S1A_30_v0.1.zip'},
-                {
-                    'Key': 'job-123/OPERA_L3_DIST-ALERT-S1_T36UYA_20220324T152116Z_20260309T202443Z_S1A_30_v0.1/file1.tif'
-                },
+                {'Key': f'job-123/{opera_id}.zip'},
+                {'Key': f'job-123/{opera_id}/file1.tif'},
             ]
         }
     ]
 
     result = get_opera_product_from_s3_job_id_prefix('test-bucket', 'job-123')
 
-    assert (
-        result == 's3://test-bucket/job-123/OPERA_L3_DIST-ALERT-S1_T36UYA_20220324T152116Z_20260309T202443Z_S1A_30_v0.1'
-    )
+    assert result == f's3://test-bucket/job-123/{opera_id}'
 
 
 def test_get_opera_product_from_s3_prefix_invalid_product_name(mocker: MockerFixture) -> None:
