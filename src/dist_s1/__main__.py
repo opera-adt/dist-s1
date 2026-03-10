@@ -541,7 +541,7 @@ class SpaceSeparatedValues(click.ParamType):
                 return values[0]
             return values
         else:
-            return value.strip()
+            return values
 
 
 @cli.command(
@@ -577,6 +577,20 @@ class SpaceSeparatedValues(click.ParamType):
     help='Path to parent directory for new DIST-S1 product. If None, will be created in the current directory with the '
     'MGRS Tile ID as the name with first/last date.',
 )
+@click.option(
+    '--bucket',
+    type=str,
+    required=False,
+    default='',
+    help='S3 bucket to upload the final products to.',
+)
+@click.option(
+    '--bucket_prefix',
+    type=str,
+    required=False,
+    default='',
+    help='S3 bucket prefix to upload the final products to.',
+)
 @common_algo_options_for_confirmation_workflows
 def run_sequential_confirmation(
     dist_s1_data: str | Path | list | None,
@@ -590,6 +604,8 @@ def run_sequential_confirmation(
     confidence_upper_lim: int,
     confirmation_confidence_threshold: float | None,
     metric_value_upper_lim: float,
+    bucket: str | None,
+    bucket_prefix: str,
 ) -> None:
     if dist_s1_data is not None and (dist_s1_data_bucket is not None or dist_s1_data_job_ids is not None):
         raise click.BadParameter(
@@ -620,6 +636,8 @@ def run_sequential_confirmation(
         confirmation_confidence_upper_lim=confidence_upper_lim,
         confirmation_confidence_thresh=confirmation_confidence_threshold,
         metric_value_upper_lim=metric_value_upper_lim,
+        bucket=bucket,
+        bucket_prefix=bucket_prefix,
     )
 
 

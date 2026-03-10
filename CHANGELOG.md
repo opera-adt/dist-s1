@@ -7,7 +7,7 @@ and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [2.0.13] - 2025-02-19
+## [2.0.12] - 2025-02-04
 
 ### Changed
 
@@ -15,25 +15,25 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * `run_sequential_confirmation_of_dist_products_workflow` was changed for greater flexibility and cloud usage:
   * now `dst_dist_product_parent` permits `None` value and if so saves to `mgrs_tile_id_{fd}_{ld}` where `fd` is the first date time series, and `ld` is the last date.
   * `dist_s1_data` can be directory of products (previously allowed) OR list of granules (not allowed)
+* As the workflow in the previous bullet, the CLI entrypoint `run_sequential_confirmation` can pass a list of granules that are space separated via `--dist_s1_data` (this argument was changed as well to allow for flexibility), still allows a directory to be specified.
+* s3 function for uploading input and dist-s1 product data to s3 is entirely within `2_delivery.py` (see above)
+* Remove `computed_field` decorator from `water_mask_path` so it is not serialized to `runconfig.yml` files.
+* Added more rasterio env variables to improve performance of remote confirmation process.
+* Added `dist_s1_data_job_ids` and `dist_s1_data_data_bucket` to resolve issues with AWS batch and character length of s3 uris; see: https://github.com/ASFHyP3/hyp3/issues/3041
+
 
 ### Added
 * Ability for `run_sequential_confirmation_of_dist_products_workflow` to upload products to s3 bucket. 
 * Validation for checking prior MGRS tile id in `RunConfigData`
+* Added multithreading to downloading products from s3 (and made easier to read)
 
-
-## [2.0.12] - 2025-02-04
 
 ### Fixed
+* Bucket and prefix were not properly exposed in the CLI of `run_sequential_confirmation_of_dist_products_workflow`. 
 * Fixes delivery script `regression_test/2_delivery.py` (see https://github.com/opera-adt/dist-s1/issues/210)
 * Do not upload 2 browse images to s3 when prefix is provided.
 
-### Changed
-* s3 function for uploading input and dist-s1 product data to s3 is entirely within `2_delivery.py` (see above)
-* Remove `computed_field` decorator from `water_mask_path` so it is not serialized to `runconfig.yml` files.
-* Added more rasterio env variables to improve performance of remote confirmation process.
 
-### Added
-* Added multithreading to downloading products from s3 (and made easier to read)
 
 ## [2.0.11] - 2025-01-14
 

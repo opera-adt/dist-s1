@@ -424,10 +424,9 @@ def run_sequential_confirmation_of_dist_products_workflow(
             )
             prior_confirmed_dist_s1_prod = dst_dist_product_parent / current_dist_s1_product.product_name
         generate_browse_image(dst_dist_product_directory, water_mask_path=None)
-    if bucket is not None:
-        product_dirs = [p.product_dir_path for p in dst_dist_product_parent.glob('OPERA*')]
+    if (bucket is not None) and (bucket != ''):
         ts_prefix = f'{bucket_prefix}/{dst_dist_product_parent.name}'
-        [upload_product_to_s3(p, bucket, ts_prefix) for p in product_dirs]
+        [upload_product_to_s3(p.product_dir_path, bucket, ts_prefix) for p in product_dirs]
         # Upload dummy dist file so it can be indexed
         zip_name = f'{dst_dist_product_parent.name}.zip'
         with tempfile.TemporaryDirectory() as tmp_dir:
