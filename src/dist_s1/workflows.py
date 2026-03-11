@@ -405,7 +405,7 @@ def run_sequential_confirmation_of_dist_products_workflow(
     ):
         if k == 0:
             dst_dist_product_directory = product_dirs[0].copy_to(dst_dist_product_parent)
-            output_confirmed_dist_s1_products.append(dst_dist_product_directory)
+            output_confirmed_dist_s1_products.append(str(dst_dist_product_directory))
             prior_confirmed_dist_s1_prod = dst_dist_product_directory
         else:
             dst_dist_product_directory = confirm_disturbance_with_prior_product_and_serialize(
