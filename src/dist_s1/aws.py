@@ -91,7 +91,7 @@ def upload_product_to_s3(
     prefix_prod = f'{prefix}/{product_dir_path.name}' if prefix else product_dir_path.name
     for file in product_dir_path.glob('*.png'):
         upload_file_to_s3(file, bucket, prefix_prod)
-    for file in product_directory.glob('*.tif'):
+    for file in product_dir_path.glob('*.tif'):
         upload_file_to_s3(file, bucket, prefix_prod)
 
 

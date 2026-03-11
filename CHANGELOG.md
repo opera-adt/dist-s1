@@ -33,6 +33,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * Fixes delivery script `regression_test/2_delivery.py` (see https://github.com/opera-adt/dist-s1/issues/210)
 * Do not upload 2 browse images to s3 when prefix is provided.
 * For confirmation sequence, ensure (all) new confirmed products are uploaded correclty to s3 (was previously trying to upload input products to s3).
+* Fixes `upload_product_to_s3` to ensure string product directories can be passed.
 
 
 
