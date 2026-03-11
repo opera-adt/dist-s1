@@ -80,6 +80,8 @@ def upload_product_to_s3(
 ) -> None:
     product_dir_path = Path(product_directory)
 
+    if not Path(product_directory).exists():
+        raise ValueError(f'Product directory for upload to s3 does not exist: {product_directory}')
     if upload_zipped:
         product_zip_path = f'{product_dir_path}.zip'
         shutil.make_archive(str(product_dir_path), 'zip', product_dir_path)

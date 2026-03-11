@@ -396,6 +396,7 @@ def run_sequential_confirmation_of_dist_products_workflow(
     if len(product_dirs) == 1:
         raise ValueError(f'Only one product directory in the product directory {dist_s1_data}.')
 
+    output_confirmed_dist_s1_products = []
     for k, current_dist_s1_product in tqdm(
         enumerate(product_dirs),
         desc=f'Confirming {len(product_dirs)} products',
@@ -404,6 +405,7 @@ def run_sequential_confirmation_of_dist_products_workflow(
     ):
         if k == 0:
             dst_dist_product_directory = product_dirs[0].copy_to(dst_dist_product_parent)
+            output_confirmed_dist_s1_products.append(dst_dist_product_directory)
             prior_confirmed_dist_s1_prod = dst_dist_product_directory
         else:
             dst_dist_product_directory = confirm_disturbance_with_prior_product_and_serialize(
@@ -422,11 +424,12 @@ def run_sequential_confirmation_of_dist_products_workflow(
                 metric_value_upper_lim=metric_value_upper_lim,
                 # Gets product tags from the current product
             )
-            prior_confirmed_dist_s1_prod = dst_dist_product_parent / current_dist_s1_product.product_name
+            prior_confirmed_dist_s1_prod = str(dst_dist_product_directory)
+            output_confirmed_dist_s1_products.append(str(dst_dist_product_directory))
         generate_browse_image(dst_dist_product_directory, water_mask_path=None)
     if (bucket is not None) and (bucket != ''):
         ts_prefix = f'{bucket_prefix}/{dst_dist_product_parent.name}'
-        [upload_product_to_s3(p.product_dir_path, bucket, ts_prefix) for p in product_dirs]
+        [upload_product_to_s3(p, bucket, ts_prefix) for p in output_confirmed_dist_s1_products]
         # Upload dummy dist file so it can be indexed
         zip_name = f'{dst_dist_product_parent.name}.zip'
         with tempfile.TemporaryDirectory() as tmp_dir:
