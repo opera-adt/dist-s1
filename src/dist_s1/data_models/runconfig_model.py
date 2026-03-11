@@ -14,7 +14,6 @@ from pydantic import (
     Field,
     ValidationError,
     ValidationInfo,
-    computed_field,
     field_serializer,
     field_validator,
     model_validator,
@@ -22,7 +21,7 @@ from pydantic import (
 
 from dist_s1.data_models.algoconfig_model import AlgoConfigData
 from dist_s1.data_models.data_utils import (
-    check_filename_format,
+    check_rtc_filename_format,
     extract_rtc_metadata_from_path,
     get_acquisition_datetime,
     get_burst_id,
@@ -193,7 +192,7 @@ class RunConfigData(BaseModel):
     def check_filename_format(cls, values: Path, field: ValidationInfo) -> None:
         """Check the filename format to ensure correct structure and tokens."""
         for file_path in values:
-            check_filename_format(file_path.name, field.field_name.split('_')[-1])
+            check_rtc_filename_format(file_path.name, field.field_name.split('_')[-1])
         return values
 
     @field_validator('mgrs_tile_id')
@@ -506,7 +505,6 @@ class RunConfigData(BaseModel):
             self._df_inputs = df
         return self._df_inputs.copy()
 
-    @computed_field
     @property
     def water_mask_path(self) -> Path | None:
         """Get the water mask path, processing if needed when apply_water_mask is True."""
@@ -680,6 +678,17 @@ class RunConfigData(BaseModel):
         if name == 'src_water_mask_path':
             super().__setattr__('_processed_water_mask_path', None)
         super().__setattr__(name, value)
+
+    @model_validator(mode='after')
+    def validate_prior_dist_s1_product_mgrs_tile_id(self) -> 'RunConfigData':
+        if self.prior_dist_s1_product is not None:
+            prior_mgrs_tile_id = self.prior_dist_s1_product.mgrs_tile_id
+            if prior_mgrs_tile_id != self.mgrs_tile_id:
+                raise ValueError(
+                    f'The prior DIST-S1 product MGRS tile ID ({prior_mgrs_tile_id}) does not match the current '
+                    f'MGRS tile ID ({self.mgrs_tile_id})'
+                )
+        return self
 
     @field_serializer('prior_dist_s1_product')
     def serialize_prior_dist_s1_product(self, prior_dist_s1_product: DistS1ProductDirectory | Path | str | None) -> str:

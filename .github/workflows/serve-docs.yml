@@ -28,11 +28,10 @@ jobs:
           create-args: >-
             python=${{ matrix.python-version }}
 
-      - name: Install dist-s1 and docs dependencies
+      - name: Install dist-s1
         shell: bash -l {0}
         run: |
           python -m pip install --no-deps .
-          python -m pip install mkdocs-macros-plugin
 
       - name: Generate API documentation tables
         shell: bash -l {0}

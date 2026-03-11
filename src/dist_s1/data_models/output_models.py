@@ -26,7 +26,11 @@ from dist_s1.constants import (
     TIF_LAYER_DTYPES,
     TIF_LAYER_NODATA_VALUES,
 )
-from dist_s1.data_models.data_utils import compare_dist_s1_product_tag, get_acquisition_datetime
+from dist_s1.data_models.data_utils import (
+    compare_dist_s1_product_tag,
+    get_acquisition_datetime,
+    validate_dist_s1_product_name,
+)
 
 
 PRODUCT_TAGS_FOR_EQUALITY = [
@@ -91,37 +95,7 @@ class ProductNameData(BaseModel):
 
     @classmethod
     def validate_product_name(cls, product_name: str) -> bool:
-        """
-        Validate if a string matches the OPERA L3 DIST-ALERT-S1 product name format.
-
-        Expected format:
-        OPERA_L3_DIST-ALERT-S1_T{mgrs_tile_id}_{acq_datetime}_{proc_datetime}_S1_30_v{version}
-        """
-        tokens = product_name.split('_')
-
-        # Check if we have the correct number of tokens first
-        if len(tokens) != 9:
-            return False
-
-        conditions = [
-            tokens[0] != 'OPERA',
-            tokens[1] != 'L3',
-            tokens[2] != 'DIST-ALERT-S1',
-            not tokens[3].startswith('T'),  # MGRS tile ID
-            tokens[6] not in ['S1A', 'S1B', 'S1C', 'S1D'],
-            tokens[7] != '30',
-            not tokens[8].startswith('v'),  # Version
-        ]
-
-        # If any condition is True, validation fails
-        if any(conditions):
-            return False
-
-        # Validate datetime formats
-        datetime.strptime(tokens[4], '%Y%m%dT%H%M%SZ')  # Acquisition datetime
-        datetime.strptime(tokens[5], '%Y%m%dT%H%M%SZ')  # Processing datetime
-
-        return True
+        return validate_dist_s1_product_name(product_name)
 
 
 class ProductFileData(BaseModel):

@@ -1,7 +1,36 @@
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+from tqdm import tqdm
+
 import dist_s1
-from dist_s1.aws import upload_file_to_s3, upload_files_to_s3_threaded
+from dist_s1.aws import get_content_type, get_s3_client, get_tag_set, upload_file_to_s3
+
+
+def upload_files_to_s3_threaded(
+    file_list: list[tuple[Path, str, str]], bucket: str, profile_name: str | None = None, max_workers: int = 5
+) -> None:
+    s3_client = get_s3_client(profile_name)
+
+    def upload_single_file(item: tuple[Path, str, str]) -> None:
+        file_path, s3_key, prefix = item
+        full_key = str(Path(prefix) / s3_key) if prefix else s3_key
+
+        extra_args = {'ContentType': get_content_type(full_key)}
+        s3_client.upload_file(str(file_path), bucket, full_key, extra_args)
+
+        tag_set = get_tag_set(file_path.name)
+        s3_client.put_object_tagging(Bucket=bucket, Key=full_key, Tagging=tag_set)
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        list(
+            tqdm(
+                executor.map(upload_single_file, file_list),
+                total=len(file_list),
+                desc='Uploading files to S3',
+                unit='file',
+            )
+        )
 
 
 def upload_directory_to_s3(

@@ -1,4 +1,6 @@
 import shutil
+import tempfile
+import zipfile
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -12,7 +14,7 @@ try:
 except RuntimeError:
     pass
 
-from dist_s1.aws import upload_product_to_s3
+from dist_s1.aws import upload_file_to_s3, upload_product_to_s3
 from dist_s1.confirmation import confirm_disturbance_with_prior_product_and_serialize
 from dist_s1.data_models.data_utils import get_max_context_length_from_model_source, get_max_pre_imgs_per_burst_mw
 from dist_s1.data_models.defaults import (
@@ -345,7 +347,7 @@ def run_confirmation_of_dist_product_workflow(
 
 def run_sequential_confirmation_of_dist_products_workflow(
     dist_s1_data: Path | str | list[Path | str],
-    dst_dist_product_parent: Path | str,
+    dst_dist_product_parent: Path | str | None = None,
     alert_low_conf_thresh: float = DEFAULT_LOW_CONFIDENCE_ALERT_THRESHOLD,
     alert_high_conf_thresh: float = DEFAULT_HIGH_CONFIDENCE_ALERT_THRESHOLD,
     no_day_limit: int = DEFAULT_NO_DAY_LIMIT,
@@ -357,11 +359,9 @@ def run_sequential_confirmation_of_dist_products_workflow(
     max_obs_num_year: int = DEFAULT_MAX_OBS_NUM_YEAR,
     metric_value_upper_lim: float = DEFAULT_METRIC_VALUE_UPPER_LIM,
     tqdm_enabled: bool = DEFAULT_TQDM_ENABLED,
+    bucket: str | None = None,
+    bucket_prefix: str = '',
 ) -> None:
-    if isinstance(dst_dist_product_parent, str):
-        dst_dist_product_parent = Path(dst_dist_product_parent)
-        dst_dist_product_parent.mkdir(parents=True, exist_ok=True)
-
     if isinstance(dist_s1_data, list):
         product_dirs = [
             DistS1ProductDirectory.from_product_path(p)
@@ -377,12 +377,26 @@ def run_sequential_confirmation_of_dist_products_workflow(
             DistS1ProductDirectory.from_product_path(p)
             for p in tqdm(product_dirs_paths, disable=not tqdm_enabled, desc='Loading product directories')
         ]
+    # Ensure consistent MGRS Tile ID across Products
+    mgrs_tile_ids = [p.mgrs_tile_id for p in product_dirs]
+    if len(set(mgrs_tile_ids)) > 1:
+        raise ValueError(f'Multiple MGRS tile IDs found in the product directories: {mgrs_tile_ids}')
+    mgrs_tile_id = mgrs_tile_ids[0]
+
+    if isinstance(dst_dist_product_parent, str):
+        dst_dist_product_parent = Path(dst_dist_product_parent)
+        dst_dist_product_parent.mkdir(parents=True, exist_ok=True)
+    if dst_dist_product_parent is None:
+        first_date = product_dirs[0].acq_datetime.strftime('%Y%m%d')
+        last_date = product_dirs[-1].acq_datetime.strftime('%Y%m%d')
+        dst_dist_product_parent = Path(f'./{mgrs_tile_id}_{first_date}_{last_date}')
 
     if len(product_dirs) == 0:
         raise ValueError(f'No product directories found in the product directory {dist_s1_data}.')
     if len(product_dirs) == 1:
         raise ValueError(f'Only one product directory in the product directory {dist_s1_data}.')
 
+    output_confirmed_dist_s1_products = []
     for k, current_dist_s1_product in tqdm(
         enumerate(product_dirs),
         desc=f'Confirming {len(product_dirs)} products',
@@ -391,6 +405,7 @@ def run_sequential_confirmation_of_dist_products_workflow(
     ):
         if k == 0:
             dst_dist_product_directory = product_dirs[0].copy_to(dst_dist_product_parent)
+            output_confirmed_dist_s1_products.append(str(dst_dist_product_directory))
             prior_confirmed_dist_s1_prod = dst_dist_product_directory
         else:
             dst_dist_product_directory = confirm_disturbance_with_prior_product_and_serialize(
@@ -409,8 +424,19 @@ def run_sequential_confirmation_of_dist_products_workflow(
                 metric_value_upper_lim=metric_value_upper_lim,
                 # Gets product tags from the current product
             )
-            prior_confirmed_dist_s1_prod = dst_dist_product_parent / current_dist_s1_product.product_name
+            prior_confirmed_dist_s1_prod = str(dst_dist_product_directory)
+            output_confirmed_dist_s1_products.append(str(dst_dist_product_directory))
         generate_browse_image(dst_dist_product_directory, water_mask_path=None)
+    if (bucket is not None) and (bucket != ''):
+        ts_prefix = f'{bucket_prefix}/{dst_dist_product_parent.name}'
+        [upload_product_to_s3(p, bucket, ts_prefix) for p in output_confirmed_dist_s1_products]
+        # Upload dummy dist file so it can be indexed
+        zip_name = f'{dst_dist_product_parent.name}.zip'
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            zip_path = Path(tmp_dir) / zip_name
+            with zipfile.ZipFile(zip_path, 'w'):
+                pass
+            upload_file_to_s3(zip_path, bucket, bucket_prefix)
 
 
 def run_dist_s1_processing_workflow(run_config: RunConfigData) -> RunConfigData:

@@ -1,6 +1,6 @@
 import shutil
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 from functools import wraps
 from mimetypes import guess_type
 from pathlib import Path, PurePosixPath
@@ -21,7 +21,13 @@ R = TypeVar('R')
 def rasterio_anon_s3_env(func: Callable[P, R]) -> Callable[P, R]:  # noqa: UP047
     @wraps(func)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-        with rasterio.Env(AWS_NO_SIGN_REQUEST='YES'):
+        with rasterio.Env(
+            AWS_NO_SIGN_REQUEST='YES',
+            GDAL_HTTP_COOKIEFILE='/tmp/cookies.txt',
+            GDAL_HTTP_COOKIEJAR='/tmp/cookies.txt',
+            GDAL_DISABLE_READDIR_ON_OPEN='EMPTY_DIR',
+            CPL_VSIL_CURL_ALLOWED_EXTENSIONS='.tif,.png',
+        ):
             return func(*args, **kwargs)
 
     return wrapper
@@ -66,26 +72,6 @@ def upload_file_to_s3(path_to_file: Path | str, bucket: str, prefix: str = '', p
     s3_client.put_object_tagging(Bucket=bucket, Key=key, Tagging=tag_set)
 
 
-def upload_files_to_s3_threaded(
-    file_list: list[tuple[Path, str, str]], bucket: str, profile_name: str | None = None, max_workers: int = 5
-) -> None:
-    def _upload(file_path: Path, s3_key: str, prefix: str) -> None:
-        full_key = str(Path(prefix) / s3_key) if prefix else s3_key
-        upload_file_to_s3(file_path, bucket, full_key, profile_name)
-
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {
-            executor.submit(_upload, file_path, s3_key, prefix): file_path for file_path, s3_key, prefix in file_list
-        }
-
-        with tqdm(total=len(file_list), desc='Uploading files to S3', unit='file') as pbar:
-            for future in as_completed(futures):
-                file_path = futures[future]
-                future.result()  # Raises exception if upload failed
-                pbar.set_postfix_str(file_path.name)
-                pbar.update(1)
-
-
 def upload_product_to_s3(
     product_directory: Path | str,
     bucket: str,
@@ -94,9 +80,8 @@ def upload_product_to_s3(
 ) -> None:
     product_dir_path = Path(product_directory)
 
-    for file in product_dir_path.glob('*.png'):
-        upload_file_to_s3(file, bucket, prefix)
-
+    if not product_dir_path.exists():
+        raise ValueError(f'Product directory for upload to s3 t does not exist: {product_directory}')
     if upload_zipped:
         product_zip_path = f'{product_dir_path}.zip'
         shutil.make_archive(str(product_dir_path), 'zip', product_dir_path)
@@ -106,7 +91,7 @@ def upload_product_to_s3(
     prefix_prod = f'{prefix}/{product_dir_path.name}' if prefix else product_dir_path.name
     for file in product_dir_path.glob('*.png'):
         upload_file_to_s3(file, bucket, prefix_prod)
-    for file in product_directory.glob('*.tif'):
+    for file in product_dir_path.glob('*.tif'):
         upload_file_to_s3(file, bucket, prefix_prod)
 
 
@@ -150,7 +135,50 @@ def download_file_from_s3(bucket: str, key: str, dst_path: Path | str, profile_n
     s3.download_file(bucket, key, str(dst_path))
 
 
-def download_product_from_s3(s3_uri: str, dst_dir: Path | str, profile_name: str | None = None) -> Path:
+def get_opera_product_from_s3_job_id_prefix(bucket: str, prefix: str, profile_name: str | None = None) -> str:
+    from dist_s1.data_models.data_utils import validate_dist_s1_product_name
+
+    s3 = get_s3_client(profile_name) if profile_name else boto3.client('s3', config=Config(signature_version=UNSIGNED))
+
+    prefix = prefix.rstrip('/')
+
+    opera_product_dirs = []
+    paginator = s3.get_paginator('list_objects_v2')
+
+    list_prefix = f'{prefix}/' if prefix else ''
+    for page in paginator.paginate(Bucket=bucket, Prefix=list_prefix):
+        for obj in page.get('Contents', []):
+            key = obj['Key']
+            if 'OPERA_L3_DIST' not in key:
+                continue
+
+            relative_path = key[len(list_prefix) :] if list_prefix else key
+            parts = relative_path.split('/')
+            if len(parts) >= 2 and parts[0].startswith('OPERA_L3_DIST'):
+                opera_product_dirs.append(parts[0])
+
+    opera_product_dirs = list(set(opera_product_dirs))
+
+    if len(opera_product_dirs) == 0:
+        raise ValueError(f'No OPERA product directories found in s3://{bucket}/{prefix}')
+
+    if len(opera_product_dirs) > 1:
+        raise ValueError(
+            f'Multiple OPERA products found in s3://{bucket}/{prefix}. '
+            f'Expected exactly one. Found: {sorted(opera_product_dirs)}'
+        )
+
+    product_name = opera_product_dirs[0]
+
+    if not validate_dist_s1_product_name(product_name):
+        raise ValueError(f'Invalid OPERA product name: {product_name}')
+
+    return f's3://{bucket}/{prefix}/{product_name}'
+
+
+def download_product_from_s3(
+    s3_uri: str, dst_dir: Path | str, profile_name: str | None = None, max_workers: int = 4
+) -> Path:
     bucket, key_prefix = parse_s3_uri(s3_uri)
 
     # Want to remove trailing slash so path is non-empty
@@ -172,14 +200,19 @@ def download_product_from_s3(s3_uri: str, dst_dir: Path | str, profile_name: str
             if not obj['Key'].endswith('/'):
                 files.append(obj['Key'])
 
-    # Download with progress bar
-    with tqdm(total=len(files), desc=f'Downloading {product_name}', unit='file') as pbar:
-        for key in files:
-            dst_file = product_dir / PurePosixPath(key).relative_to(key_prefix)
-            dst_file.parent.mkdir(parents=True, exist_ok=True)
+    def download_single_file(key: str) -> None:
+        dst_file = product_dir / PurePosixPath(key).relative_to(key_prefix)
+        dst_file.parent.mkdir(parents=True, exist_ok=True)
+        s3.download_file(bucket, key, str(dst_file))
 
-            s3.download_file(bucket, key, str(dst_file))
-            pbar.set_postfix_str(dst_file.name)
-            pbar.update(1)
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        list(
+            tqdm(
+                executor.map(download_single_file, files),
+                total=len(files),
+                desc=f'Downloading {product_name}',
+                unit='file',
+            )
+        )
 
     return product_dir
