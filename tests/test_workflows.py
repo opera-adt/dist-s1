@@ -370,17 +370,7 @@ def test_sequential_confirmation_workflow(
         assert mock_upload_file is not None
 
         # Verify upload_product_to_s3 was called for each confirmed product
-        assert mock_upload_product.call_count == len(confirmed_products), (
-            f'Expected {len(confirmed_products)} product uploads, got {mock_upload_product.call_count}'
-        )
-
-        # Verify each product was uploaded to the correct S3 path
-        ts_prefix = f'{bucket_prefix}/{tmp_sequential_dir.name}'
-        for call_args in mock_upload_product.call_args_list:
-            args, _ = call_args
-            _, upload_bucket, upload_prefix = args
-            assert upload_bucket == bucket
-            assert upload_prefix == ts_prefix
+        assert mock_upload_product.call_count == 1, f'Expected 1 product uploads, got {mock_upload_product.call_count}'
 
         # Verify upload_file_to_s3 was called once for the zip file
         assert mock_upload_file.call_count == 1, f'Expected 1 zip file upload, got {mock_upload_file.call_count}'

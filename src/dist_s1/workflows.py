@@ -426,8 +426,7 @@ def run_sequential_confirmation_of_dist_products_workflow(
             output_confirmed_dist_s1_products.append(str(dst_dist_product_directory))
         generate_browse_image(dst_dist_product_directory, water_mask_path=None)
     if (bucket is not None) and (bucket != ''):
-        ts_product_zip_path = f'{dst_dist_product_parent.name}.zip'
-        shutil.make_archive(str(dst_dist_product_parent), 'zip', dst_dist_product_parent)
+        ts_product_zip_path = shutil.make_archive(str(dst_dist_product_parent), 'zip', dst_dist_product_parent)
         upload_file_to_s3(ts_product_zip_path, bucket, bucket_prefix)
         Path(ts_product_zip_path).unlink()
         upload_product_to_s3(output_confirmed_dist_s1_products[-1], bucket, bucket_prefix, upload_zipped=False)
