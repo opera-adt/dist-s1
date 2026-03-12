@@ -1,6 +1,4 @@
 import shutil
-import tempfile
-import zipfile
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -428,15 +426,11 @@ def run_sequential_confirmation_of_dist_products_workflow(
             output_confirmed_dist_s1_products.append(str(dst_dist_product_directory))
         generate_browse_image(dst_dist_product_directory, water_mask_path=None)
     if (bucket is not None) and (bucket != ''):
-        ts_prefix = f'{bucket_prefix}/{dst_dist_product_parent.name}'
-        [upload_product_to_s3(p, bucket, ts_prefix) for p in output_confirmed_dist_s1_products]
-        # Upload dummy dist file so it can be indexed
-        zip_name = f'{dst_dist_product_parent.name}.zip'
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            zip_path = Path(tmp_dir) / zip_name
-            with zipfile.ZipFile(zip_path, 'w'):
-                pass
-            upload_file_to_s3(zip_path, bucket, bucket_prefix)
+        ts_product_zip_path = f'{dst_dist_product_parent.name}.zip'
+        shutil.make_archive(str(dst_dist_product_parent), 'zip', dst_dist_product_parent)
+        upload_file_to_s3(ts_product_zip_path, bucket, bucket_prefix)
+        Path(ts_product_zip_path).unlink()
+        upload_product_to_s3(output_confirmed_dist_s1_products[-1], bucket, bucket_prefix, upload_zipped=False)
 
 
 def run_dist_s1_processing_workflow(run_config: RunConfigData) -> RunConfigData:
