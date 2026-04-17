@@ -12,6 +12,10 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 * Uploads single zipped time series and the last product to s3 for aws.
 * Updated sequential workflow test to reflect new uploads.
+* Changed how equality is organized so we can check/compare individual layers more easily.
+
+### Removed
+* File comparison (was not being used)
 
 
 ## [2.0.12] - 2025-02-04
