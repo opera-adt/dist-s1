@@ -31,6 +31,7 @@ from dist_s1.data_models.data_utils import (
     get_acquisition_datetime,
     validate_dist_s1_product_name,
 )
+from dist_s1.rio_tools import serialize_one_2d_ds
 
 
 PRODUCT_TAGS_FOR_EQUALITY = [
@@ -45,17 +46,57 @@ PRODUCT_TAGS_FOR_EQUALITY = [
 REQUIRED_PRODUCT_TAGS = PRODUCT_TAGS_FOR_EQUALITY + ['version']
 
 
+def _get_nodata_mask(data: np.ndarray, nodata_value: float | int, layer_dtype: str) -> np.ndarray:
+    if np.issubdtype(np.dtype(layer_dtype), np.floating):
+        return np.isnan(data) if np.isnan(nodata_value) else data == nodata_value
+    return data == nodata_value
+
+
 @dataclass
-class LayerComparisonResult:
+class TagComparisonResult:
+    layer_name: str
+    all_match: bool
+    matching_tags: list[str]
+    mismatched_tags: dict[str, tuple[str, str]]
+
+    @property
+    def num_mismatched(self) -> int:
+        return len(self.mismatched_tags)
+
+
+@dataclass
+class ValidDataComparisonResult:
+    layer_name: str
+    masks_consistent: bool
+    percent_nodata_mismatch: float
+    nodata_mismatch_pixels: int
+    total_pixels: int
+
+
+@dataclass
+class RasterComparisonResult:
     layer_name: str
     is_equal: bool
     max_difference: float
     tolerance_used: float
-    arrays_close: bool
-    metadata_matches: bool
     percent_mismatch: float
-    percent_nodata_mismatch: float
-    error_message: str = ''
+    mismatched_valid_pixels: int
+    total_valid_pixels: int
+
+
+@dataclass
+class ProductLayerComparisonResult:
+    layer_name: str
+    tags_match: bool
+    valid_areas_match: bool
+    values_match: bool
+    tag_result: TagComparisonResult
+    valid_area_result: ValidDataComparisonResult
+    value_result: RasterComparisonResult
+
+    @property
+    def is_equal(self) -> bool:
+        return self.tags_match and self.valid_areas_match and self.values_match
 
 
 @dataclass
@@ -63,11 +104,188 @@ class ProductComparisonResult:
     is_equal: bool
     mgrs_matches: bool
     datetime_matches: bool
-    layer_results: dict[str, LayerComparisonResult]
+    layer_results: dict[str, ProductLayerComparisonResult]
 
     @property
     def failed_layers(self) -> list[str]:
         return [name for name, result in self.layer_results.items() if not result.is_equal]
+
+
+def _ensure_product_directory(product: 'DistS1ProductDirectory | Path | str') -> 'DistS1ProductDirectory':
+    if isinstance(product, DistS1ProductDirectory):
+        return product
+    return DistS1ProductDirectory.from_product_path(product)
+
+
+@rasterio_anon_s3_env
+def compare_product_layer_tags(
+    product1: 'DistS1ProductDirectory | Path | str',
+    product2: 'DistS1ProductDirectory | Path | str',
+    layer: str = 'GEN-DIST-STATUS',
+    tags_to_compare: list[str] | None = None,
+    ignore_tags: list[str] | None = None,
+) -> TagComparisonResult:
+    prod1 = _ensure_product_directory(product1)
+    prod2 = _ensure_product_directory(product2)
+
+    if tags_to_compare is None:
+        tags_to_compare = PRODUCT_TAGS_FOR_EQUALITY
+
+    if ignore_tags is None:
+        ignore_tags = []
+
+    path1 = prod1.layer_path_dict[layer]
+    path2 = prod2.layer_path_dict[layer]
+
+    matching_tags = []
+    mismatched_tags = {}
+
+    with rasterio.open(str(path1)) as src1, rasterio.open(str(path2)) as src2:
+        tags1 = src1.tags()
+        tags2 = src2.tags()
+
+        for key in tags_to_compare:
+            if key in ignore_tags:
+                continue
+            if compare_dist_s1_product_tag(key, tags1[key], tags2[key]):
+                matching_tags.append(key)
+            else:
+                mismatched_tags[key] = (tags1[key], tags2[key])
+
+    return TagComparisonResult(
+        layer_name=layer,
+        all_match=len(mismatched_tags) == 0,
+        matching_tags=matching_tags,
+        mismatched_tags=mismatched_tags,
+    )
+
+
+@rasterio_anon_s3_env
+def compare_valid_areas_in_layer(
+    product1: 'DistS1ProductDirectory | Path | str',
+    product2: 'DistS1ProductDirectory | Path | str',
+    layer: str,
+) -> ValidDataComparisonResult:
+    prod1 = _ensure_product_directory(product1)
+    prod2 = _ensure_product_directory(product2)
+
+    path1 = prod1.layer_path_dict[layer]
+    path2 = prod2.layer_path_dict[layer]
+
+    with rasterio.open(str(path1)) as src1, rasterio.open(str(path2)) as src2:
+        data1 = src1.read(1)
+        data2 = src2.read(1)
+
+        nodata_value = TIF_LAYER_NODATA_VALUES[layer]
+        layer_dtype = prod1.tif_layer_dtypes[layer]
+
+        nodata_mask1 = _get_nodata_mask(data1, nodata_value, layer_dtype)
+        nodata_mask2 = _get_nodata_mask(data2, nodata_value, layer_dtype)
+
+        masks_consistent = np.array_equal(nodata_mask1, nodata_mask2)
+
+        valid_mask1 = ~nodata_mask1
+        valid_mask2 = ~nodata_mask2
+
+        one_nodata1 = nodata_mask1 & valid_mask2
+        one_nodata2 = nodata_mask2 & valid_mask1
+        nodata_mismatch_pixels = int(np.sum(one_nodata1 | one_nodata2))
+
+        total_pixels = data1.size
+        percent_nodata_mismatch = (nodata_mismatch_pixels / total_pixels) * 100 if total_pixels > 0 else 0.0
+
+        return ValidDataComparisonResult(
+            layer_name=layer,
+            masks_consistent=masks_consistent,
+            percent_nodata_mismatch=percent_nodata_mismatch,
+            nodata_mismatch_pixels=nodata_mismatch_pixels,
+            total_pixels=total_pixels,
+        )
+
+
+@rasterio_anon_s3_env
+def compare_product_raster(
+    product1: 'DistS1ProductDirectory | Path | str',
+    product2: 'DistS1ProductDirectory | Path | str',
+    layer: str,
+    tolerance: float | None = None,
+) -> RasterComparisonResult:
+    prod1 = _ensure_product_directory(product1)
+    prod2 = _ensure_product_directory(product2)
+
+    path1 = prod1.layer_path_dict[layer]
+    path2 = prod2.layer_path_dict[layer]
+
+    with rasterio.open(str(path1)) as src1, rasterio.open(str(path2)) as src2:
+        data1 = src1.read(1)
+        data2 = src2.read(1)
+
+        layer_dtype = prod1.tif_layer_dtypes[layer]
+        if tolerance is None:
+            is_float = np.issubdtype(np.dtype(layer_dtype), np.floating)
+            tolerance = MAX_FLOAT_LAYER_DIFF if is_float else MAX_INT_LAYER_DIFF
+
+        nodata_value = TIF_LAYER_NODATA_VALUES[layer]
+
+        nodata_mask1 = _get_nodata_mask(data1, nodata_value, layer_dtype)
+        nodata_mask2 = _get_nodata_mask(data2, nodata_value, layer_dtype)
+
+        valid_mask1 = ~nodata_mask1
+        valid_mask2 = ~nodata_mask2
+        both_valid = valid_mask1 & valid_mask2
+
+        total_valid_pixels = int(np.sum(both_valid))
+
+        if total_valid_pixels == 0:
+            return RasterComparisonResult(
+                layer_name=layer,
+                is_equal=True,
+                max_difference=0.0,
+                tolerance_used=tolerance,
+                percent_mismatch=0.0,
+                mismatched_valid_pixels=0,
+                total_valid_pixels=0,
+            )
+
+        diff = np.abs(data1[both_valid] - data2[both_valid])
+        max_diff = float(np.max(diff))
+        mismatched_valid_pixels = int(np.sum(diff > tolerance))
+        percent_mismatch = (mismatched_valid_pixels / total_valid_pixels) * 100
+
+        is_equal = max_diff <= tolerance
+
+        return RasterComparisonResult(
+            layer_name=layer,
+            is_equal=is_equal,
+            max_difference=max_diff,
+            tolerance_used=tolerance,
+            percent_mismatch=percent_mismatch,
+            mismatched_valid_pixels=mismatched_valid_pixels,
+            total_valid_pixels=total_valid_pixels,
+        )
+
+
+@rasterio_anon_s3_env
+def compare_product_layer(
+    product1: 'DistS1ProductDirectory | Path | str',
+    product2: 'DistS1ProductDirectory | Path | str',
+    layer: str,
+    tolerance: float | None = None,
+    tags_to_compare: list[str] | None = None,
+) -> ProductLayerComparisonResult:
+    tag_result = compare_product_layer_tags(product1, product2, layer, tags_to_compare)
+    valid_area_result = compare_valid_areas_in_layer(product1, product2, layer)
+    value_result = compare_product_raster(product1, product2, layer, tolerance)
+
+    return ProductLayerComparisonResult(
+        layer_name=layer,
+        tags_match=tag_result.all_match,
+        valid_areas_match=valid_area_result.masks_consistent,
+        values_match=value_result.is_equal,
+        tag_result=tag_result,
+        valid_area_result=valid_area_result,
+        value_result=value_result,
+    )
 
 
 class ProductNameData(BaseModel):
@@ -96,77 +314,6 @@ class ProductNameData(BaseModel):
     @classmethod
     def validate_product_name(cls, product_name: str) -> bool:
         return validate_dist_s1_product_name(product_name)
-
-
-class ProductFileData(BaseModel):
-    path: Path
-
-    @classmethod
-    def from_product_path(cls, product_path: str) -> 'ProductFileData':
-        """Instantiate from a file path."""
-        return cls(path=product_path)
-
-    def compare(
-        self, other: 'ProductFileData', rtol: float = 1e-05, atol: float = 1e-08, equal_nan: bool = True
-    ) -> tuple[bool, str]:
-        """Compare two GeoTIFF files for equality.
-
-        Parameters
-        ----------
-        other : ProductFileData
-            GeoTIFF file to compare against.
-        rtol : float, optional
-            Relative tolerance for numpy.allclose, default 1e-05.
-        atol : float, optional
-            Absolute tolerance for numpy.allclose, default 1e-08.
-        equal_nan : bool, optional
-            Whether NaN values should be considered equal, default True.
-
-        Returns
-        -------
-        tuple (bool, str)
-            - True if the files match, False otherwise.
-            - A message describing differences if files do not match.
-        """
-        # Check if both files exist
-        if not self.path.exists():
-            return False, f'File not found: {self.path}'
-        if not other.path.exists():
-            return False, f'File not found: {other.path}'
-
-        with rasterio.open(self.path) as src_self, rasterio.open(other.path) as src_other:
-            # Compare image dimensions
-            if src_self.shape != src_other.shape:
-                return False, f'Shape mismatch: {src_self.shape} != {src_other.shape}'
-
-            # Read raster data
-            data_self = src_self.read()
-            data_other = src_other.read()
-
-            # Find pixel mismatches
-            diff_mask = ~np.isclose(data_self, data_other, rtol=rtol, atol=atol, equal_nan=equal_nan)
-            mismatch_count = np.sum(diff_mask)
-
-            if mismatch_count > 0:
-                max_diff = np.max(np.abs(data_self - data_other))
-                min_diff = np.min(np.abs(data_self - data_other))
-                return False, (
-                    f'Pixel mismatch count: {mismatch_count}\nMax difference: {max_diff}\nMin difference: {min_diff}'
-                )
-
-            # Compare metadata (tags)
-            tags_self = src_self.tags()
-            tags_other = src_other.tags()
-            mismatched_tags = {
-                key: (tags_self[key], tags_other[key])
-                for key in [key for key in tags_self.keys() if key in PRODUCT_TAGS_FOR_EQUALITY]
-                if not compare_dist_s1_product_tag(key, tags_self[key], tags_other[key])
-            }
-
-            if mismatched_tags:
-                return False, f'Metadata mismatch in tags: {mismatched_tags}'
-
-        return True, 'Files match perfectly.'
 
 
 class DistS1ProductDirectory(BaseModel):
@@ -270,18 +417,6 @@ class DistS1ProductDirectory(BaseModel):
 
     @rasterio_anon_s3_env
     def compare_products(self, other: 'DistS1ProductDirectory') -> ProductComparisonResult:
-        """Compare two ProductDirectoryData instances with detailed results.
-
-        Parameters
-        ----------
-        other : ProductDirectoryData
-            The other instance to compare against
-
-        Returns
-        -------
-        ProductComparisonResult
-            Detailed comparison results
-        """
         tokens_self = self.product_name.split('_')
         tokens_other = other.product_name.split('_')
 
@@ -293,80 +428,8 @@ class DistS1ProductDirectory(BaseModel):
         acq_dt_other = datetime.strptime(tokens_other[4], '%Y%m%dT%H%M%SZ')
         datetime_matches = acq_dt_self == acq_dt_other
 
-        layer_results = {}
-        for layer in self.layers:
-            path_self = self.layer_path_dict[layer]
-            path_other = other.layer_path_dict[layer]
+        layer_results = {layer: compare_product_layer(self, other, layer) for layer in self.layers}
 
-            with rasterio.open(path_self) as src_self, rasterio.open(path_other) as src_other:
-                data_self = src_self.read(1)
-                data_other = src_other.read(1)
-
-                layer_dtype = self.tif_layer_dtypes[layer]
-                tolerance = (
-                    MAX_FLOAT_LAYER_DIFF if np.issubdtype(np.dtype(layer_dtype), np.floating) else MAX_INT_LAYER_DIFF
-                )
-
-                nodata_value = TIF_LAYER_NODATA_VALUES[layer]
-
-                if np.issubdtype(np.dtype(layer_dtype), np.floating):
-                    nodata_mask_self = np.isnan(data_self) if np.isnan(nodata_value) else data_self == nodata_value
-                    nodata_mask_other = np.isnan(data_other) if np.isnan(nodata_value) else data_other == nodata_value
-                else:
-                    nodata_mask_self = data_self == nodata_value
-                    nodata_mask_other = data_other == nodata_value
-
-                nodata_masks_consistent = np.array_equal(nodata_mask_self, nodata_mask_other)
-                if not nodata_masks_consistent:
-                    warn(f'Layer {layer}: nodata masks are inconsistent between compared products', UserWarning)
-
-                valid_mask_self = ~nodata_mask_self
-                valid_mask_other = ~nodata_mask_other
-                both_valid = valid_mask_self & valid_mask_other
-
-                diff = np.zeros_like(data_self, dtype=np.float64)
-
-                diff[both_valid] = np.abs(data_self[both_valid] - data_other[both_valid])
-
-                one_nodata_self = nodata_mask_self & valid_mask_other
-                one_nodata_other = nodata_mask_other & valid_mask_self
-
-                diff[one_nodata_self] = np.abs(data_other[one_nodata_self])
-                diff[one_nodata_other] = np.abs(data_self[one_nodata_other])
-
-                max_diff = np.max(diff) if diff.size > 0 else 0.0
-
-                arrays_close = max_diff <= tolerance
-
-                total_pixels = data_self.size
-                mismatched_valid_pixels = np.sum(diff[both_valid] > tolerance) if np.any(both_valid) else 0
-                nodata_mismatch_pixels = np.sum(one_nodata_self | one_nodata_other)
-
-                percent_mismatch = (mismatched_valid_pixels / total_pixels) * 100 if total_pixels > 0 else 0.0
-                percent_nodata_mismatch = (nodata_mismatch_pixels / total_pixels) * 100 if total_pixels > 0 else 0.0
-
-                tags_self = src_self.tags()
-                tags_other = src_other.tags()
-                metadata_matches = all(
-                    compare_dist_s1_product_tag(key, tags_self[key], tags_other[key])
-                    for key in PRODUCT_TAGS_FOR_EQUALITY
-                )
-
-                layer_equal = arrays_close and metadata_matches and nodata_masks_consistent
-
-                layer_results[layer] = LayerComparisonResult(
-                    layer_name=layer,
-                    is_equal=layer_equal,
-                    max_difference=max_diff,
-                    tolerance_used=tolerance,
-                    arrays_close=arrays_close,
-                    metadata_matches=metadata_matches,
-                    percent_mismatch=percent_mismatch,
-                    percent_nodata_mismatch=percent_nodata_mismatch,
-                    error_message='' if layer_equal else f'Max diff {max_diff:.6e} > tolerance {tolerance:.6e}',
-                )
-
-        # Overall equality
         overall_equal = mgrs_matches and datetime_matches and all(r.is_equal for r in layer_results.values())
 
         return ProductComparisonResult(
@@ -377,24 +440,6 @@ class DistS1ProductDirectory(BaseModel):
         )
 
     def __eq__(self, other: 'DistS1ProductDirectory') -> bool:
-        """Compare two ProductDirectoryData instances for equality.
-
-        Checks that:
-        1. The MGRS tile IDs match
-        2. The acquisition datetimes match
-        3. All TIF layers have numerically close data using layer-specific tolerances
-        4. Nodata masks are consistent between layers
-
-        Parameters
-        ----------
-        other : ProductDirectoryData
-            The other instance to compare against
-
-        Returns
-        -------
-        bool
-            True if the instances are considered equal, False otherwise
-        """
         result = self.compare_products(other)
 
         if not result.mgrs_matches:
@@ -402,11 +447,28 @@ class DistS1ProductDirectory(BaseModel):
         if not result.datetime_matches:
             warn(f'Acquisition datetimes do not match: {self.acq_datetime} != {other.acq_datetime}', UserWarning)
         for layer_result in result.layer_results.values():
-            if not layer_result.is_equal:
+            if not layer_result.tags_match:
+                tag_result = layer_result.tag_result
+                mismatch_details = ', '.join(
+                    f'{k}: {v1!r} != {v2!r}' for k, (v1, v2) in tag_result.mismatched_tags.items()
+                )
                 warn(
-                    f'Layer {layer_result.layer_name}: {layer_result.error_message} with max diff'
-                    f' {layer_result.max_difference:.6e}, {layer_result.percent_mismatch:.2f}% pixels mismatched,'
-                    f' {layer_result.percent_nodata_mismatch:.2f}% nodata mismatched',
+                    f'Layer {layer_result.layer_name}: {tag_result.num_mismatched} tags do not match: '
+                    f'{mismatch_details}',
+                    UserWarning,
+                )
+            if not layer_result.valid_areas_match:
+                warn(
+                    f'Layer {layer_result.layer_name}: valid areas do not match, '
+                    f'{layer_result.valid_area_result.percent_nodata_mismatch:.2f}% nodata mismatch',
+                    UserWarning,
+                )
+            if not layer_result.values_match:
+                val_result = layer_result.value_result
+                warn(
+                    f'Layer {layer_result.layer_name}: values do not match, '
+                    f'max diff {val_result.max_difference:.6e} > tolerance {val_result.tolerance_used:.6e}, '
+                    f'{val_result.percent_mismatch:.2f}% valid pixels mismatched',
                     UserWarning,
                 )
 
@@ -483,3 +545,25 @@ class DistS1ProductDirectory(BaseModel):
 
         shutil.copytree(src_product_dir, dst_product_dir)
         return self.from_product_path(dst_product_dir)
+
+    def add_prior_product_path(self, prior_product_path: str | Path) -> None:
+        if is_s3_path(str(self.dst_dir)):
+            raise NotImplementedError(
+                'Adding tags to s3 products is not currently supported as it require '
+                'writing to the s3-stored product and appropriate permissions.'
+            )
+
+        prior_product_str = Path(prior_product_path).name
+
+        for layer in self.layers:
+            layer_path = self.layer_path_dict[layer]
+            with rasterio.open(str(layer_path), 'r') as src:
+                t = src.tags()
+                p = src.profile
+                X = src.read(1)
+                if layer in ['GEN-DIST-STATUS', 'GEN-DIST-STATUS-ACQ']:
+                    cmap = src.colormap(1)
+                else:
+                    cmap = None
+            t['prior_dist_s1_product'] = prior_product_str
+            serialize_one_2d_ds(X, p, layer_path, colormap=cmap, tags=t, cog=True)

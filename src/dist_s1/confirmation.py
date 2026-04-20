@@ -296,7 +296,7 @@ def confirm_disturbance_with_prior_product_and_serialize(
 
     if not isinstance(prior_dist_s1_product, DistS1ProductDirectory):
         prior_dist_s1_product = DistS1ProductDirectory.from_product_path(prior_dist_s1_product)
-    prior_product_name = prior_dist_s1_product.product_name
+    prior_dist_s1_id = prior_dist_s1_product.product_name
 
     with rasterio.open(current_dist_s1_product.layer_path_dict['GEN-METRIC']) as src:
         product_tags = src.tags()
@@ -370,7 +370,7 @@ def confirm_disturbance_with_prior_product_and_serialize(
 
     # Serialize output
     out_product_tags = product_tags.copy()
-    out_product_tags['prior_product_name'] = prior_product_name
+    out_product_tags['prior_dist_s1_product'] = prior_dist_s1_id
     for layer_name in TIF_LAYERS:
         if layer_name in ['GEN-DIST-STATUS', 'GEN-DIST-STATUS-ACQ']:
             cmap = DIST_STATUS_CMAP

@@ -7,6 +7,20 @@ and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [2.0.14] - 2025-04-16
+
+### Changed
+* Update version dataset to v1.0 (from v0.1)
+* Changed how equality is organized so we can check/compare individual layers and tags more easily.
+* For `prior_dist_s1_product` tag, we know format it so it is the "stem" or "opera-id" associated with the previous product.
+
+### Removed
+* File comparison (was not being used)
+
+### Fixed
+* Sequential confirmation did not update the prior_dist_s1_product tag within each product. We have fixed this. We had to update the golden datasets appropriately.
+
+
 ## [2.0.13] - 2025-03-11
 
 ### Changed
