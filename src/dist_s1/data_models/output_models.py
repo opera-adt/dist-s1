@@ -52,6 +52,18 @@ def _get_nodata_mask(data: np.ndarray, nodata_value: float | int, layer_dtype: s
 
 
 @dataclass
+class TagComparisonResult:
+    layer_name: str
+    all_match: bool
+    matching_tags: list[str]
+    mismatched_tags: dict[str, tuple[str, str]]
+
+    @property
+    def num_mismatched(self) -> int:
+        return len(self.mismatched_tags)
+
+
+@dataclass
 class ValidDataComparisonResult:
     layer_name: str
     masks_consistent: bool
@@ -77,6 +89,7 @@ class ProductLayerComparisonResult:
     tags_match: bool
     valid_areas_match: bool
     values_match: bool
+    tag_result: TagComparisonResult
     valid_area_result: ValidDataComparisonResult
     value_result: RasterComparisonResult
 
@@ -109,20 +122,41 @@ def compare_product_layer_tags(
     product2: 'DistS1ProductDirectory | Path | str',
     layer: str = 'GEN-DIST-STATUS',
     tags_to_compare: list[str] | None = None,
-) -> bool:
+    ignore_tags: list[str] | None = None,
+) -> TagComparisonResult:
     prod1 = _ensure_product_directory(product1)
     prod2 = _ensure_product_directory(product2)
 
     if tags_to_compare is None:
         tags_to_compare = PRODUCT_TAGS_FOR_EQUALITY
 
+    if ignore_tags is None:
+        ignore_tags = []
+
     path1 = prod1.layer_path_dict[layer]
     path2 = prod2.layer_path_dict[layer]
+
+    matching_tags = []
+    mismatched_tags = {}
 
     with rasterio.open(str(path1)) as src1, rasterio.open(str(path2)) as src2:
         tags1 = src1.tags()
         tags2 = src2.tags()
-        return all(compare_dist_s1_product_tag(key, tags1[key], tags2[key]) for key in tags_to_compare)
+
+        for key in tags_to_compare:
+            if key in ignore_tags:
+                continue
+            if compare_dist_s1_product_tag(key, tags1[key], tags2[key]):
+                matching_tags.append(key)
+            else:
+                mismatched_tags[key] = (tags1[key], tags2[key])
+
+    return TagComparisonResult(
+        layer_name=layer,
+        all_match=len(mismatched_tags) == 0,
+        matching_tags=matching_tags,
+        mismatched_tags=mismatched_tags,
+    )
 
 
 @rasterio_anon_s3_env
@@ -238,15 +272,16 @@ def compare_product_layer(
     tolerance: float | None = None,
     tags_to_compare: list[str] | None = None,
 ) -> ProductLayerComparisonResult:
-    tags_match = compare_product_layer_tags(product1, product2, layer, tags_to_compare)
+    tag_result = compare_product_layer_tags(product1, product2, layer, tags_to_compare)
     valid_area_result = compare_valid_areas_in_layer(product1, product2, layer)
     value_result = compare_product_raster(product1, product2, layer, tolerance)
 
     return ProductLayerComparisonResult(
         layer_name=layer,
-        tags_match=tags_match,
+        tags_match=tag_result.all_match,
         valid_areas_match=valid_area_result.masks_consistent,
         values_match=value_result.is_equal,
+        tag_result=tag_result,
         valid_area_result=valid_area_result,
         value_result=value_result,
     )
@@ -412,7 +447,15 @@ class DistS1ProductDirectory(BaseModel):
             warn(f'Acquisition datetimes do not match: {self.acq_datetime} != {other.acq_datetime}', UserWarning)
         for layer_result in result.layer_results.values():
             if not layer_result.tags_match:
-                warn(f'Layer {layer_result.layer_name}: tags do not match', UserWarning)
+                tag_result = layer_result.tag_result
+                mismatch_details = ', '.join(
+                    f'{k}: {v1!r} != {v2!r}' for k, (v1, v2) in tag_result.mismatched_tags.items()
+                )
+                warn(
+                    f'Layer {layer_result.layer_name}: {tag_result.num_mismatched} tags do not match: '
+                    f'{mismatch_details}',
+                    UserWarning,
+                )
             if not layer_result.valid_areas_match:
                 warn(
                     f'Layer {layer_result.layer_name}: valid areas do not match, '
@@ -501,3 +544,17 @@ class DistS1ProductDirectory(BaseModel):
 
         shutil.copytree(src_product_dir, dst_product_dir)
         return self.from_product_path(dst_product_dir)
+
+    def add_prior_product_path(self, prior_product_path: str | Path) -> None:
+        if is_s3_path(str(self.dst_dir)):
+            raise NotImplementedError(
+                'Adding tags to s3 products is not currently supported as it require '
+                'writing to the s3-stored product and appropriate permissions.'
+            )
+
+        prior_product_str = str(prior_product_path)
+
+        for layer in self.layers:
+            layer_path = self.layer_path_dict[layer]
+            with rasterio.open(str(layer_path), 'r+') as src:
+                src.update_tags(prior_dist_s1_product=prior_product_str)

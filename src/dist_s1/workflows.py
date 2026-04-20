@@ -422,6 +422,7 @@ def run_sequential_confirmation_of_dist_products_workflow(
                 metric_value_upper_lim=metric_value_upper_lim,
                 # Gets product tags from the current product
             )
+            dst_dist_product_directory.add_prior_product_path(str(prior_confirmed_dist_s1_prod))
             prior_confirmed_dist_s1_prod = str(dst_dist_product_directory)
             output_confirmed_dist_s1_products.append(str(dst_dist_product_directory))
         generate_browse_image(dst_dist_product_directory, water_mask_path=None)
