@@ -324,10 +324,6 @@ class RunConfigData(BaseModel):
         config_dict.pop('check_input_paths', None)
         config_dict.pop('algo_config', None)
         config_dict['sensor'] = self.sensor
-        prio_prod_id = (
-            str(self.prior_dist_s1_product).split('/')[-1] if self.prior_dist_s1_product is not None else None
-        )
-        config_dict['prior_dist_s1_product'] = prio_prod_id
         if include_algo_config_params:
             config_dict.update(self.algo_config.model_dump())
         return config_dict

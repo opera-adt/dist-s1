@@ -15,7 +15,7 @@ from dist_s1.constants import (
     TIF_LAYER_DTYPES,
     TIF_LAYER_NODATA_VALUES,
 )
-from dist_s1.data_models.output_models import DistS1ProductDirectory
+from dist_s1.data_models.output_models import DistS1ProductDirectory, _ensure_product_directory
 from dist_s1.data_models.runconfig_model import RunConfigData
 from dist_s1.rio_tools import open_one_ds, serialize_one_2d_ds
 from dist_s1.water_mask import apply_water_mask
@@ -187,7 +187,10 @@ def package_disturbance_tifs_no_confirmation(run_config: RunConfigData) -> None:
         serialize_one_2d_ds(arr, prof, path, colormap=cmap, tags=tags, cog=True)
 
 
-def generate_browse_image(product_data: DistS1ProductDirectory, water_mask_path: Path | str | None = None) -> None:
+def generate_browse_image(
+    product_data: DistS1ProductDirectory | str | Path, water_mask_path: Path | str | None = None
+) -> None:
+    product_data = _ensure_product_directory(product_data)
     with Env(GDAL_PAM_ENABLED='NO'):
         convert_geotiff_to_png(
             product_data.layer_path_dict['GEN-DIST-STATUS'],

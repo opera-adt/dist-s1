@@ -31,6 +31,7 @@ from dist_s1.data_models.data_utils import (
     get_acquisition_datetime,
     validate_dist_s1_product_name,
 )
+from dist_s1.rio_tools import serialize_one_2d_ds
 
 
 PRODUCT_TAGS_FOR_EQUALITY = [
@@ -552,9 +553,17 @@ class DistS1ProductDirectory(BaseModel):
                 'writing to the s3-stored product and appropriate permissions.'
             )
 
-        prior_product_str = str(prior_product_path)
+        prior_product_str = Path(prior_product_path).name
 
         for layer in self.layers:
             layer_path = self.layer_path_dict[layer]
-            with rasterio.open(str(layer_path), 'r+') as src:
-                src.update_tags(prior_dist_s1_product=prior_product_str)
+            with rasterio.open(str(layer_path), 'r') as src:
+                t = src.tags()
+                p = src.profile
+                X = src.read(1)
+                if layer in ['GEN-DIST-STATUS', 'GEN-DIST-STATUS-ACQ']:
+                    cmap = src.colormap(1)
+                else:
+                    cmap = None
+            t['prior_dist_s1_product'] = prior_product_str
+            serialize_one_2d_ds(X, p, layer_path, colormap=cmap, tags=t, cog=True)
