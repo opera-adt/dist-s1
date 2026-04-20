@@ -10,6 +10,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [2.0.14] - 2025-04-16
 
 ### Changed
+* Update version dataset to v1.0 (from v0.1)
 * Changed how equality is organized so we can check/compare individual layers and tags more easily.
 * For `prior_dist_s1_product` tag, we know format it so it is the "stem" or "opera-id" associated with the previous product.
 

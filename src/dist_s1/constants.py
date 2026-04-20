@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 
-PRODUCT_VERSION = '0.1'
+PRODUCT_VERSION = '1.0'
 
 # Tolerance constants for layer comparison
 MAX_FLOAT_LAYER_DIFF = 2e-5
