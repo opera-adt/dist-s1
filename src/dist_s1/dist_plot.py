@@ -37,7 +37,7 @@ def add_dist_s1_colorbar(
 
     # Set tick positions at the center of each color bin
     tick_positions = [(values[i] + values[i + 1]) / 2 for i in range(len(values) - 1)]
-    #tick_positions.append(values[-1] + 0.5)
+    tick_positions.append(values[-1] + 0.5)
     cb.set_ticks(tick_positions)
 
     labels = [
