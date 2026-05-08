@@ -88,6 +88,7 @@ select = [
     "ANN", # annotations: https://docs.astral.sh/ruff/rules/#flake8-annotations-ann
     "PTH", # use-pathlib-pth: https://docs.astral.sh/ruff/rules/#flake8-use-pathlib-pth
     "TRY", # tryceratops
+    "Q",   # flake8-quotes: https://docs.astral.sh/ruff/rules/#flake8-quotes-q
 ]
 
 ignore = [
@@ -104,6 +105,9 @@ ignore = [
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
+
+[tool.ruff.lint.flake8-quotes]
+inline-quotes = "single"
 
 [tool.ruff.lint.isort]
 case-sensitive = true
