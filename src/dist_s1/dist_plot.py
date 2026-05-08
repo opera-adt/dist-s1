@@ -135,9 +135,7 @@ def add_scalebar(
         text_y = y_pos + 0.02 * height
         va = 'bottom'
 
-    ax.text(
-        text_x, text_y, f'{size:.0f} {units}', color=color, ha='center', va=va, fontsize=fontsize, weight='bold'
-    )
+    ax.text(text_x, text_y, f'{size:.0f} {units}', color=color, ha='center', va=va, fontsize=fontsize, weight='bold')
 
 
 def plot_scalebar(
