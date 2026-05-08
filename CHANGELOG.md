@@ -10,7 +10,8 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [2.0.15] - 2025-05-08
 
 ### Added
-* Full labels (no abbreviations) for status layer with optional text wrapping to ensure clear communication of labels in plots.
+* Full labels (no abbreviations) for status layer colorbar with optional text wrapping to ensure clear communication of labels in plots.
+* Function to add scale bar to plots via rasterio platform.
 
 ## [2.0.14] - 2025-04-16
 
