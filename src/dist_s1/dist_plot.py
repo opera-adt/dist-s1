@@ -5,7 +5,7 @@ from matplotlib.axes import Axes
 from matplotlib.colorbar import Colorbar
 from matplotlib.colors import BoundaryNorm, ListedColormap
 
-from dist_s1.constants import DISTVAL2CBARLABEL, DISTVAL2CBARLABEL_FULL, DIST_STATUS_CMAP
+from dist_s1.constants import DIST_STATUS_CMAP, DISTVAL2CBARLABEL, DISTVAL2CBARLABEL_FULL
 
 
 def get_dist_s1_mpl_cmap() -> tuple[ListedColormap, BoundaryNorm]:
