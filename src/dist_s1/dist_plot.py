@@ -54,18 +54,18 @@ def add_dist_s1_colorbar(
 
 
 def calculate_scalebar_size(profile: dict, width_proportion: float = 0.3) -> tuple[float, str]:
-    transform = profile["transform"]
+    transform = profile['transform']
     pixel_size = abs(transform[0])
-    width_pixels = profile["width"]
+    width_pixels = profile['width']
     width_meters = width_pixels * pixel_size
     target_length = width_meters * width_proportion
 
     if target_length >= 1000:
         target = target_length / 1000
-        units = "km"
+        units = 'km'
     else:
         target = target_length
-        units = "m"
+        units = 'm'
 
     magnitude = 10 ** np.floor(np.log10(target))
     normalized = target / magnitude
@@ -86,27 +86,27 @@ def calculate_scalebar_size(profile: dict, width_proportion: float = 0.3) -> tup
 def add_scalebar(
     ax: Axes,
     profile: dict,
-    position: str = "lower left",
-    color: str = "white",
+    position: str = 'lower left',
+    color: str = 'white',
     width_proportion: float = 0.3,
     fontsize: int | float = 10,
 ) -> None:
     position_map = {
-        "upper left": (0.05, 0.95),
-        "top left": (0.05, 0.95),
-        "upper right": (0.95, 0.95),
-        "top right": (0.95, 0.95),
-        "lower left": (0.05, 0.05),
-        "bottom left": (0.05, 0.05),
-        "lower right": (0.95, 0.05),
-        "bottom right": (0.95, 0.05),
+        'upper left': (0.05, 0.95),
+        'top left': (0.05, 0.95),
+        'upper right': (0.95, 0.95),
+        'top right': (0.95, 0.95),
+        'lower left': (0.05, 0.05),
+        'bottom left': (0.05, 0.05),
+        'lower right': (0.95, 0.05),
+        'bottom right': (0.95, 0.05),
     }
 
     x_frac, y_frac = position_map.get(position.lower(), (0.05, 0.05))
 
     size, units = calculate_scalebar_size(profile, width_proportion=width_proportion)
 
-    if units == "km":
+    if units == 'km':
         size_meters = size * 1000
     else:
         size_meters = size
@@ -130,29 +130,29 @@ def add_scalebar(
     text_x = (x_start + x_end) / 2
     if y_frac > 0.5:
         text_y = y_pos - 0.02 * height
-        va = "top"
+        va = 'top'
     else:
         text_y = y_pos + 0.02 * height
-        va = "bottom"
+        va = 'bottom'
 
     ax.text(
-        text_x, text_y, f"{size:.0f} {units}", color=color, ha="center", va=va, fontsize=fontsize, weight="bold"
+        text_x, text_y, f'{size:.0f} {units}', color=color, ha='center', va=va, fontsize=fontsize, weight='bold'
     )
 
 
 def plot_scalebar(
     profile: dict,
-    position: str = "lower left",
+    position: str = 'lower left',
     figsize: tuple[float, float] = (2, 0.5),
-    color: str = "white",
+    color: str = 'white',
     width_proportion: float = 0.3,
     fontsize: int | float = 10,
 ) -> tuple[Figure, Axes]:
     fig, ax = plt.subplots(figsize=figsize)
 
-    transform = profile["transform"]
-    width = profile["width"]
-    height = profile["height"]
+    transform = profile['transform']
+    width = profile['width']
+    height = profile['height']
 
     left = transform[2]
     right = transform[2] + width * transform[0]
@@ -161,7 +161,7 @@ def plot_scalebar(
 
     ax.set_xlim(left, right)
     ax.set_ylim(bottom, top)
-    ax.axis("off")
+    ax.axis('off')
 
     add_scalebar(ax, profile, position=position, color=color, width_proportion=width_proportion, fontsize=fontsize)
 
