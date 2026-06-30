@@ -151,6 +151,8 @@ _tests_not_tracked/
 tests/tmp*/
 
 # Memory data files
-*.dat# pixi environments
+*.dat
+
+# pixi environments
 .pixi/*
 !.pixi/config.toml
