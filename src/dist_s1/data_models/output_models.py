@@ -292,7 +292,7 @@ class ProductNameData(BaseModel):
     mgrs_tile_id: str = Field(description='MGRS (Military Grid Reference System) tile identifier')
     acq_date_time: datetime = Field(description='Acquisition datetime of the Sentinel-1 data')
     processing_date_time: datetime = Field(description='Processing datetime when the product was generated')
-    sensor: str = Field(description='Sensor identifier', pattern=r'^S1[ABC]$')
+    sensor: str = Field(description='Sensor identifier', pattern=r'^S1[ABCD]$')
 
     def __str__(self) -> str:
         tokens = [

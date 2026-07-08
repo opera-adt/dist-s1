@@ -127,16 +127,34 @@ There are also ways to run confirmation on unconfirmed products (a sequence of p
 
 ## Installation
 
-We recommend using the mamba/conda package manager and `conda-forge` distributions to install the DIST-S1 workflow, manage the environment, and install the dependencies.
+We recommend using [pixi](https://pixi.sh) to install the DIST-S1 workflow, manage the environment, and install the dependencies. All conda-forge dependencies are resolved from the committed `pixi.lock`, so installs are reproducible across machines.
+
+### Pixi (recommended)
+
+Install [pixi](https://pixi.sh/latest/#installation), then:
 
 ```
-mamba env create -f environment.yml  # or use mamba env create -f environment_gpu.yml for GPU installation with CUDA 11.8
-conda activate dist-s1-env
+git clone https://github.com/opera-adt/dist-s1.git
+cd dist-s1
+pixi install
+```
+
+`pixi install` creates the environment from the lock file and installs `dist-s1` in editable mode. Run commands inside the environment with `pixi run`:
+
+```
+pixi run dist-s1 --help
+pixi run jupyter lab
+```
+
+or drop into an activated shell with `pixi shell`. The repository defines `py312` and `py313` environments to test against both supported Python versions; select one with `pixi run -e py312 ...`.
+
+### Conda-forge package
+
+The released package is also published on `conda-forge` and can be installed into an existing conda/mamba environment:
+
+```
 mamba install -c conda-forge dist-s1
-python -m ipykernel install --user --name dist-s1-env
 ```
-
-The last 2 commands are optional, but will allow this project to be imported into a Jupyter notebook using the examples in this repository (see below for more details).
 
 
 ### Additional Setup for Localization of RTC-S1 inputs
@@ -175,25 +193,31 @@ That said, the above provides an avenue for identifying such issues with the env
 
 ### Jupyter Kernel
 
-As noted above, we install the kernel `dist-s1-env` using the environment above via:
+`jupyterlab` is included in the pixi environment, so you can launch it directly:
 ```
-python -m ipykernel install --user --name dist-s1-env
+pixi run jupyter lab
 ```
-We also recommend installing the jupyter dependencies:
+To register the environment as a named kernel (e.g. for use outside of `pixi run`):
 ```
-mamba install jupyterlab ipywidgets black isort jupyterlab_code_formatter 
+pixi run python -m ipykernel install --user --name dist-s1
 ```
 
 ### Development Installation
 
-As above, we recommend using the mamba/conda package manager to install the DIST-S1 workflow, manage the environment, and install the dependencies.
+`pixi install` already installs `dist-s1` in editable mode, so no separate step is needed for development:
 
 ```
-mamba env create -f environment_gpu.yml
-conda activate dist-s1-env
-pip install -e .
-# Optional for Jupyter notebook development
-python -m ipykernel install --user --name dist-s1-env
+git clone https://github.com/opera-adt/dist-s1.git
+cd dist-s1
+pixi install
+```
+
+Lint and format with the predefined tasks:
+
+```
+pixi run lint
+pixi run format
+pixi run fix
 ```
 
 

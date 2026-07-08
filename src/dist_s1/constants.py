@@ -121,4 +121,17 @@ DISTLABEL2CBARLABEL = {
     'confirmed_low_conf_disturbance_finished': 'Low Fin',
     'confirmed_high_conf_disturbance_finished': 'High Fin',
 }
+DISTLABEL2CBARLABEL_FULL = {
+    'nodata': 'No Data',
+    'no_disturbance': 'No Disturbance',
+    'first_low_conf_disturbance': '1st Low Confidence Disturbance',
+    'provisional_low_conf_disturbance': 'Provisional Low Confidence Disturbance',
+    'confirmed_low_conf_disturbance': 'Confirmed Low Confidence Disturbance',
+    'first_high_conf_disturbance': '1st High Confidence Disturbance',
+    'provisional_high_conf_disturbance': 'Provisional High Confidence Disturbance',
+    'confirmed_high_conf_disturbance': 'Confirmed High Confidence Disturbance',
+    'confirmed_low_conf_disturbance_finished': 'Confirmed Low Confidence Finished Disturbance',
+    'confirmed_high_conf_disturbance_finished': 'Confirmed High Confidence Finished Disturbance',
+}
 DISTVAL2CBARLABEL = {k: DISTLABEL2CBARLABEL[v] for k, v in DISTVAL2LABEL.items()}
+DISTVAL2CBARLABEL_FULL = {k: DISTLABEL2CBARLABEL_FULL[v] for k, v in DISTVAL2LABEL.items()}

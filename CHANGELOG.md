@@ -7,6 +7,16 @@ and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [2.0.15] - 2025-05-08
+
+### Added
+* Full labels (no abbreviations) for DIST-S1 status layer colorbar with optional text wrapping to ensure clear communication of such labels in plots.
+* Function to add scale bar to plots via rasterio profiles associated with raster.
+* Updated to pixi distribution in evironment.yml, README.md, and dockerfile.
+
+### Fixed
+* Sensor validation in product naming validation was not allowing for sensor Sentinel-1D (data_models/output_models.py)
+
 ## [2.0.14] - 2025-04-16
 
 ### Changed
