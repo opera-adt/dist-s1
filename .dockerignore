@@ -5,4 +5,4 @@ __pycache__
 .ruff_cache
 notebooks/
 regression_test/
-workflows/
+.github/
