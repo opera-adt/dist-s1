@@ -1,5 +1,3 @@
-#!/bin/bash
-
 # Script to generate golden dataset using Docker on M1 Mac
 # Uses the pre-built image from GitHub Container Registry
 # Run this script from the regression_test directory
@@ -57,7 +55,7 @@ docker run -ti --rm \
     -v ~/.netrc:/.netrc:ro \
     --entrypoint "/bin/bash" \
     "${DOCKER_IMAGE_NAME}" \
-    -l -c "source /opt/conda/etc/profile.d/conda.sh && conda activate dist-s1-env && cd ${CONTAINER_WORK_DIR} && python 0_generate_golden_dataset.py"
+    -l -c "eval \"\$(pixi shell-hook --frozen --manifest-path /home/ops/dist-s1/pyproject.toml)\" && cd ${CONTAINER_WORK_DIR} && python 0_generate_golden_dataset.py"
 
 echo "Golden dataset generation completed!"
 echo "Check the current directory for outputs:"
