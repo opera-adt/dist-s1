@@ -7,14 +7,20 @@ and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [2.0.16] - 2025-05-08
+## [2.0.17] - 2025-07-09
+
+### Fixed
+* Docker directory permissions related to pixi install persisted and now fixed.
+
+
+## [2.0.16] - 2025-07-09
 
 ### Added
 * Add 3.14 support and testing
 * Update regression test
 
 ### Fixed
-* Dockerfile using pixi base was not running correctly. Needed straightforward updates to welcome pixi usage including ignoring .pixi/ directory, ensuring .pixi directory had correct directories, virtual environment activation, etc.
+* Dockerfile using pixi base was not running correctly. Needed straightforward updates to welcome pixi usage including ignoring .pixi/ directory, ensuring .pixi directory had correct permissions, virtual environment activation slightly different than conda, etc.
 
 ## [2.0.15] - 2025-05-08
 
