@@ -18,7 +18,8 @@ ARG UID=1001
 ARG GID=1001
 
 RUN groupadd -g "${GID}" --system dist_user && \
-    useradd -l -u "${UID}" -g "${GID}" --system -d /home/ops -m  -s /bin/bash dist_user
+    useradd -l -u "${UID}" -g "${GID}" --system -d /home/ops -m  -s /bin/bash dist_user && \
+    chmod o+rx /home/ops
 
 # Switch to non-root user
 USER dist_user
@@ -26,17 +27,21 @@ WORKDIR /home/ops
 
 # Ensures we cache the env install per
 # https://docs.docker.com/develop/develop-images/dockerfile_best-practices/#leverage-build-cache
-COPY --chown=dist_user:dist_user . /home/ops/dist-s1/
-
-# Ensure all files are read/execute by the user
-RUN chmod -R a+rx /home/ops
+# --chmod grants write too: any uid can run this image (e.g. `docker run
+# --user "$(id -u):$(id -g)"` to match the host user for output file
+# ownership), and uv re-verifies/rebuilds the editable dist-s1 package's
+# egg-info on activation even with `--frozen`.
+COPY --chown=dist_user:dist_user --chmod=777 . /home/ops/dist-s1/
 
 # uv builds the editable dist-s1 in an isolated copy of the source that omits
 # the .git directory, so setuptools_scm cannot infer the version there. Resolve
 # it from the .git present in the build context and pass it through explicitly.
+# chmod runs in the same layer as pixi install (rather than a separate RUN
+# afterwards) so overlay2 doesn't copy-up the multi-GB env a second time.
 RUN export SETUPTOOLS_SCM_PRETEND_VERSION_FOR_DIST_S1="$(git -C /home/ops/dist-s1 describe --tags | sed -E 's/^v//; s/-([0-9]+)-g/.post\1+g/')" && \
     pixi install --locked --manifest-path /home/ops/dist-s1/pyproject.toml && \
-    pixi clean cache --yes
+    pixi clean cache --yes && \
+    chmod -R a+rwX /home/ops/dist-s1/.pixi
 
 # Activate the pixi environment on login and interactive shells so the
 # entrypoint's login shell resolves the environment's python

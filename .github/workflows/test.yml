@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        environment: ["py312", "py313"]
+        environment: ["py312", "py313", "py314"]
       fail-fast: false
 
     steps:
