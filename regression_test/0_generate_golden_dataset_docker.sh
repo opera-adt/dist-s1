@@ -46,9 +46,13 @@ echo "Container work directory: ${CONTAINER_WORK_DIR}"
 # - Override entrypoint to run python script directly
 # - Platform specification for M1 Mac compatibility
 # - Run as current user to avoid permission issues
+# - HOME set to a writable dir since the host uid has no /etc/passwd entry
+#   in the container, so $HOME would otherwise resolve to / (used by pixi's
+#   uv cache)
 docker run -ti --rm \
     --platform linux/amd64 \
     --user "$(id -u):$(id -g)" \
+    -e HOME=/tmp \
     -e EARTHDATA_USERNAME="${EARTHDATA_USERNAME}" \
     -e EARTHDATA_PASSWORD="${EARTHDATA_PASSWORD}" \
     -v "$(pwd)":"${CONTAINER_WORK_DIR}" \
