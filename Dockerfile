@@ -41,7 +41,7 @@ COPY --chown=dist_user:dist_user --chmod=777 . /home/ops/dist-s1/
 RUN export SETUPTOOLS_SCM_PRETEND_VERSION_FOR_DIST_S1="$(git -C /home/ops/dist-s1 describe --tags | sed -E 's/^v//; s/-([0-9]+)-g/.post\1+g/')" && \
     pixi install --locked --manifest-path /home/ops/dist-s1/pyproject.toml && \
     pixi clean cache --yes && \
-    chmod -R a+rwX /home/ops/dist-s1/.pixi
+    chmod -R a+rwX /home/ops/dist-s1
 
 # Activate the pixi environment on login and interactive shells so the
 # entrypoint's login shell resolves the environment's python
