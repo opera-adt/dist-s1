@@ -1,0 +1,8 @@
+.pixi
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+notebooks/
+regression_test/
+.github/
