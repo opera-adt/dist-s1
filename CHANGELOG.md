@@ -13,7 +13,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * Docker directory permissions related to pixi install persisted and now fixed.
 
 
-## [2.0.16] - 2025-05-08
+## [2.0.16] - 2025-07-09
 
 ### Added
 * Add 3.14 support and testing
