@@ -1,10 +1,23 @@
+import os
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from tqdm import tqdm
 
-import dist_s1
 from dist_s1.aws import get_content_type, get_s3_client, get_tag_set, upload_file_to_s3
+
+
+def get_delivery_version() -> str:
+    version = os.environ.get('DIST_S1_VERSION')
+    if version:
+        return version
+
+    env_path = Path(__file__).parent / '.env'
+    for line in env_path.read_text().splitlines():
+        if line.strip().startswith('DIST_S1_VERSION='):
+            return line.split('=', 1)[1].strip()
+
+    raise RuntimeError('DIST_S1_VERSION not set (environment or regression_test/.env)')
 
 
 def upload_files_to_s3_threaded(
@@ -68,7 +81,7 @@ def upload_file_to_s3_with_path(file_path: Path, bucket: str, prefix: str, profi
 def upload_data_to_s3(
     bucket: str, prefix: str, paths: tuple[str, ...], profile_name: str | None = None, max_workers: int = 5
 ) -> None:
-    version = dist_s1.__version__
+    version = get_delivery_version()
     full_prefix = f'{prefix}/{version}' if prefix else version
 
     all_files_to_upload: list[tuple[Path, str, str]] = []

@@ -4,11 +4,19 @@
 
 set -e  # Exit on any error
 
+# Load DIST_S1_VERSION (and any other vars) from .env in this directory
+set -a; [ -f .env ] && source .env; set +a
+: "${DIST_S1_VERSION:?Set DIST_S1_VERSION in regression_test/.env (e.g. DIST_S1_VERSION=2.0.18)}"
+
+# Platform for the amd64-only image: default works on amd64 linux (no-op) and
+# arm64 Mac (emulation). Override via DOCKER_PLATFORM for other hosts.
+DOCKER_PLATFORM="${DOCKER_PLATFORM:-linux/amd64}"
+
 # Configuration
-DOCKER_IMAGE_NAME="ghcr.io/opera-adt/dist-s1:latest"
+DOCKER_IMAGE_NAME="ghcr.io/opera-adt/dist-s1:${DIST_S1_VERSION}"
 CONTAINER_WORK_DIR="/home/ops/dist-s1-data"
 
-echo "Pulling latest Docker image from GitHub Container Registry..."
+echo "Pulling Docker image from GitHub Container Registry..."
 docker pull "${DOCKER_IMAGE_NAME}"
 
 echo "Docker image pulled successfully: ${DOCKER_IMAGE_NAME}"
@@ -44,13 +52,13 @@ echo "Container work directory: ${CONTAINER_WORK_DIR}"
 # - Interactive terminal
 # - Remove container after completion
 # - Override entrypoint to run python script directly
-# - Platform specification for M1 Mac compatibility
+# - Platform specification (DOCKER_PLATFORM) for cross-host compatibility
 # - Run as current user to avoid permission issues
 # - HOME set to a writable dir since the host uid has no /etc/passwd entry
 #   in the container, so $HOME would otherwise resolve to / (used by pixi's
 #   uv cache)
 docker run -ti --rm \
-    --platform linux/amd64 \
+    --platform "${DOCKER_PLATFORM}" \
     --user "$(id -u):$(id -g)" \
     -e HOME=/tmp \
     -e EARTHDATA_USERNAME="${EARTHDATA_USERNAME}" \
