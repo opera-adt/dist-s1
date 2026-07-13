@@ -64,11 +64,11 @@ def test_product_directory_data_from_product_path(
 
 def test_from_product_path_s3(test_dir: Path) -> None:
     """Test loading product from public S3 bucket."""
-    s3_uri = 's3://dist-s1-golden-datasets/2.0.9/golden_dataset/OPERA_L3_DIST-ALERT-S1_T11SLT_20250121T135246Z_20251215T221221Z_S1A_30_v0.1/'
+    s3_uri = 's3://dist-s1-golden-datasets/2.0.18/golden_dataset/OPERA_L3_DIST-ALERT-S1_T11SLT_20250121T135246Z_20260713T173538Z_S1A_30_v1.0/'
 
     product = DistS1ProductDirectory.from_product_path(s3_uri)
 
-    assert product.product_name == 'OPERA_L3_DIST-ALERT-S1_T11SLT_20250121T135246Z_20251215T221221Z_S1A_30_v0.1'
+    assert product.product_name == 'OPERA_L3_DIST-ALERT-S1_T11SLT_20250121T135246Z_20260713T173538Z_S1A_30_v1.0'
     assert product.mgrs_tile_id == '11SLT'
     assert product.acq_datetime.year == 2025
     assert product.acq_datetime.month == 1

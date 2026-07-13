@@ -7,6 +7,13 @@ and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [2.0.19] - 2025-07-13
+
+### Fixed
+* Removed older products from s3 and updated 
+* Updated delivery script so that we use .env file rather than version.
+
+
 ## [2.0.18] - 2025-07-13
 
 ### Fixed
