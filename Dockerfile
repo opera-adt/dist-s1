@@ -2,6 +2,15 @@ FROM ghcr.io/prefix-dev/pixi:latest
 
 LABEL description="DIST-S1 Container"
 
+LABEL org.opencontainers.image.title="DIST-S1"
+LABEL org.opencontainers.image.description="Processor for Disturbance derived from Sentinel-1"
+LABEL org.opencontainers.image.vendor="Jet Propulsion Laboratory"
+LABEL org.opencontainers.image.authors="OPERA Project Science and Algorithm Team"
+LABEL org.opencontainers.image.licenses="Apache-2"
+LABEL org.opencontainers.image.url="https://github.com/opera-adt/dist-s1"
+LABEL org.opencontainers.image.source="https://github.com/opera-adt/dist-s1"
+LABEL org.opencontainers.image.documentation="https://opera-adt.github.io/dist-s1/stable/"
+
 ARG DEBIAN_FRONTEND=noninteractive
 ENV PYTHONDONTWRITEBYTECODE=true
 
