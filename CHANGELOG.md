@@ -7,6 +7,11 @@ and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [2.0.18] - 2025-07-13
+
+### Fixed
+* Updated Docker descriptions to ensure there are no Non-ASCII characters.
+
 ## [2.0.17] - 2025-07-09
 
 ### Fixed
